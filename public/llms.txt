@@ -1,0 +1,32 @@
+# Osmrtnica.com.hr
+
+> Osmrtnica.com.hr je hrvatski portal za osmrtnice, digitalne memorijale, informacije o posljednjim ispraćajima, sprovodima i grobljima u Hrvatskoj. Sadržaj je na hrvatskom jeziku.
+
+## Glavne sekcije
+
+- [Naslovnica](https://osmrtnica.com.hr/): pretraga osmrtnica, najnovije osmrtnice, virtualne svijeće i memorijalni vrt.
+- [Digitalni memorijal](https://osmrtnica.com.hr/digitalni-memorijal): trajna memorijalna stranica s životnom pričom, fotografijama i porukama sjećanja (39 € jednokratno). Memorijal se može izraditi i za osobu preminulu prije mnogo godina.
+- Pojedinačni javni memorijal: https://osmrtnica.com.hr/memorijal/{slug}
+- [Umrli po gradovima](https://osmrtnica.com.hr/umrli): osmrtnice po gradu na https://osmrtnica.com.hr/umrli/{grad}
+- Sprovodi po gradovima: https://osmrtnica.com.hr/sprovodi/{grad}
+- Pojedinačna osmrtnica: https://osmrtnica.com.hr/{slug}
+- Groblja: https://osmrtnica.com.hr/groblje/{naziv-groblja} i po gradu https://osmrtnica.com.hr/groblja/{grad}
+- [Blog i savjeti](https://osmrtnica.com.hr/blog): članci o osmrtnicama, sprovodima, tugovanju i sjećanju.
+- [Objavi osmrtnicu](https://osmrtnica.com.hr/objavi-osmrtnicu) i [Kako objaviti osmrtnicu](https://osmrtnica.com.hr/kako-objaviti-osmrtnicu)
+- [Virtualne svijeće](https://osmrtnica.com.hr/virtualne-svijece) i [Zapali svijeću](https://osmrtnica.com.hr/zapali-svijecu)
+- [Memorijalni vrt](https://osmrtnica.com.hr/memorijalni-vrt)
+- [Često postavljena pitanja](https://osmrtnica.com.hr/cesto-postavljena-pitanja)
+- [Informacije](https://osmrtnica.com.hr/informacije)
+
+## Odnosi između sadržaja
+
+- Osmrtnica obavještava o smrti i sprovodu; digitalni memorijal je trajna stranica sjećanja na istu osobu.
+- Osmrtnice i sprovodi povezani su s gradom i grobljem na kojem se ispraćaj održava.
+- Stranice groblja sadrže naziv, grad, adresu, kontakt, radno vrijeme i opis groblja.
+
+## Ostalo
+
+- Karta stranice: https://osmrtnica.com.hr/sitemap.xml
+- Pravila za crawlere: https://osmrtnica.com.hr/robots.txt
+- [Uvjeti korištenja](https://osmrtnica.com.hr/uvjeti-koristenja) · [Politika privatnosti](https://osmrtnica.com.hr/politika-privatnosti)
+- Privatne stranice (prijava, registracija, korisnički račun, izrada i plaćanje memorijala, administracija, interna pretraga) nisu namijenjene indeksiranju.

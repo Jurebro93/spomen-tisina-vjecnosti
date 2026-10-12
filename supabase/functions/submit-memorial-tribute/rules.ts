@@ -1,0 +1,2 @@
+export const tributeStatus = (requiresApproval: boolean | null) => requiresApproval === false ? 'approved' : 'pending';
+export const validTributePhoto = (memorialId: string, path?: string | null) => !path || (path.startsWith(`memorials/${memorialId}/tributes/`) && !path.includes('..'));

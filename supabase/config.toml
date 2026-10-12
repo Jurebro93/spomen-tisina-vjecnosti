@@ -1,0 +1,70 @@
+project_id = "umpvnepxsqfkxjpclkxc"
+
+[functions.approve-quote]
+verify_jwt = false
+
+[functions.create-candle-payment]
+verify_jwt = false
+
+[functions.verify-candle-payment]
+verify_jwt = false
+
+[functions.seed-candles]
+verify_jwt = false
+
+[functions.submit-obituary]
+verify_jwt = false
+
+[functions.approve-obituary]
+verify_jwt = false
+
+[functions.submit-candle]
+verify_jwt = false
+
+[functions.approve-candle]
+verify_jwt = false
+
+[functions.generate-sitemap]
+verify_jwt = false
+
+[functions.create-memorial-payment]
+verify_jwt = true
+
+[functions.verify-memorial-payment]
+verify_jwt = false
+
+[functions.send-memorial-invoice]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.minimax-admin]
+verify_jwt = false
+
+[functions.send-password-reset]
+verify_jwt = false
+
+[functions.send-signup-confirmation]
+verify_jwt = false
+
+[functions.validate-promo-code]
+verify_jwt = false
+
+[functions.sync-zagreb-sprovodi]
+verify_jwt = false
+
+[functions.search-famous-portraits]
+verify_jwt = false
+
+[functions.process-famous-portrait]
+verify_jwt = false
+
+[functions.seed-media-upload]
+verify_jwt = false
+
+[functions.test-meta-capi]
+verify_jwt = false
+
+[functions.submit-memorial-tribute]
+verify_jwt = false
