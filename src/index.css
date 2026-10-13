@@ -1,0 +1,384 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Osmrtnica.com.hr Design System - Dignified and Elegant */
+
+@layer base {
+  :root {
+    /* Primary Colors - Dignified Black & White */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+
+    /* Card & Surface Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+
+    /* Popover Colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+
+    /* Primary Brand Colors - Deep Black */
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary Colors - Elegant Grey */
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 0 0% 17%;
+
+    /* Muted Colors - Soft Neutrals */
+    --muted: 0 0% 97%;
+    --muted-foreground: 0 0% 40%;
+
+    /* Accent Colors - Memorial Gold */
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive Colors */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input Colors */
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
+
+    /* Memorial-specific Colors */
+    --memorial-gold: 43 74% 49%;
+    --memorial-gold-foreground: 0 0% 100%;
+    --memorial-warm: 30 20% 96%;
+    --memorial-warm-foreground: 0 0% 20%;
+    --memorial-shadow: 0 0% 80%;
+    --memorial-parchment: 36 33% 97%;
+    --memorial-parchment-card: 40 50% 99%;
+    --memorial-parchment-border: 33 25% 85%;
+    --memorial-parchment-muted: 25 18% 35%;
+    --memorial-earth: 16 24% 20%;
+    --memorial-earth-foreground: 40 50% 99%;
+    --memorial-gold-muted: 40 46% 50%;
+    --memorial-gold-muted-foreground: 40 50% 99%;
+
+    /* Candle Colors */
+    --candle-flame: 39 100% 60%;
+    --candle-warm: 35 100% 95%;
+    --candle-glow: 45 100% 85%;
+
+    /* Radius */
+    --radius: 0.5rem;
+
+    /* Gradients */
+    --gradient-memorial: linear-gradient(135deg, hsl(var(--memorial-warm)), hsl(var(--background)));
+    --gradient-elegant: linear-gradient(180deg, hsl(var(--background)), hsl(var(--memorial-warm)));
+    --gradient-candle: linear-gradient(135deg, hsl(var(--candle-warm)), hsl(var(--candle-glow)));
+
+    /* Shadows */
+    --shadow-elegant: 0 4px 20px -4px hsl(var(--memorial-shadow) / 0.3);
+    --shadow-memorial: 0 8px 32px -8px hsl(var(--memorial-shadow) / 0.4);
+    --shadow-candle: 0 0 20px hsl(var(--candle-flame) / 0.5);
+
+    /* Animations */
+    --transition-elegant: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-memorial: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 95%;
+    --memorial-warm: 0 0% 12%;
+    --memorial-warm-foreground: 0 0% 85%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Typography Hierarchy */
+  h1 {
+    @apply font-display text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight;
+  }
+
+  h2 {
+    @apply font-display text-3xl md:text-4xl font-medium leading-tight;
+  }
+
+  h3 {
+    @apply font-display text-2xl md:text-3xl font-medium leading-snug;
+  }
+
+  h4 {
+    @apply font-display text-xl md:text-2xl font-medium leading-snug;
+  }
+
+  h5 {
+    @apply font-display text-lg md:text-xl font-medium leading-normal;
+  }
+
+  h6 {
+    @apply font-display text-base md:text-lg font-medium leading-normal;
+  }
+
+  /* Memorial-specific Typography */
+  .memorial-title {
+    @apply font-display text-2xl md:text-3xl font-medium text-foreground leading-tight;
+  }
+
+  .memorial-subtitle {
+    @apply font-body text-lg md:text-xl font-normal text-muted-foreground leading-relaxed;
+  }
+
+  .memorial-body {
+    @apply font-body text-base md:text-lg font-normal text-foreground leading-relaxed;
+  }
+
+  /* Elegant Components */
+  .memorial-card {
+    @apply bg-card border border-border rounded-lg p-6 shadow-lg hover:shadow-xl transition-all duration-300;
+  }
+
+  .memorial-border {
+    @apply border-l-4 border-primary pl-4;
+  }
+
+  .elegant-button {
+    @apply bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium transition-all duration-200 hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .candle-glow {
+    @apply relative;
+  }
+
+  .candle-glow::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-gradient-to-r from-candle-flame to-candle-glow opacity-20 blur-sm;
+  }
+
+  /* Animations */
+  .fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.8s ease-out;
+  }
+
+  .gentle-float {
+    animation: gentleFloat 3s ease-in-out infinite;
+  }
+
+  .candle-flicker {
+    animation: candleFlicker 2s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes gentleFloat {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+
+  @keyframes candleFlicker {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes flicker {
+    0%, 100% { 
+      opacity: 1; 
+      transform: scale(1) rotate(-2deg); 
+    }
+    25% { 
+      opacity: 0.8; 
+      transform: scale(1.1) rotate(1deg); 
+    }
+    50% { 
+      opacity: 0.9; 
+      transform: scale(0.95) rotate(-1deg); 
+    }
+    75% { 
+      opacity: 0.85; 
+      transform: scale(1.05) rotate(2deg); 
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+/* ---------------- Digitalni memorijal: teme, fontovi, uzorci ---------------- */
+
+@layer components {
+  .memorial-theme-klasicna {
+    --m-bg: 0 0% 100%;
+    --m-surface: 0 0% 97%;
+    --m-fg: 0 0% 8%;
+    --m-muted: 0 0% 38%;
+    --m-accent: 43 74% 38%;
+    --m-border: 0 0% 87%;
+    --m-header: 0 0% 10%;
+    --m-header-fg: 0 0% 100%;
+  }
+
+  .memorial-theme-mornarska {
+    --m-bg: 215 40% 99%;
+    --m-surface: 215 35% 95%;
+    --m-fg: 215 45% 14%;
+    --m-muted: 215 20% 36%;
+    --m-accent: 210 55% 34%;
+    --m-border: 215 25% 85%;
+    --m-header: 215 48% 18%;
+    --m-header-fg: 210 40% 97%;
+  }
+
+  .memorial-theme-sumska {
+    --m-bg: 140 25% 99%;
+    --m-surface: 140 22% 95%;
+    --m-fg: 150 35% 13%;
+    --m-muted: 150 15% 33%;
+    --m-accent: 152 40% 27%;
+    --m-border: 145 18% 84%;
+    --m-header: 152 38% 16%;
+    --m-header-fg: 140 30% 97%;
+  }
+
+  .memorial-theme-ljubicasta {
+    --m-bg: 280 30% 99%;
+    --m-surface: 280 26% 96%;
+    --m-fg: 278 35% 15%;
+    --m-muted: 278 15% 36%;
+    --m-accent: 275 40% 34%;
+    --m-border: 280 20% 86%;
+    --m-header: 278 40% 19%;
+    --m-header-fg: 280 30% 97%;
+  }
+
+  .m-bg { background-color: hsl(var(--m-bg)); }
+  .m-surface { background-color: hsl(var(--m-surface)); }
+  .m-text { color: hsl(var(--m-fg)); }
+  .m-muted-text { color: hsl(var(--m-muted)); }
+  .m-accent-text { color: hsl(var(--m-accent)); }
+  .m-accent-bg { background-color: hsl(var(--m-accent)); color: hsl(var(--m-bg)); }
+  .m-border-color { border-color: hsl(var(--m-border)); }
+  .m-accent-border { border-color: hsl(var(--m-accent)); }
+  .m-header-bg { background-color: hsl(var(--m-header)); color: hsl(var(--m-header-fg)); }
+
+  .bg-memorial-theme-klasicna { background-color: hsl(0 0% 10%); }
+  .bg-memorial-theme-mornarska { background-color: hsl(215 48% 22%); }
+  .bg-memorial-theme-sumska { background-color: hsl(152 38% 20%); }
+  .bg-memorial-theme-ljubicasta { background-color: hsl(278 40% 24%); }
+
+  .memorial-font-klasicni { --m-font-heading: 'Playfair Display', serif; --m-font-body: 'Inter', sans-serif; }
+  .memorial-font-moderni { --m-font-heading: 'Inter', sans-serif; --m-font-body: 'Inter', sans-serif; }
+  .memorial-font-elegantni { --m-font-heading: 'Playfair Display', serif; --m-font-body: 'Inter', sans-serif; }
+
+  .memorial-font-elegantni .m-heading { letter-spacing: 0.06em; font-weight: 400; }
+  .memorial-font-moderni .m-heading { letter-spacing: -0.01em; font-weight: 600; }
+
+  .m-heading { font-family: var(--m-font-heading, 'Playfair Display', serif); }
+  .m-body { font-family: var(--m-font-body, 'Inter', sans-serif); }
+
+  .m-pattern-mekani-uzorak {
+    background-image: radial-gradient(hsl(var(--m-border) / 0.75) 1px, transparent 1.4px);
+    background-size: 18px 18px;
+  }
+
+  .m-pattern-suptilne-linije {
+    background-image: repeating-linear-gradient(
+      135deg,
+      hsl(var(--m-border) / 0.4) 0px,
+      hsl(var(--m-border) / 0.4) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+
+@media print {
+  .no-print { display: none !important; }
+  .memorial-print-root { box-shadow: none !important; border: 0 !important; }
+  body { background: #fff; }
+}
+
+/* Rich text (životna priča) – editor i prikaz */
+.memorial-prose ul { list-style: disc; padding-left: 1.5rem; margin: 0.75rem 0; }
+.memorial-prose ol { list-style: decimal; padding-left: 1.5rem; margin: 0.75rem 0; }
+.memorial-prose li { margin: 0.25rem 0; }
+.memorial-prose blockquote {
+  border-left: 3px solid hsl(var(--border));
+  padding-left: 1rem;
+  margin: 1rem 0;
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
+}
+.memorial-prose h2 { font-size: 1.35rem; font-weight: 600; margin: 1.25rem 0 0.5rem; }
+.memorial-prose h3 { font-size: 1.2rem; font-weight: 600; margin: 1.75rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid hsl(var(--border)); }
+.memorial-prose h3:first-child { margin-top: 0; }
+.memorial-prose strong { font-weight: 600; color: hsl(var(--foreground)); }
+.memorial-prose p { margin: 0 0 1.25rem; min-height: 1em; }
+.memorial-prose p:last-child { margin-bottom: 0; }
+.memorial-prose a { text-decoration: underline; }
