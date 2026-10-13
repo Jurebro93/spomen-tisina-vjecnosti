@@ -1,0 +1,1 @@
+CREATE POLICY "Admins read legal attachments" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'legal-attachments' AND public.has_role(auth.uid(),'admin'));

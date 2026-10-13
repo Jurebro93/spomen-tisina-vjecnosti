@@ -1,0 +1,6 @@
+-- Dodaj groblja za Zagreb
+INSERT INTO public.groblja (naziv, grad, opis, godina_osnivanja, meta_title, meta_description) VALUES
+('Mirogoj', 'Zagreb', 'Glavno gradsko groblje u Zagrebu, poznato po svojoj arhitekturi i umjetničkim spomenicima. Osnovano je 1876. godine i jedno je od najljepših groblja u Europi.', '1876', 'Groblje Mirogoj - Zagreb', 'Informacije o groblju Mirogoj u Zagrebu. Glavno gradsko groblje poznato po arhitekturi i spomenicima.'),
+('Novo groblje Buzin', 'Zagreb', 'Novo gradsko groblje u zagrebačkom naselju Buzin. Moderno groblje koje služi kao dodatni kapacitet glavnom groblju Mirogoj.', '2004', 'Novo groblje Buzin - Zagreb', 'Informacije o novom groblju Buzin u Zagrebu. Moderno gradsko groblje s dodatnim kapacitetima.'),
+('Groblje Maksimir', 'Zagreb', 'Manje gradsko groblje u zagrebačkom kvartu Maksimir. Služi lokalnoj zajednici i dio je povijesti kvarta.', '1923', 'Groblje Maksimir - Zagreb', 'Informacije o groblju Maksimir u Zagrebu. Lokalno groblje u kvartu Maksimir.'),
+('Groblje Stenjevec', 'Zagreb', 'Gradsko groblje u zapadnom dijelu Zagreba, u naselju Stenjevec. Služi stanovništvu zapadnih dijelova grada.', '1964', 'Groblje Stenjevec - Zagreb', 'Informacije o groblju Stenjevec u Zagrebu. Gradsko groblje u zapadnom dijelu grada.');
