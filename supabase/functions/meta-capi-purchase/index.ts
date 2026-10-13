@@ -19,10 +19,40 @@ Deno.serve(async (req) => {
   if (req.headers.get("origin") !== ALLOWED_ORIGIN) return json({ ok: false, error: "forbidden" }, 403);
   const token = Deno.env.get("META_CAPI_ACCESS_TOKEN");
   const stripeKey = Deno.env.get("STRIPE_LIVE_API_KEY") || Deno.env.get("STRIPE_SECRET_KEY");
-  if (!token || !stripeKey) return json({ ok: false, error: "config missing" }, 500);
+  if (!token) return json({ ok: false, error: "config missing" }, 500);
 
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
+
+  // Preview-only test mode (?cap_test=1): send a Purchase without Stripe verification.
+  if (b.test === true) {
+    const res = await fetch(`https://graph.facebook.com/v19.0/${PIXEL_ID}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        test_event_code: "TEST92747",
+        data: [{
+          event_name: "Purchase",
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `purchase_test_${crypto.randomUUID()}`,
+          action_source: "website",
+          event_source_url: `${ALLOWED_ORIGIN}/zahvaljujemo`,
+          user_data: {
+            client_user_agent: req.headers.get("user-agent") ?? undefined,
+            client_ip_address: (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || undefined,
+          },
+          custom_data: { value: 39.0, currency: "EUR", content_ids: ["test-memorial"] },
+        }],
+      }),
+    });
+    const metaBody = await res.text();
+    let metaJson: unknown = null;
+    try { metaJson = JSON.parse(metaBody); } catch { /* raw */ }
+    console.log(`[META-CAPI-PURCHASE-TEST] status ${res.status}`);
+    return json({ ok: res.ok, meta_status: res.status, meta_body: metaJson ?? metaBody }, res.ok ? 200 : 502);
+  }
+
+  if (!stripeKey) return json({ ok: false, error: "config missing" }, 500);
   const sessionId = typeof b.session_id === "string" && /^cs_[A-Za-z0-9_]{10,200}$/.test(b.session_id) ? b.session_id : "";
   if (!sessionId) return json({ ok: false, error: "session_id required" }, 400);
 

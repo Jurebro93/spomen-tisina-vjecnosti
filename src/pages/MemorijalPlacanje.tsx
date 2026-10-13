@@ -52,8 +52,17 @@ const MemorijalPlacanje = () => {
     }
   }, [freePromo, promoMemorialId, promoSlugParam, navigate]);
 
+  // Preview-only CAPI test: /zahvaljujemo?cap_test=1 sends a test Purchase without Stripe.
+  const capiTest = params.get('cap_test') === '1' && window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app';
   useEffect(() => {
-    if (freePromo) return;
+    if (!capiTest) return;
+    document.title = 'Zahvaljujemo | Digitalni memorijal';
+    setState('success');
+    void supabase.functions.invoke('meta-capi-purchase', { body: { test: true } }).catch(() => {});
+  }, [capiTest]);
+
+  useEffect(() => {
+    if (freePromo || capiTest) return;
     document.title = 'Potvrda plaćanja | Digitalni memorijal';
     if (!sessionId) {
       setState('error');
