@@ -24,8 +24,10 @@ Deno.serve(async (req) => {
   if (typeof p.currency === "string") custom.currency = p.currency.slice(0, 3);
   if (Array.isArray(p.content_ids)) custom.content_ids = p.content_ids.filter((x) => typeof x === "string").slice(0, 20);
   const url = typeof b.url === "string" && b.url.startsWith(ALLOWED_ORIGIN) ? b.url.slice(0, 500) : ALLOWED_ORIGIN;
-  const testCode = typeof b.test_event_code === "string" && /^[A-Z0-9]{1,20}$/i.test(b.test_event_code)
-    ? b.test_event_code.toUpperCase()
+  const qTest = new URL(req.url).searchParams.get("test_event_code");
+  const rawTest = typeof b.test_event_code === "string" && b.test_event_code ? b.test_event_code : qTest;
+  const testCode = typeof rawTest === "string" && /^[A-Z0-9]{1,20}$/i.test(rawTest)
+    ? rawTest.toUpperCase()
     : "TEST92747";
 
   const res = await fetch(`https://graph.facebook.com/v19.0/${PIXEL_ID}/events`, {
