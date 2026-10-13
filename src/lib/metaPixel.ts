@@ -78,6 +78,17 @@ export const trackEvent = (
   if (typeof window === 'undefined') return;
   if (!initialised) initMetaPixel();
   if (!initialised) return;
+  // Preview-only: mirror ViewContent to Conversions API with a shared event_id.
+  if (event === 'ViewContent' && window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app') {
+    const vcId = eventId ?? `vc_${crypto.randomUUID()}`;
+    window.fbq?.('track', event, params, { eventID: vcId });
+    void import('@/integrations/supabase/client').then(({ supabase }) =>
+      supabase.functions.invoke('meta-capi-viewcontent', {
+        body: { event_id: vcId, params, url: window.location.href },
+      }),
+    ).catch(() => {});
+    return;
+  }
   if (eventId) window.fbq?.('track', event, params, { eventID: eventId });
   else window.fbq?.('track', event, params);
 };

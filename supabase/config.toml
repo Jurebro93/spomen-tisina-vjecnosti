@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.submit-memorial-tribute]
 verify_jwt = false
+
+[functions.meta-capi-viewcontent]
+verify_jwt = false
