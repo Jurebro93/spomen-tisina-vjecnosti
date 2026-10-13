@@ -52,17 +52,8 @@ const MemorijalPlacanje = () => {
     }
   }, [freePromo, promoMemorialId, promoSlugParam, navigate]);
 
-  // Preview-only CAPI test: /zahvaljujemo?cap_test=1 sends a test Purchase without Stripe.
-  const capiTest = params.get('cap_test') === '1' && window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app';
   useEffect(() => {
-    if (!capiTest) return;
-    document.title = 'Zahvaljujemo | Digitalni memorijal';
-    setState('success');
-    void supabase.functions.invoke('meta-capi-purchase', { body: { test: true } }).catch(() => {});
-  }, [capiTest]);
-
-  useEffect(() => {
-    if (freePromo || capiTest) return;
+    if (freePromo) return;
     document.title = 'Potvrda plaćanja | Digitalni memorijal';
     if (!sessionId) {
       setState('error');
@@ -89,8 +80,8 @@ const MemorijalPlacanje = () => {
               content_type: 'product',
               content_ids: data.memorial_id ? [data.memorial_id] : undefined,
             }, purchaseEventId(sessionId));
-            // Preview-only: mirror the confirmed Purchase to Conversions API with the same event_id.
-            if (window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app') {
+            // Mirror the confirmed Purchase to Conversions API with the same event_id (production only).
+            if (['osmrtnica.com.hr', 'www.osmrtnica.com.hr'].includes(window.location.hostname)) {
               void supabase.functions.invoke('meta-capi-purchase', { body: { session_id: sessionId } }).catch(() => {});
             }
           }
