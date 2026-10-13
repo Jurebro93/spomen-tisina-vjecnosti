@@ -80,6 +80,10 @@ const MemorijalPlacanje = () => {
               content_type: 'product',
               content_ids: data.memorial_id ? [data.memorial_id] : undefined,
             }, purchaseEventId(sessionId));
+            // Preview-only: mirror the confirmed Purchase to Conversions API with the same event_id.
+            if (window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app') {
+              void supabase.functions.invoke('meta-capi-purchase', { body: { session_id: sessionId } }).catch(() => {});
+            }
           }
           setMemorialId(data.memorial_id ?? null);
         } else {
