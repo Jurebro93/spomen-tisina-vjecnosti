@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
       }],
     }),
   });
+  const metaBody = await res.text();
+  let metaJson: unknown = null;
+  try { metaJson = JSON.parse(metaBody); } catch { /* keep raw text */ }
   console.log(`[META-CAPI-VC] status ${res.status}`);
-  return json({ ok: res.ok }, res.ok ? 200 : 502);
+  return json({ ok: res.ok, meta_status: res.status, meta_body: metaJson ?? metaBody }, res.ok ? 200 : 502);
 });
