@@ -82,6 +82,11 @@ const AuthTopBar = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/admin/brisanje" className="cursor-pointer">
+                        <Settings size={14} className="mr-2" /> Brisanje osmrtnica i memorijala
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/admin/integrations/minimax" className="cursor-pointer">
                         <Settings size={14} className="mr-2" /> Minimax postavke
                       </Link>

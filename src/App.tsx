@@ -58,6 +58,7 @@ import AdminPromoCodeDetail from "./pages/admin/AdminPromoCodeDetail";
 import AuthCallback from "./pages/AuthCallback";
 import AdminPortraits from "./pages/admin/AdminPortraits";
 import AdminStatistika from "./pages/admin/AdminStatistika";
+import AdminBrisanje from "./pages/admin/AdminBrisanje";
 import AdminPredmeti from "./pages/admin/AdminPredmeti";
 import Kontakt from "./pages/Kontakt";
 import RaskidIPovrat from "./pages/RaskidIPovrat";
@@ -147,6 +148,7 @@ const App = () => {
             <Route path="/admin/promo-kodovi/:id" element={<AdminPromoCodeDetail />} />
             <Route path="/admin/portreti" element={<AdminPortraits />} />
             <Route path="/admin/statistika" element={<AdminStatistika />} />
+            <Route path="/admin/brisanje" element={<AdminBrisanje />} />
             <Route path="/prijava" element={<Prijava />} />
             <Route path="/registracija" element={<Registracija />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
