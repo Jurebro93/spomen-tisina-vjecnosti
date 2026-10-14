@@ -55,7 +55,15 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
-    if (form.datum_rodenja && form.datum_rodenja > today) {
+    if (!form.datum_rodenja) {
+      toast({ title: 'Nedostaje datum', description: 'Unesite datum rođenja.', variant: 'destructive' });
+      return;
+    }
+    if (!form.datum_smrti) {
+      toast({ title: 'Nedostaje datum', description: 'Unesite datum smrti.', variant: 'destructive' });
+      return;
+    }
+    if (form.datum_rodenja > today) {
       toast({ title: 'Neispravan datum', description: 'Datum rođenja ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
