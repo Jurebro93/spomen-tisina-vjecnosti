@@ -4,6 +4,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { adminClient, getSettings, logInvoice, processInvoice, upsertInvoiceForSession } from "../_shared/invoices.ts";
 import { purchaseEventId, sendPurchaseEvent } from "../_shared/metaCapi.ts";
+import { deliverPurchase, ensureDelivery, usesReliableCapi } from "../_shared/capiDelivery.ts";
 import { PRODUCT_PRICES, recordPromoUsage } from "../_shared/promo.ts";
 import { failureLabelHr, findOrder, recordPaymentEvent, setOrderStatus } from "../_shared/orders.ts";
 
@@ -129,7 +130,7 @@ serve(async (req) => {
             } catch (e) { log("Confirmation email failed", { message: String(e) }); }
 
             // Marketing (CAPI) only with the buyer's marketing consent.
-            if (session.metadata?.marketing_consent === "true") await sendPurchaseEvent({
+            if (session.metadata?.marketing_consent === "true" && !usesReliableCapi(session.metadata?.user_id)) await sendPurchaseEvent({
               eventId: purchaseEventId(session.id),
               eventTime: Math.floor(Date.now() / 1000),
               value: (session.amount_total ?? 0) / 100,
@@ -163,6 +164,14 @@ serve(async (req) => {
       const settings = await getSettings(admin);
       if (invoice.invoice_status !== "issued" && settings?.auto_issue !== false) {
         await processInvoice(admin, invoice.id);
+      }
+
+      // 3) Reliable Meta CAPI Purchase (rollout users only) — independent of who marked it paid.
+      if (usesReliableCapi(session.metadata?.user_id)) {
+        try {
+          await ensureDelivery(admin, session);
+          await deliverPurchase(admin, stripe, session.id);
+        } catch (capiError) { log("CAPI delivery failed", { message: String(capiError) }); }
       }
     }
 

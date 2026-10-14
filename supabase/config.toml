@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.meta-capi-purchase]
 verify_jwt = false
+
+[functions.meta-capi-retry]
+verify_jwt = false
