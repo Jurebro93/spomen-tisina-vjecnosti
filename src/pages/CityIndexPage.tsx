@@ -137,35 +137,6 @@ const CityIndexPage = ({ kind }: Props) => {
     </section>
   );
 
-  const cemeteryDirectory = (
-    <section className="mb-12">
-      <h2 className="text-2xl sm:text-3xl font-display font-bold text-foreground mb-2">Sva groblja po gradovima</h2>
-      <p className="text-muted-foreground mb-6">Kliknite groblje za adresu, kontakt i radno vrijeme.</p>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cemeteriesByCity.map(([slug, g]) => (
-          <div key={slug} className="rounded-lg border border-memorial-gold/30 bg-card p-5">
-            <h3 className="font-display text-lg font-semibold mb-3">
-              {slug !== 'ostalo' ? (
-                <Link to={`/groblja/${slug}`} className="hover:text-memorial-gold">Groblja {g.name}</Link>
-              ) : g.name}
-            </h3>
-            <ul className="space-y-1.5 text-sm">
-              {g.items.map((c) => (
-                <li key={c.naziv}>
-                  {c.slug ? (
-                    <Link to={`/groblje/${c.slug}`} className="text-foreground hover:text-memorial-gold underline-offset-2 hover:underline">{c.displayNaziv}</Link>
-                  ) : (
-                    <span className="text-muted-foreground">{c.displayNaziv}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-
   const infoItems = isSprovodi
     ? [
         { icon: Clock, t: 'Vrijeme sprovoda', d: 'Dođite 15–30 minuta ranije. Raspored se može promijeniti, pa ga provjerite na dan sprovoda.' },
