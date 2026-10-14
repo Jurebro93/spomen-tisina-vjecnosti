@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, useNavigate } from 'react-router-dom';
-const logo = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png";
+const logo = "/logo-osmrtnica.png";
 import { useAuth } from '@/hooks/useAuth';
 import AuthTopBar from '@/components/AuthTopBar';
 import { useSignOut } from '@/hooks/useSignOut';

@@ -12,10 +12,10 @@ import MediaMentionsSection from '@/components/MediaMentionsSection';
 import { MemorialPublicListing } from '@/components/MemorialPublicListing';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-const marijaPortret = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-portret.jpg";
-const marijaMlada = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-mlada.jpg";
-const marijaKuhinja = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-kuhinja.jpg";
-const marijaVrt = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-vrt.jpg";
+const marijaPortret = "/site/marija-kovac-portret.jpg";
+const marijaMlada = "/site/marija-kovac-mlada.jpg";
+const marijaKuhinja = "/site/marija-kovac-kuhinja.jpg";
+const marijaVrt = "/site/marija-kovac-vrt.jpg";
 import { MEMORIAL_PRICE_EUR, MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 import { trackEvent } from '@/lib/metaPixel';
 

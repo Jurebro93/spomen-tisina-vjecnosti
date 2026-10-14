@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-const candleFlame = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-flame-large.png";
+const candleFlame = "/site/candle-flame-large.png";
 import { supabase } from '@/integrations/supabase/client';
 
 interface VirtualCandlesForObituaryProps {
@@ -160,7 +160,7 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
                    <div className="flex items-start gap-3">
                      <div className="w-16 h-16 flex items-center justify-center flex-shrink-0">
                        <img 
-                         src={candle.is_burning ? candleFlame : "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-no-flame.png"} 
+                         src={candle.is_burning ? candleFlame : "/site/candle-no-flame.png"} 
                          alt={candle.is_burning ? "Goreća svijeća" : "Ugašena svijeća"} 
                          className={`w-14 h-14 object-contain ${candle.is_burning ? 'animate-flicker' : 'opacity-50 grayscale'}`}
                        />

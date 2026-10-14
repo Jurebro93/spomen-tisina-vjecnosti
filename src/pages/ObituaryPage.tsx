@@ -24,7 +24,7 @@ import Footer from '@/components/Footer';
 import VirtualCandlesForObituary from '@/components/VirtualCandlesForObituary';
 import MemorialCta from '@/components/memorial/MemorialCta';
 import { supabase } from '@/integrations/supabase/client';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 import { PersonSEO } from '@/hooks/usePersonSEO';
 import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
 

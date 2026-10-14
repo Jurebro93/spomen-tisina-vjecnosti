@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 import { formatLifespan } from '@/lib/utils';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 type Obituary = {
   id: string;

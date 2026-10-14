@@ -10,9 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-const candlesImage = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/memorial-candles.jpg";
-const candleFlame = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-flame-large.png";
-const candleNoFlame = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-no-flame.png";
+const candlesImage = "/site/memorial-candles.jpg";
+const candleFlame = "/site/candle-flame-large.png";
+const candleNoFlame = "/site/candle-no-flame.png";
 import { SEOHelmet } from '@/hooks/useSEO';
 
 const ZapaliSvijecu = () => {

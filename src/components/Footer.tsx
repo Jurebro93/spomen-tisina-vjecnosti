@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { openCookieSettings } from '@/lib/legal';
-const logo = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png";
+const logo = "/logo-osmrtnica.png";
 const Footer = () => {
   const { toast } = useToast();
   const [email, setEmail] = useState('');

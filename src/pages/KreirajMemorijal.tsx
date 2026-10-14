@@ -29,7 +29,7 @@ import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type Purchas
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
 import { validLifeEventYear } from '@/lib/lifeEventYear';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 const STEPS = ['Osoba', 'Vaš odnos', 'Biografija', 'Životni put', 'Fotografije', 'Privatnost', 'Pregled'];
 

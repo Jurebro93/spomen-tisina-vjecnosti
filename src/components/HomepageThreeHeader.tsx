@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { displayName, useAuth } from '@/hooks/useAuth';
 import { useSignOut } from '@/hooks/useSignOut';
-const logo = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png";
+const logo = "/logo-osmrtnica.png";
 
 type HomepageThreeHeaderProps = {
   onTrack: (position: string) => void;

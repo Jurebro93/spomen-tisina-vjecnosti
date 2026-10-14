@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
-const marijaPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-portret.jpg";
+const marijaPhoto = "/site/marija-kovac-portret.jpg";
 
 const CREATE_PATH = '/digitalni-memorijal/kreiraj';
 const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';

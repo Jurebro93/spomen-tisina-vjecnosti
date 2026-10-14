@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Heart, BookOpen, Flame } from 'lucide-react';
-const heroMemorialImg = 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/hero/hero-digitalni-memorijal.jpg';
+const heroMemorialImg = '/site/hero/hero-digitalni-memorijal.jpg';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';

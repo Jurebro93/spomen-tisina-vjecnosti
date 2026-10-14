@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Search, X } from 'lucide-react';
-const logo = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png";
+const logo = "/logo-osmrtnica.png";
 import { Button } from '@/components/ui/button';
 
 const links = [

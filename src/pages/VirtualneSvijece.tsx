@@ -9,8 +9,8 @@ import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
-const candlesImage = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/memorial-candles.jpg";
-const candleFlame = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-flame-large.png";
+const candlesImage = "/site/memorial-candles.jpg";
+const candleFlame = "/site/candle-flame-large.png";
 import { SEOHelmet } from '@/hooks/useSEO';
 import MemorialCtaSection from '@/components/MemorialCtaSection';
 
@@ -229,7 +229,7 @@ const VirtualneSvijece = () => {
                   <div className="flex flex-col sm:flex-row items-start gap-4">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center flex-shrink-0 mx-auto sm:mx-0">
                       <img 
-                        src={candle.is_burning ? candleFlame : 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-no-flame.png'} 
+                        src={candle.is_burning ? candleFlame : '/site/candle-no-flame.png'} 
                         alt={candle.is_burning ? "Goreća svijeća" : "Ugašena svijeća"} 
                         className={`w-16 h-16 sm:w-20 sm:h-20 object-contain ${candle.is_burning ? 'animate-flicker' : 'opacity-50 grayscale'}`} 
                       />

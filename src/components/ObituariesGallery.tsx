@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateObituaryAge } from '@/lib/utils';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 const ObituariesGallery = () => {
   const navigate = useNavigate();

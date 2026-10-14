@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import AuthTopBar from '@/components/AuthTopBar';
 import { Button } from '@/components/ui/button';
-const logo = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png";
+const logo = "/logo-osmrtnica.png";
 
 const cityLinks = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar'];
 

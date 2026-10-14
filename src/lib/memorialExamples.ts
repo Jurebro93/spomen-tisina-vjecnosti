@@ -1,15 +1,15 @@
 import type { Deceased, Memorial } from '@/lib/memorial';
 import type { MediaItem } from '@/components/memorial/PhotoUploader';
 import type { LifeEvent, PublicCandle, PublicTribute } from '@/components/memorial/MemorialContent';
-const oliverPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/oliver.png" };
-const oliverGalleryTwo = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/oliver-galerija-2.png" };
-const oliverGalleryThree = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/oliver-galerija-3.png" };
-const dinoPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/dino.png" };
-const dinoGalleryTwo = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/dino-galerija-2.png" };
-const dinoGalleryThree = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/dino-galerija-3.png" };
-const massimoPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/masimo.png" };
-const massimoGalleryTwo = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/massimo-galerija-2.png" };
-const massimoGalleryThree = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/massimo-galerija-3.png" };
+const oliverPhoto = { url: "/site/oliver.png" };
+const oliverGalleryTwo = { url: "/site/oliver-galerija-2.png" };
+const oliverGalleryThree = { url: "/site/oliver-galerija-3.png" };
+const dinoPhoto = { url: "/site/dino.png" };
+const dinoGalleryTwo = { url: "/site/dino-galerija-2.png" };
+const dinoGalleryThree = { url: "/site/dino-galerija-3.png" };
+const massimoPhoto = { url: "/site/masimo.png" };
+const massimoGalleryTwo = { url: "/site/massimo-galerija-2.png" };
+const massimoGalleryThree = { url: "/site/massimo-galerija-3.png" };
 
 export interface MemorialExample {
   slug: string;

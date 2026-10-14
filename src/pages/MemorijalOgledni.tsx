@@ -5,10 +5,10 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MemorialContent, { type LifeEvent, type PublicCandle, type PublicTribute } from '@/components/memorial/MemorialContent';
 import { Button } from '@/components/ui/button';
-const marijaPortret = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-portret.jpg";
-const marijaMlada = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-mlada.jpg";
-const marijaKuhinja = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-kuhinja.jpg";
-const marijaVrt = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-vrt.jpg";
+const marijaPortret = "/site/marija-kovac-portret.jpg";
+const marijaMlada = "/site/marija-kovac-mlada.jpg";
+const marijaKuhinja = "/site/marija-kovac-kuhinja.jpg";
+const marijaVrt = "/site/marija-kovac-vrt.jpg";
 import type { Deceased, Memorial } from '@/lib/memorial';
 import type { MediaItem } from '@/components/memorial/PhotoUploader';
 

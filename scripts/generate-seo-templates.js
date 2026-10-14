@@ -34,12 +34,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <meta name="description" content="${seoData.meta_description}" />
     
     <meta name="author" content="Osmrtnica.com.hr" />
-    <link rel="icon" href="/src/assets/logo-osmrtnica.png" type="image/png" />
-    <link rel="apple-touch-icon" href="/src/assets/logo-osmrtnica.png" />
+    <link rel="icon" href="/logo-osmrtnica.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/logo-osmrtnica.png" />
     <link rel="canonical" href="${canonicalUrl}" />
     
     <!-- Preload critical resources -->
-    <link rel="preload" href="/assets/croatian-cemetery-hero.jpg" as="image" type="image/jpeg" />
+    <link rel="preload" href="/site/croatian-cemetery-hero.jpg" as="image" type="image/jpeg" />
     
     <!-- Enable text compression and caching -->
     <meta http-equiv="Cache-Control" content="public, max-age=31536000" />

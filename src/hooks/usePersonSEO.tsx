@@ -86,7 +86,7 @@ export const PersonSEO = ({ ime, prezime, datum_smrti, mjesto_smrti, datum_ukopa
       <title>{title}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={canonicalUrl} />
-      <link rel="icon" type="image/png" href="https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png" />
+      <link rel="icon" type="image/png" href="/logo-osmrtnica.png" />
       
       {/* Open Graph tags */}
       <meta property="og:title" content={title} />

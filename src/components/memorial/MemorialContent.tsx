@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { Calendar, ChevronLeft, ChevronRight, Flame, Flower2, MapPin, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
-const candleFlame = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/candle-flame-large.png";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
+const candleFlame = "/site/candle-flame-large.png";
 import {
   formatCroatianDate, fullName, mediaPublicUrl, sanitizeRichText, formatLifeStory,
   type Deceased, type Memorial,

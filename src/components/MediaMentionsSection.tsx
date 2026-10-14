@@ -4,37 +4,37 @@ import { Newspaper } from 'lucide-react';
 const MENTIONS = [
   {
     name: 'Narod.hr',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-narod.png',
+    logo: '/site/logos/logo-narod.png',
     url: 'https://narod.hr/dom-i-obitelj/digitalni-memorijal-novi-nacin-cuvanja-uspomena-na-voljene-osobe',
   },
   {
     name: 'Novi Život',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-novizivot.png',
+    logo: '/site/logos/logo-novizivot.png',
     url: 'https://www.novizivot.net/digitalni-memorijal-novi-nacin-cuvanja-uspomena-na-voljene-osobe/',
   },
   {
     name: 'Poslovni dnevnik',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-poslovni.png',
+    logo: '/site/logos/logo-poslovni.png',
     url: 'https://www.poslovni.hr/hrvatska/nova-hrvatska-digitalna-platforma-za-cuvanje-zivotnih-prica-i-obiteljskih-uspomena-4556342',
   },
   {
     name: 'Story',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-story-dark.png',
+    logo: '/site/logos/logo-story-dark.png',
     url: 'https://story.hr/Promo/a409874/mjesto-tisine-zahvalnosti-i-zajednickog-prisjecanja.html',
   },
   {
     name: 'Telegram',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-telegram.png',
+    logo: '/site/logos/logo-telegram.png',
     url: 'https://www.telegram.hr/partneri/digitalni-memorijal-novi-nacin-cuvanja-uspomena-na-voljene-osobe/',
   },
   {
     name: 'IstraIN',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-istrain.png',
+    logo: '/site/logos/logo-istrain.png',
     url: 'https://istrain.hr/ostalo/zanimljivosti/6ac88bf19ff81/digitalni-memorijal-novi-nacin-cuvanja-uspomena-na-voljene-osobe/vijest',
   },
   {
     name: 'Dnevno',
-    logo: 'https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logos/logo-dnevno.png',
+    logo: '/site/logos/logo-dnevno.png',
     url: 'https://www.dnevno.hr/magazin/digitalni-memorijal-novi-nacin-cuvanja-uspomena-na-voljene-osobe-3440989/',
   },
 ];

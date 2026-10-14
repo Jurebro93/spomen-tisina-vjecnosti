@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import MemorialQuickSearch from '@/components/MemorialQuickSearch';
-const oliverPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/oliver.png" };
-const dinoPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/dino.png" };
-const massimoPhoto = { url: "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/masimo.png" };
+const oliverPhoto = { url: "/site/oliver.png" };
+const dinoPhoto = { url: "/site/dino.png" };
+const massimoPhoto = { url: "/site/masimo.png" };
 
 interface ExampleMemorial {
   slug: string;

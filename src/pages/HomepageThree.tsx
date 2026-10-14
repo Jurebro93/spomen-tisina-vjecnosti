@@ -13,8 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 import { formatLifespan } from '@/lib/utils';
-const defaultObituaryPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/default-obituary-photo.jpg";
-const marijaPhoto = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/marija-kovac-memorial.jpg";
+const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
+const marijaPhoto = "/site/marija-kovac-memorial.jpg";
 
 type Obituary = { id: string; ime: string; prezime: string; datum_rodenja: string | null; datum_smrti: string | null; datum_ukopa: string | null; vrijeme_ukopa: string | null; mjesto_smrti: string | null; groblje: string | null; fotografija_url: string | null; slug: string | null };
 type City = { name: string; count: number };

@@ -2,7 +2,7 @@ import { Quote, Leaf, Heart, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-const memorialGardenImage = "https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/memorial-garden.jpg";
+const memorialGardenImage = "/site/memorial-garden.jpg";
 const MemorialGarden = () => {
   const navigate = useNavigate();
   const quotes = [{

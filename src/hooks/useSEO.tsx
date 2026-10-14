@@ -98,7 +98,7 @@ export const SEOHelmet = ({ pagePath }: { pagePath: string }) => {
       <title>{seoData.meta_title}</title>
       <meta name="description" content={seoData.meta_description} />
       <link rel="canonical" href={`https://osmrtnica.com.hr${pagePath}`} />
-      <link rel="icon" type="image/png" href="https://umpvnepxsqfkxjpclkxc.supabase.co/storage/v1/object/public/obituary-photos/site/logo-osmrtnica.png" />
+      <link rel="icon" type="image/png" href="/logo-osmrtnica.png" />
       
       {/* Open Graph tags */}
       <meta property="og:title" content={seoData.meta_title} />

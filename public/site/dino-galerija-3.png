@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script type="module">import { injectIntoGlobalHook } from "/@react-refresh";
+injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;</script>
+
+    <script type="module" src="/@vite/client"></script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-5PP7H63W');</script>
+    <!-- End Google Tag Manager -->
+    <title>Osmrtnica.com.hr - Dostojanstveno opraštanje</title>
+    <meta name="description" content="Osmrtnice, digitalni memorijali, sprovodi i groblja u Hrvatskoj. Pretražite osmrtnice po imenu ili gradu, zapalite virtualnu svijeću i sačuvajte uspomenu digitalnim memorijalom." />
+    
+    <meta name="author" content="Osmrtnica.com.hr" />
+    <link rel="icon" href="/src/assets/logo-osmrtnica.png" type="image/png" />
+    <link rel="shortcut icon" href="/src/assets/logo-osmrtnica.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/src/assets/logo-osmrtnica.png" />
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/assets/croatian-cemetery-hero.jpg" as="image" type="image/jpeg" />
+    <link rel="preload" href="/src/index.css" as="style" />
+    
+    <!-- Enable text compression and caching -->
+    <meta http-equiv="Cache-Control" content="public, max-age=31536000" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-1GNLTLX21V"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-1GNLTLX21V');
+    </script>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Osmrtnica.com.hr" />
+    <meta property="og:locale" content="hr_HR" />
+    <meta property="og:url" content="https://osmrtnica.com.hr/" />
+    <meta property="og:title" content="Osmrtnica.com.hr - Dostojanstveno opraštanje" />
+    <meta property="og:description" content="Osmrtnice, digitalni memorijali, sprovodi i groblja u Hrvatskoj. Pretražite osmrtnice po imenu ili gradu, zapalite virtualnu svijeću i sačuvajte uspomenu digitalnim memorijalom." />
+    <meta property="og:image" content="https://osmrtnica.com.hr/wp-content/uploads/2022/12/Logo-Osmrtnica.com_.hr_-300x300.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Osmrtnica.com.hr - Dostojanstveno opraštanje" />
+    <meta name="twitter:description" content="Osmrtnice, digitalni memorijali, sprovodi i groblja u Hrvatskoj." />
+    <meta name="twitter:image" content="https://osmrtnica.com.hr/wp-content/uploads/2022/12/Logo-Osmrtnica.com_.hr_-300x300.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://osmrtnica.com.hr/#organization",
+            "name": "Osmrtnica.com.hr",
+            "url": "https://osmrtnica.com.hr/",
+            "logo": "https://osmrtnica.com.hr/logo-osmrtnica.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://osmrtnica.com.hr/#website",
+            "name": "Osmrtnica.com.hr",
+            "url": "https://osmrtnica.com.hr/",
+            "description": "Osmrtnice, digitalni memorijali, sprovodi i groblja u Hrvatskoj.",
+            "inLanguage": "hr-HR",
+            "publisher": { "@id": "https://osmrtnica.com.hr/#organization" },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://osmrtnica.com.hr/pretraga?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
+
+  </head>
+
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5PP7H63W"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- Meta Pixel fallback (pixel itself is loaded from src/lib/metaPixel.ts after cookie consent) -->
+    <noscript><img height="1" width="1" style="display:none" alt=""
+      src="https://www.facebook.com/tr?id=2915138225551446&ev=PageView&noscript=1" /></noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
