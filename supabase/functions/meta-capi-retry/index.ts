@@ -1,4 +1,4 @@
-// Scheduled retry worker for meta_capi_deliveries. Protected by the service role key.
+// Scheduled retry worker for meta_capi_deliveries. Protected by a Vault secret; only sends Meta CAPI events (never payments, invoices or memorial activation).
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { adminClient } from "../_shared/invoices.ts";
 import { deliverPurchase, MAX_ATTEMPTS } from "../_shared/capiDelivery.ts";
