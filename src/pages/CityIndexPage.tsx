@@ -62,17 +62,6 @@ const CityIndexPage = ({ kind }: Props) => {
     return [...map.entries()].filter(([s]) => s).sort((a, b) => a[1].localeCompare(b[1], 'hr'));
   }, [cemeteries, funerals]);
 
-  const cemeteriesByCity = useMemo(() => {
-    const groups = new Map<string, { name: string; items: Cemetery[] }>();
-    cemeteries.forEach((c) => {
-      const name = c.grad?.trim() || 'Ostalo';
-      const key = toSlug(name) || 'ostalo';
-      if (!groups.has(key)) groups.set(key, { name, items: [] });
-      groups.get(key)!.items.push(c);
-    });
-    return [...groups.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name, 'hr'));
-  }, [cemeteries]);
-
   const title = isSprovodi ? 'Sprovodi u Hrvatskoj – raspored po gradovima' : 'Groblja u Hrvatskoj – popis po gradovima';
   const description = isSprovodi
     ? 'Raspored sprovoda i ispraćaja za zadnjih i idućih 7 dana, po gradovima i grobljima u Hrvatskoj.'
