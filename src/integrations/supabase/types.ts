@@ -1671,6 +1671,84 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_capi_deliveries: {
+        Row: {
+          attempts: number
+          claim_token: string | null
+          client_ip: string | null
+          client_user_agent: string | null
+          created_at: string
+          currency: string
+          event_id: string
+          event_name: string
+          event_time: number
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          memorial_id: string | null
+          meta_body: Json | null
+          meta_status: number | null
+          next_attempt_at: string | null
+          order_id: string | null
+          sent_at: string | null
+          status: string
+          stripe_session_id: string
+          updated_at: string
+          user_id: string | null
+          value: number
+        }
+        Insert: {
+          attempts?: number
+          claim_token?: string | null
+          client_ip?: string | null
+          client_user_agent?: string | null
+          created_at?: string
+          currency?: string
+          event_id: string
+          event_name?: string
+          event_time: number
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          memorial_id?: string | null
+          meta_body?: Json | null
+          meta_status?: number | null
+          next_attempt_at?: string | null
+          order_id?: string | null
+          sent_at?: string | null
+          status?: string
+          stripe_session_id: string
+          updated_at?: string
+          user_id?: string | null
+          value?: number
+        }
+        Update: {
+          attempts?: number
+          claim_token?: string | null
+          client_ip?: string | null
+          client_user_agent?: string | null
+          created_at?: string
+          currency?: string
+          event_id?: string
+          event_name?: string
+          event_time?: number
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          memorial_id?: string | null
+          meta_body?: Json | null
+          meta_status?: number | null
+          next_attempt_at?: string | null
+          order_id?: string | null
+          sent_at?: string | null
+          status?: string
+          stripe_session_id?: string
+          updated_at?: string
+          user_id?: string | null
+          value?: number
+        }
+        Relationships: []
+      }
       newsletter_users: {
         Row: {
           active: boolean
@@ -2330,6 +2408,40 @@ export type Database = {
         Returns: boolean
       }
       claim_admin_role: { Args: never; Returns: boolean }
+      claim_capi_delivery: {
+        Args: { _session_id: string }
+        Returns: {
+          attempts: number
+          claim_token: string | null
+          client_ip: string | null
+          client_user_agent: string | null
+          created_at: string
+          currency: string
+          event_id: string
+          event_name: string
+          event_time: number
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          memorial_id: string | null
+          meta_body: Json | null
+          meta_status: number | null
+          next_attempt_at: string | null
+          order_id: string | null
+          sent_at: string | null
+          status: string
+          stripe_session_id: string
+          updated_at: string
+          user_id: string | null
+          value: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "meta_capi_deliveries"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cleanup_old_memorial_quotes: { Args: never; Returns: undefined }
       create_memorial_person: {
         Args: {
@@ -2378,6 +2490,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      finish_capi_delivery: {
+        Args: {
+          _error: string
+          _id: string
+          _meta_body: Json
+          _meta_status: number
+          _next_attempt_at: string
+          _status: string
+          _token: string
+        }
+        Returns: boolean
       }
       generate_blog_slug: {
         Args: { id_param: string; title_param: string }
@@ -2455,6 +2579,7 @@ export type Database = {
         }[]
       }
       publish_scheduled_memorials: { Args: never; Returns: number }
+      purge_capi_identifiers: { Args: never; Returns: number }
       search_memorial_people: {
         Args: { _limit?: number; _query: string }
         Returns: {
