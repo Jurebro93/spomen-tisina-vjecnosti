@@ -120,12 +120,12 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
           <Input id="m-prezime" value={form.prezime} onChange={set('prezime')} maxLength={60} required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-rodenja">Datum rođenja</Label>
-          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
+          <Label htmlFor="m-rodenja">Datum rođenja *</Label>
+          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} required max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-smrti">Datum smrti</Label>
-          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} min={form.datum_rodenja || undefined} max={today} />
+          <Label htmlFor="m-smrti">Datum smrti *</Label>
+          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} required min={form.datum_rodenja || undefined} max={today} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
