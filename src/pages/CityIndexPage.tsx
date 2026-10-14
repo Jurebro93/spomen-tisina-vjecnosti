@@ -204,7 +204,7 @@ const CityIndexPage = ({ kind }: Props) => {
           {cityLinks(kind, isSprovodi ? 'Sprovodi' : 'Groblja')}
         </section>
 
-        {isSprovodi ? funeralTable : cemeteryDirectory}
+        {isSprovodi && funeralTable}
 
         <MemorialCtaBanner />
 
