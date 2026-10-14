@@ -15,3 +15,4 @@
 - [x] Povezati nova sjećanja s e-mail obavijestima; probno sjećanje spremljeno i slanje prihvaćeno
 - [ ] Provjeriti potvrđivanje pod korisničkim računom i primitak u sandučiću — vanjski Supabase ne omogućuje prijavljenu provjeru; potreban korisnički pregled
 - [ ] Dopuniti četiri obiteljska događaja Ivana Litarića (vjenčanje, rođenja kćeri, preseljenje) i prazni „Novi događaj” Mile Glavca — potrebne godine i sadržaj vlasnika
+- [ ] Meta CAPI Purchase delivery table + retries (admin 7130af4e only first)
