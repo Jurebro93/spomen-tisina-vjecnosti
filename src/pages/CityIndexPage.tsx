@@ -208,7 +208,8 @@ const CityIndexPage = ({ kind }: Props) => {
 
         <MemorialCtaBanner />
 
-        {isSprovodi ? cemeteryDirectory : funeralTable}
+        {!isSprovodi && funeralTable}
+
 
         <section className="mb-12">
           <h2 className="text-2xl font-display font-bold mb-2">{isSprovodi ? 'Groblja po gradovima' : 'Sprovodi po gradovima'}</h2>
