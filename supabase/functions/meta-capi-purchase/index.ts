@@ -2,6 +2,8 @@
 // Accepts requests only from osmrtnica.com.hr / www.osmrtnica.com.hr and re-verifies payment with Stripe.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import Stripe from "https://esm.sh/stripe@14.21.0";
+import { adminClient } from "../_shared/invoices.ts";
+import { deliverPurchase, ensureDelivery, usesReliableCapi } from "../_shared/capiDelivery.ts";
 
 const PIXEL_ID = "2915138225551446";
 const ALLOWED_ORIGINS = ["https://osmrtnica.com.hr", "https://www.osmrtnica.com.hr"];
@@ -34,6 +36,17 @@ Deno.serve(async (req) => {
   if (session.payment_status !== "paid") return json({ ok: false, error: "not paid" }, 400);
   const memorialId = session.metadata?.memorial_id;
   if (!memorialId) return json({ ok: false, error: "no memorial" }, 400);
+
+  // Rollout users: record browser identifiers (with consent) and use the deduplicated pipeline only.
+  if (usesReliableCapi(session.metadata?.user_id)) {
+    const admin = adminClient();
+    await ensureDelivery(admin, session, {
+      ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || null,
+      userAgent: req.headers.get("user-agent"),
+    });
+    const r = await deliverPurchase(admin, stripe, sessionId);
+    return json({ ok: true, delivery: r.status, meta_status: r.meta_status ?? null, meta_body: r.meta_body ?? null });
+  }
 
   // Buyer data only (Stripe customer details) — never the deceased person's name.
   const cd = session.customer_details;
