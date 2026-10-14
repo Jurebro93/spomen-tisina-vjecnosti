@@ -67,11 +67,11 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
       toast({ title: 'Neispravan datum', description: 'Datum rođenja ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
-    if (form.datum_smrti && form.datum_smrti > today) {
+    if (form.datum_smrti > today) {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
-    if (form.datum_rodenja && form.datum_smrti && form.datum_smrti < form.datum_rodenja) {
+    if (form.datum_smrti < form.datum_rodenja) {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti prije datuma rođenja.', variant: 'destructive' });
       return;
     }
