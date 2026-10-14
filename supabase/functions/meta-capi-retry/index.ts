@@ -4,8 +4,9 @@ import { adminClient } from "../_shared/invoices.ts";
 import { deliverPurchase, MAX_ATTEMPTS } from "../_shared/capiDelivery.ts";
 
 Deno.serve(async (req) => {
-  const auth = req.headers.get("Authorization") ?? "";
-  if (auth !== `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`) return new Response("forbidden", { status: 403 });
+  // Takes no input and only processes rows that are already due, so a project apikey is enough.
+  const key = req.headers.get("apikey") ?? "";
+  if (!key || key !== Deno.env.get("SUPABASE_ANON_KEY")) return new Response("forbidden", { status: 403 });
   const stripeKey = Deno.env.get("STRIPE_LIVE_API_KEY") || Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) return new Response("stripe missing", { status: 500 });
   const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
