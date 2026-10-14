@@ -1,16 +1,26 @@
-// Scheduled retry worker for meta_capi_deliveries. Protected by the service role key.
+// Scheduled retry worker for meta_capi_deliveries. Protected by a Vault secret; only sends Meta CAPI events (never payments, invoices or memorial activation).
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { adminClient } from "../_shared/invoices.ts";
 import { deliverPurchase, MAX_ATTEMPTS } from "../_shared/capiDelivery.ts";
 
+const safeEqual = (a: string, b: string) => {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+};
+
 Deno.serve(async (req) => {
-  // Takes no input and only processes rows that are already due, so a project apikey is enough.
-  const key = req.headers.get("apikey") ?? "";
-  if (!key || key !== Deno.env.get("SUPABASE_ANON_KEY")) return new Response("forbidden", { status: 403 });
+  // Dedicated secret (stored in Supabase Vault as META_CAPI_RETRY_SECRET), checked before any work.
+  const provided = req.headers.get("x-retry-secret") ?? "";
+  const admin = adminClient();
+  const { data: expected, error: secretError } = await admin.rpc("meta_capi_retry_secret");
+  if (secretError || typeof expected !== "string" || expected.length < 32 || !safeEqual(provided, expected)) {
+    return new Response("forbidden", { status: 403 });
+  }
   const stripeKey = Deno.env.get("STRIPE_LIVE_API_KEY") || Deno.env.get("STRIPE_SECRET_KEY");
   if (!stripeKey) return new Response("stripe missing", { status: 500 });
   const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-  const admin = adminClient();
   const nowIso = new Date().toISOString();
   const staleIso = new Date(Date.now() - 10 * 60_000).toISOString();
   const { data } = await admin.from("meta_capi_deliveries").select("stripe_session_id")
