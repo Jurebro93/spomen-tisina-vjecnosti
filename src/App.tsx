@@ -147,6 +147,7 @@ const App = () => {
             <Route path="/admin/promo-kodovi/:id" element={<AdminPromoCodeDetail />} />
             <Route path="/admin/portreti" element={<AdminPortraits />} />
             <Route path="/admin/statistika" element={<AdminStatistika />} />
+            <Route path="/admin/brisanje" element={<AdminBrisanje />} />
             <Route path="/prijava" element={<Prijava />} />
             <Route path="/registracija" element={<Registracija />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
