@@ -145,7 +145,7 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim()}>
+        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim() || !form.datum_rodenja || !form.datum_smrti}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag na pretragu</Button>
