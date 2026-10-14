@@ -55,15 +55,23 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
-    if (form.datum_rodenja && form.datum_rodenja > today) {
+    if (!form.datum_rodenja) {
+      toast({ title: 'Nedostaje datum', description: 'Unesite datum rođenja.', variant: 'destructive' });
+      return;
+    }
+    if (!form.datum_smrti) {
+      toast({ title: 'Nedostaje datum', description: 'Unesite datum smrti.', variant: 'destructive' });
+      return;
+    }
+    if (form.datum_rodenja > today) {
       toast({ title: 'Neispravan datum', description: 'Datum rođenja ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
-    if (form.datum_smrti && form.datum_smrti > today) {
+    if (form.datum_smrti > today) {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
-    if (form.datum_rodenja && form.datum_smrti && form.datum_smrti < form.datum_rodenja) {
+    if (form.datum_smrti < form.datum_rodenja) {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti prije datuma rođenja.', variant: 'destructive' });
       return;
     }
@@ -112,12 +120,12 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
           <Input id="m-prezime" value={form.prezime} onChange={set('prezime')} maxLength={60} required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-rodenja">Datum rođenja</Label>
-          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
+          <Label htmlFor="m-rodenja">Datum rođenja *</Label>
+          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} required max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-smrti">Datum smrti</Label>
-          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} min={form.datum_rodenja || undefined} max={today} />
+          <Label htmlFor="m-smrti">Datum smrti *</Label>
+          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} required min={form.datum_rodenja || undefined} max={today} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
@@ -137,7 +145,7 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
         </div>
       </div>
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim()}>
+        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim() || !form.datum_rodenja || !form.datum_smrti}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag na pretragu</Button>
