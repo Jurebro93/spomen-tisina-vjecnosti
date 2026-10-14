@@ -2303,6 +2303,14 @@ export type Database = {
     }
     Functions: {
       admin_blog_report: { Args: { _from: string; _to: string }; Returns: Json }
+      admin_delete_memorial: {
+        Args: { _memorial_id: string }
+        Returns: undefined
+      }
+      admin_delete_obituary: {
+        Args: { _obituary_id: string }
+        Returns: undefined
+      }
       admin_sales_report: {
         Args: {
           _bucket?: string
