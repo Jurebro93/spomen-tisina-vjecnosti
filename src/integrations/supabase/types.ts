@@ -2561,6 +2561,7 @@ export type Database = {
         Args: { _memorial_id: string }
         Returns: boolean
       }
+      meta_capi_retry_secret: { Args: never; Returns: string }
       my_withdrawable_orders: {
         Args: never
         Returns: {
