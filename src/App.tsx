@@ -58,6 +58,7 @@ import AdminPromoCodeDetail from "./pages/admin/AdminPromoCodeDetail";
 import AuthCallback from "./pages/AuthCallback";
 import AdminPortraits from "./pages/admin/AdminPortraits";
 import AdminStatistika from "./pages/admin/AdminStatistika";
+import AdminBrisanje from "./pages/admin/AdminBrisanje";
 import AdminPredmeti from "./pages/admin/AdminPredmeti";
 import Kontakt from "./pages/Kontakt";
 import RaskidIPovrat from "./pages/RaskidIPovrat";
