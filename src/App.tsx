@@ -64,6 +64,7 @@ import RaskidIPovrat from "./pages/RaskidIPovrat";
 import Prigovori from "./pages/Prigovori";
 import PravilaObjavljivanja from "./pages/PravilaObjavljivanja";
 import PrijavaSadrzaja from "./pages/PrijavaSadrzaja";
+import CityIndexPage from "./pages/CityIndexPage";
 
 
 const queryClient = new QueryClient();
@@ -121,7 +122,9 @@ const App = () => {
             <Route path="/umrli" element={<Umrli />} />
             <Route path="/umrli/:city" element={<Umrli />} />
             <Route path="/gradovi" element={<Gradovi />} />
+            <Route path="/sprovodi" element={<CityIndexPage kind="sprovodi" />} />
             <Route path="/sprovodi/:city" element={<Sprovodi />} />
+            <Route path="/groblja" element={<CityIndexPage kind="groblja" />} />
             <Route path="/groblja/:city" element={<GrobljaGrad />} />
             <Route path="/groblje/:slug" element={<GrobljePage />} />
             <Route path="/memorijalni-vrt" element={<MemorijalniVrt />} />
