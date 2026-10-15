@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predev": "node scripts/generate-sitemap.mjs",
-    "prebuild": "node scripts/generate-sitemap.mjs"
+    "prebuild": "node scripts/generate-sitemap.mjs",
+    "postbuild": "node scripts/generate-netlify-redirects.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

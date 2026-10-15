@@ -21,7 +21,7 @@ type City = { name: string; count: number };
 
 const CREATE_PATH = '/digitalni-memorijal/kreiraj';
 const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';
-const HOME_URL = 'https://spomen-tisina-vjecnosti.lovable.app/homepage-3/';
+const HOME_URL = 'https://osmrtnica.com.hr/homepage-3/';
 const HOME_TITLE = 'Digitalni memorijali i osmrtnice | Osmrtnica.com.hr';
 const HOME_DESCRIPTION = 'Sačuvajte fotografije, životnu priču i poruke sjećanja u digitalnom memorijalu. Za nedavne i davne gubitke. Pretražite i osmrtnice po imenu ili gradu.';
 const SEARCH_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Slavonski Brod', 'Pula', 'Sesvete', 'Karlovac', 'Varaždin', 'Šibenik', 'Sisak', 'Dubrovnik'];
@@ -76,7 +76,7 @@ const HomepageThree = () => {
       <Helmet>
         <title>{HOME_TITLE}</title><meta name="robots" content="noindex,follow" /><meta name="description" content={HOME_DESCRIPTION} /><link rel="canonical" href={HOME_URL} />
         <meta property="og:title" content={HOME_TITLE} /><meta property="og:description" content={HOME_DESCRIPTION} /><meta property="og:type" content="website" /><meta property="og:url" content={HOME_URL} /><meta name="twitter:card" content="summary_large_image" />
-        <script type="application/ld+json">{JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebPage', name: HOME_TITLE, description: HOME_DESCRIPTION, url: HOME_URL, isPartOf: { '@type': 'WebSite', name: 'Osmrtnica.com.hr', url: 'https://spomen-tisina-vjecnosti.lovable.app/' } })}</script>
+        <script type="application/ld+json">{JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebPage', name: HOME_TITLE, description: HOME_DESCRIPTION, url: HOME_URL, isPartOf: { '@type': 'WebSite', name: 'Osmrtnica.com.hr', url: 'https://osmrtnica.com.hr/' } })}</script>
       </Helmet>
 
       <HomepageThreeHeader onTrack={trackHomepageAction} />
