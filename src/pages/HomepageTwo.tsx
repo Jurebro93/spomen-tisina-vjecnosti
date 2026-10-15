@@ -51,7 +51,7 @@ const FEATURED_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar'];
 const ARTICLE_SLUGS = ['kako-napisati-osmrtnicu', 'kako-preboljeti-gubitak-supruga', 'kako-se-obuci-za-sprovod'];
 const HOME_TITLE = 'Osmrtnice Hrvatska i digitalni memorijali | Osmrtnica.com.hr';
 const HOME_DESCRIPTION = 'Pretražite osmrtnice po imenu i gradu ili objavite osmrtnicu. Upoznajte digitalne memorijale za čuvanje fotografija, životnih priča i uspomena.';
-const HOME_URL = 'https://spomen-tisina-vjecnosti.lovable.app/homepage-2/';
+const HOME_URL = 'https://osmrtnica.com.hr/homepage-2/';
 
 const trackMemorialClick = (position: 'hero_card' | 'main_section' | 'example') => {
   if (typeof window === 'undefined') return;
@@ -160,7 +160,7 @@ const HomepageTwo = () => {
         <meta property="og:description" content={HOME_DESCRIPTION} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={HOME_URL} />
-        <script type="application/ld+json">{JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebPage', name: HOME_TITLE, description: HOME_DESCRIPTION, url: HOME_URL, isPartOf: { '@type': 'WebSite', name: 'Osmrtnica.com.hr', url: 'https://spomen-tisina-vjecnosti.lovable.app/' } })}</script>
+        <script type="application/ld+json">{JSON.stringify({ '@context': 'https://schema.org', '@type': 'WebPage', name: HOME_TITLE, description: HOME_DESCRIPTION, url: HOME_URL, isPartOf: { '@type': 'WebSite', name: 'Osmrtnica.com.hr', url: 'https://osmrtnica.com.hr/' } })}</script>
       </Helmet>
 
       <HomepageTwoHeader />

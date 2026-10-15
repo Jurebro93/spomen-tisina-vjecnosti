@@ -1,0 +1,9 @@
+# Netlify hosting for osmrtnica.com.hr: every merge to main is built and published.
+# Routing rules (_redirects) are generated into dist/ by scripts/generate-netlify-redirects.mjs.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
