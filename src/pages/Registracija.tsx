@@ -139,7 +139,7 @@ const Registracija = () => {
                         Prihvaćam{' '}
                         <Link to="/uvjeti-koristenja" className="text-accent hover:underline">Uvjete korištenja i kupnje</Link>{' '}
                         i{' '}
-                        <Link to="/politika-privatnosti/" className="text-accent hover:underline">Politiku privatnosti</Link>.
+                        <Link to="/politika-privatnosti" className="text-accent hover:underline">Politiku privatnosti</Link>.
                       </Label>
                     </div>
                     <Button type="submit" className="w-full" disabled={submitting}>

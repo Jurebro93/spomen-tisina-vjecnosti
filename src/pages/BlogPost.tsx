@@ -43,7 +43,7 @@ interface BlogPost {
 /** Adds one natural in-text link to the memorial page after the 3rd paragraph, if the article has none. */
 const withContextLink = (html: string, enabled: boolean) => {
   if (!enabled || /href="[^"]*digitalni-memorijal/.test(html)) return html;
-  const link = '<p><em>Uspomene na voljenu osobu možete trajno sačuvati na jednom mjestu – u <a href="/digitalni-memorijal/" data-cta="context_link">digitalnom memorijalu</a> s fotografijama, životnom pričom i porukama bližnjih.</em></p>';
+  const link = '<p><em>Uspomene na voljenu osobu možete trajno sačuvati na jednom mjestu – u <a href="/digitalni-memorijal" data-cta="context_link">digitalnom memorijalu</a> s fotografijama, životnom pričom i porukama bližnjih.</em></p>';
   let c = 0;
   const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + link : m));
   return c >= 3 ? out : html + link;
