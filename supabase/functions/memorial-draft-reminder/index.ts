@@ -1,9 +1,12 @@
 // Scheduled (hourly) reminder for unfinished memorial drafts. Protected by a Vault secret.
 // Sends one e-mail per draft, 24 h to 7 days after it was created, to registered owners only (guests have no e-mail yet).
-import { adminClient } from "../_shared/invoices.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
 
 const SITE = "https://osmrtnica.com.hr";
+
+const adminClient = () =>
+  createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
 
 const safeEqual = (a: string, b: string) => {
   if (a.length !== b.length) return false;
