@@ -1,12 +1,16 @@
 // Memorial sales funnel for GA4: pushes GTM dataLayer events (GTM forwards them to GA4).
 // Uses GA4's recommended ecommerce names so revenue shows in GA4's monetisation reports.
-// Sent only with analytics consent, like the other dataLayer events on the site.
+// Sent only on the production domain and with analytics consent, like the other dataLayer events.
 import { hasConsent } from '@/lib/consent';
 
 const ITEM = { item_id: 'digitalni-memorijal', item_name: 'Digitalni memorijal', item_category: 'memorial' };
 
+/** GTM only loads on the live site (index.html), so editor/preview traffic never reaches GA4. */
+const PRODUCTION_HOST = /^(www\.)?osmrtnica\.com\.hr$/;
+
 const push = (payload: Record<string, unknown>) => {
-  if (typeof window === 'undefined' || !hasConsent('analytics')) return;
+  if (typeof window === 'undefined' || !PRODUCTION_HOST.test(window.location.hostname)) return;
+  if (!hasConsent('analytics')) return;
   const w = window as Window & { dataLayer?: unknown[] };
   w.dataLayer = w.dataLayer ?? [];
   // Clear the previous ecommerce object so values never leak between events.
