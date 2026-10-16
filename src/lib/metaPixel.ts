@@ -69,6 +69,8 @@ export const trackPageView = (url?: string) => {
   window.fbq?.('track', 'PageView');
 };
 
+const STANDARD_EVENTS = new Set(['PageView', 'ViewContent', 'Lead', 'CompleteRegistration', 'InitiateCheckout', 'Purchase']);
+
 export const trackEvent = (
   event: string,
   params?: Record<string, unknown>,
@@ -89,8 +91,10 @@ export const trackEvent = (
     ).catch(() => {});
     return;
   }
-  if (eventId) window.fbq?.('track', event, params, { eventID: eventId });
-  else window.fbq?.('track', event, params);
+  // Custom (non-standard) events must go through trackCustom.
+  const method = STANDARD_EVENTS.has(event) ? 'track' : 'trackCustom';
+  if (eventId) window.fbq?.(method, event, params, { eventID: eventId });
+  else window.fbq?.(method, event, params);
 };
 
 /** Stable Purchase event id for a Stripe checkout session (must match the backend). */

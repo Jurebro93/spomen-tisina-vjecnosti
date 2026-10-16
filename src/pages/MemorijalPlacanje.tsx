@@ -41,14 +41,12 @@ const MemorijalPlacanje = () => {
     const key = `fb_purchase_promo_${promoMemorialId}`;
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, '1');
-      // Revenue is really 0 for a free promo code — never report the original price.
-      trackEvent('Purchase', {
-        value: 0,
-        currency: 'EUR',
+      // A free promo code is not a sale: a Purchase with value 0 breaks Meta's value and
+      // ROAS optimisation, so free activations get their own custom event.
+      trackEvent('FreeMemorialActivated', {
         content_name: 'Digitalni memorijal',
-        content_type: 'product',
         content_ids: [promoMemorialId],
-      }, `purchase_promo_${promoMemorialId}`);
+      }, `free_${promoMemorialId}`);
     }
   }, [freePromo, promoMemorialId, promoSlugParam, navigate]);
 
