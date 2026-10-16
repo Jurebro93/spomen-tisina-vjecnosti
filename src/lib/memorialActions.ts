@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { requestBillingDetails } from '@/lib/billing';
 import { MEMORIAL_PRICE_EUR, isDuplicateMemorialError, logMemorialAction, type Deceased, type ManagerRole, type Memorial } from '@/lib/memorial';
 import { trackInitiateCheckout } from '@/lib/metaPixel';
+import { trackGa4BeginCheckout } from '@/lib/ga4Ecommerce';
 
 export class DuplicateMemorialError extends Error {
   constructor(public existingSlug?: string) {
@@ -135,6 +136,7 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
     };
   }
   if (!data?.url) throw new Error('Nije moguće otvoriti stranicu za plaćanje.');
+  trackGa4BeginCheckout(memorialId, MEMORIAL_PRICE_EUR);
   window.location.href = data.url as string;
   return { alreadyPaid: false as const };
 };
