@@ -29,6 +29,7 @@ import { createDraftMemorial, DuplicateMemorialError, ensureAuthToken, updateMem
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
+import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { validLifeEventYear } from '@/lib/lifeEventYear';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
@@ -779,6 +780,7 @@ const KreirajMemorijal = () => {
               preview
             />
           </div>
+          <MemorialValueSummary />
           <PromoCodeField
             productType="memorial"
             productLabel="memorijala"

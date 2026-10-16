@@ -5,6 +5,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
@@ -80,6 +81,7 @@ const PayMemorialDialog = ({ memorialId, open, onOpenChange, onAlreadyPaid }: Pr
             Ako imate promo kod, unesite ga prije plaćanja. Prije potvrde provjerite iznos i uvjete.
           </DialogDescription>
         </DialogHeader>
+        <MemorialValueSummary compact />
         <PromoCodeField
           productType="memorial"
           productLabel="memorijala"
