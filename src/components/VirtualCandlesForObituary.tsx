@@ -10,11 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
 interface VirtualCandlesForObituaryProps {
   pokojnikIme: string;
   pokojnikPrezime: string;
+  onRelight?: () => void;
 }
 
 const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({ 
   pokojnikIme, 
-  pokojnikPrezime 
+  pokojnikPrezime,
+  onRelight
 }) => {
   const { toast } = useToast();
   const [candles, setCandles] = useState<any[]>([]);
@@ -79,6 +81,7 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
       }
 
       if (data?.success) {
+        onRelight?.();
         toast({
           title: "Uspjeh",
           description: "Svijeća je uspješno ponovno zapaljena!",
