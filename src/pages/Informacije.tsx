@@ -20,6 +20,7 @@ import Footer from '@/components/Footer';
 import CitiesSection from '@/components/CitiesSection';
 import MemorialCtaSection from '@/components/MemorialCtaSection';
 import { SEOHelmet } from '@/hooks/useSEO';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 const Informacije = () => {
   
@@ -258,6 +259,7 @@ const Informacije = () => {
             </div>
           </CardContent>
         </Card>
+        <NewsletterSignup variant="guide" placement="informacije" className="mt-10 max-w-4xl mx-auto" />
       </main>
       
       <CitiesSection />

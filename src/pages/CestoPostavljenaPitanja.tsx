@@ -27,6 +27,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 import { SEOHelmet } from '@/hooks/useSEO';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 const CestoPostavljenaPitanja = () => {
   const navigate = useNavigate();
@@ -350,6 +351,7 @@ const CestoPostavljenaPitanja = () => {
             </CardContent>
           </Card>
         </div>
+        <NewsletterSignup variant="guide" placement="faq" className="mt-10 max-w-4xl mx-auto" />
       </main>
       
       <Footer />
