@@ -122,10 +122,10 @@ const DiscountPopup = () => {
           <>
             <DialogHeader className="text-center sm:text-center">
               <DialogTitle className="font-serif text-2xl sm:text-3xl leading-tight">
-                15% popusta u samo 5 sekundi
+                30% popusta u samo 5 sekundi
               </DialogTitle>
               <DialogDescription className="text-base">
-                Upiši svoju e-mail adresu i preuzmi 15% popusta za izradu digitalnog memorijala.
+                Upiši svoju e-mail adresu i preuzmi 30% popusta za izradu digitalnog memorijala.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} className="space-y-3 mt-2" noValidate>
@@ -150,7 +150,7 @@ const DiscountPopup = () => {
                 disabled={submitting}
                 className="w-full h-12 text-base font-semibold bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90"
               >
-                {submitting ? "Izdajem kod…" : "Preuzmi 15% popusta"}
+                {submitting ? "Izdajem kod…" : "Preuzmi 30% popusta"}
               </Button>
             </form>
             <p className="text-xs text-muted-foreground text-center mt-1">
@@ -163,7 +163,7 @@ const DiscountPopup = () => {
         ) : (
           <>
             <DialogHeader className="text-center sm:text-center">
-              <DialogTitle className="font-serif text-2xl sm:text-3xl">Tvojih 15% popusta je spremno!</DialogTitle>
+              <DialogTitle className="font-serif text-2xl sm:text-3xl">Tvojih 30% popusta je spremno!</DialogTitle>
               <DialogDescription className="text-base">
                 Kod vrijedi za jednu kupnju digitalnog memorijala i ne zbraja se s drugim promo kodovima.
               </DialogDescription>

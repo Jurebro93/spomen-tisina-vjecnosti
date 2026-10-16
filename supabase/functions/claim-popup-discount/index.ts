@@ -9,19 +9,19 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
-const DISCOUNT = 15;
+const DISCOUNT = 30;
 const SITE = "https://osmrtnica.com.hr";
 
 const makeCode = () => {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const bytes = crypto.getRandomValues(new Uint8Array(6));
-  return "POPUST15-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+  return "POPUST30-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 };
 
 const emailHtml = (code: string) => `
 <div style="font-family:Georgia,serif;max-width:520px;margin:auto;padding:24px;color:#1a1a1a">
-  <h1 style="font-size:22px;margin:0 0 12px">Tvojih 15% popusta je spremno!</h1>
-  <p>Hvala na prijavi. Tvoj jedinstveni kod za 15% popusta na izradu digitalnog memorijala:</p>
+  <h1 style="font-size:22px;margin:0 0 12px">Tvojih 30% popusta je spremno!</h1>
+  <p>Hvala na prijavi. Tvoj jedinstveni kod za 30% popusta na izradu digitalnog memorijala:</p>
   <p style="font-size:24px;font-weight:bold;letter-spacing:2px;background:#f6f1e3;border:1px solid #c9a24a;padding:12px;text-align:center">${code}</p>
   <p>Kod vrijedi za jednu kupnju digitalnog memorijala i ne zbraja se s drugim promo kodovima. Upiši ga u polje „Promo kod" pri plaćanju.</p>
   <p><a href="${SITE}/digitalni-memorijal/" style="display:inline-block;background:#c9a24a;color:#111;padding:12px 20px;text-decoration:none;font-weight:bold">Izradi digitalni memorijal</a></p>
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
   let emailSent = false;
   if (isMailConfigured()) {
     try {
-      await sendMail({ to: email, subject: "Tvoj kod za 15% popusta — Digitalni memorijal", html: emailHtml(promo.code) });
+      await sendMail({ to: email, subject: "Tvoj kod za 30% popusta — Digitalni memorijal", html: emailHtml(promo.code) });
       emailSent = true;
       await admin.from("discount_signups").update({ email_sent_at: new Date().toISOString() }).eq("id", signup.id);
     } catch (e) {
