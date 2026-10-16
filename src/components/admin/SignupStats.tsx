@@ -57,9 +57,10 @@ const SignupStats = () => {
     try {
       const [popup, newsletter] = await Promise.all([
         fetchAll('discount_signups', 'email, created_at, newsletter_opt_in, promo_code'),
-        fetchAll('newsletter_users', 'email, subscribed_at, active'),
+        fetchAll('newsletter_users', 'email, subscribed_at, active').catch(() => null),
       ]);
-      setAll(merge(popup, newsletter));
+      setAll(merge(popup, newsletter ?? []));
+      if (!newsletter) setErr('Pretplatnike s obrazaca na stranici trenutačno nije moguće učitati; prikazane su samo prijave s pop-upa.');
     } catch (e: any) {
       setErr(e?.message ?? 'Prijave nije moguće učitati.');
     } finally {
