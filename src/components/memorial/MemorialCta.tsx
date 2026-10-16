@@ -4,13 +4,18 @@ import { ArrowRight, Flower2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { fetchMemorialForDeceased, type MemorialStub } from '@/lib/memorial';
+import { trackObituaryEvent, type ObituaryContext } from '@/lib/obituaryTracking';
 
 interface Props {
   deceasedId: string;
   personName: string;
+  obituary?: ObituaryContext;
 }
 
-const MemorialCta = ({ deceasedId, personName }: Props) => {
+const MemorialCta = ({ deceasedId, personName, obituary }: Props) => {
+  const track = (memorial_action: string) =>
+    trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'memorial_cta', memorial_action });
+
   const [memorial, setMemorial] = useState<MemorialStub | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,25 +50,25 @@ const MemorialCta = ({ deceasedId, personName }: Props) => {
         <div className="flex flex-col sm:flex-row gap-3 md:shrink-0">
           {published ? (
             <Button asChild>
-              <Link to={`/memorijal/${memorial!.slug}`}>
+              <Link to={`/memorijal/${memorial!.slug}`} onClick={() => track('view')}>
                 Pogledaj memorijal <ArrowRight className="h-4 w-4 ml-2" />
               </Link>
             </Button>
           ) : memorial ? (
             <Button asChild variant="outline">
-              <Link to={`/memorijal/${memorial.slug}?zatrazi=1`}>
+              <Link to={`/memorijal/${memorial.slug}?zatrazi=1`} onClick={() => track('request_access')}>
                 <Flower2 className="h-4 w-4 mr-2" /> Zatraži pristup memorijalu
               </Link>
             </Button>
           ) : (
             <>
               <Button asChild>
-                <Link to={`/kreiraj-memorijal?deceased_id=${deceasedId}`}>
+                <Link to={`/kreiraj-memorijal?deceased_id=${deceasedId}`} onClick={() => track('create')}>
                   <Flower2 className="h-4 w-4 mr-2" /> Kreiraj memorijal
                 </Link>
               </Button>
               <Button asChild variant="ghost">
-                <Link to="/digitalni-memorijal">Saznajte više</Link>
+                <Link to="/digitalni-memorijal" onClick={() => track('learn_more')}>Saznajte više</Link>
               </Button>
             </>
           )}

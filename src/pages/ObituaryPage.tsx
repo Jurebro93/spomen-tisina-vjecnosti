@@ -27,6 +27,7 @@ import { supabase } from '@/integrations/supabase/client';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 import { PersonSEO } from '@/hooks/usePersonSEO';
 import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
+import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
 const ObituaryPage = () => {
   const { slug } = useParams();
@@ -41,6 +42,10 @@ const ObituaryPage = () => {
       fetchObituary();
     }
   }, [slug]);
+
+  useEffect(() => {
+    if (obituary) trackObituaryEvent('obituary_view', obituary);
+  }, [obituary?.id]);
 
   const fetchObituary = async () => {
     try {
@@ -73,6 +78,7 @@ const ObituaryPage = () => {
       }]);
       setNewMemory({ author: '', text: '' });
       setShowMemoryForm(false);
+      trackObituaryEvent('obituary_memory_submit', obituary);
     }
   };
 
@@ -247,7 +253,7 @@ const ObituaryPage = () => {
                     <Button 
                       variant="gold"
                       className="text-xs sm:text-sm"
-                      onClick={() => window.location.href = `/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`}
+                      onClick={() => { trackObituaryEvent('obituary_candle_click', obituary, { placement: 'header' }); window.location.href = `/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`; }}
                     >
                       <Heart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                       Zapali svijeću
@@ -257,7 +263,10 @@ const ObituaryPage = () => {
                       className="text-xs sm:text-sm"
                       asChild
                     >
-                      <Link to={`/kreiraj-memorijal?deceased_id=${encodeURIComponent(obituary.id)}`}>
+                      <Link
+                        to={`/kreiraj-memorijal?deceased_id=${encodeURIComponent(obituary.id)}`}
+                        onClick={() => trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'header', memorial_action: 'create' })}
+                      >
                         <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         Kreiraj digitalni memorijal
                       </Link>
@@ -308,12 +317,13 @@ const ObituaryPage = () => {
           )}
 
           {/* Digital memorial CTA */}
-          <MemorialCta deceasedId={obituary.id} personName={`${obituary.ime} ${obituary.prezime}`} />
+          <MemorialCta deceasedId={obituary.id} personName={`${obituary.ime} ${obituary.prezime}`} obituary={obituary} />
 
           {/* Virtual Candles Section */}
           <VirtualCandlesForObituary 
             pokojnikIme={obituary.ime} 
             pokojnikPrezime={obituary.prezime} 
+            onRelight={() => trackObituaryEvent('obituary_candle_relight', obituary)}
           />
 
           {/* Memories */}
@@ -406,7 +416,7 @@ const ObituaryPage = () => {
               <Button 
                 size="sm" 
                 className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto text-sm"
-                onClick={() => window.location.href = `/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`}
+                onClick={() => { trackObituaryEvent('obituary_candle_click', obituary, { placement: 'bottom' }); window.location.href = `/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`; }}
               >
                 <Heart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Ostavi sjećanje
