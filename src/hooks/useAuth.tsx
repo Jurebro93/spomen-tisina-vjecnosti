@@ -12,7 +12,10 @@ export interface Profile {
 }
 
 interface AuthContextValue {
+  /** The signed-in account; null for visitors and for anonymous (guest) sessions. */
   user: User | null;
+  /** Guest session started on the memorial creation page, before the visitor registers. */
+  guestUser: User | null;
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
@@ -40,6 +43,7 @@ export const safeRedirect = (value: string | null | undefined, fallback = '/moji
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [guestUser, setGuestUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -60,12 +64,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAdmin(Boolean(roles?.some((r) => r.role === 'admin')));
   }, []);
 
+  // Guest sessions stay out of `user`, so the rest of the site still treats them as signed out.
+  const applyUser = useCallback((u: User | null) => {
+    setUser(u && !u.is_anonymous ? u : null);
+    setGuestUser(u?.is_anonymous ? u : null);
+  }, []);
+
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      setUser(newSession?.user ?? null);
+      applyUser(newSession?.user ?? null);
       setLoading(false);
-      if (newSession?.user) {
+      if (newSession?.user && !newSession.user.is_anonymous) {
         setTimeout(() => { loadProfile(newSession.user.id); }, 0);
       } else {
         setProfile(null);
@@ -75,18 +85,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      setUser(data.session?.user ?? null);
+      applyUser(data.session?.user ?? null);
       setLoading(false);
-      if (data.session?.user) loadProfile(data.session.user.id);
+      if (data.session?.user && !data.session.user.is_anonymous) loadProfile(data.session.user.id);
     });
 
     return () => sub.subscription.unsubscribe();
-  }, [loadProfile]);
+  }, [loadProfile, applyUser]);
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
+    setGuestUser(null);
     setSession(null);
     setProfile(null);
     setIsAdmin(false);
@@ -98,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, isAdmin, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, guestUser, session, profile, loading, isAdmin, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

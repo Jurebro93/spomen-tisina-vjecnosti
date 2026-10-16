@@ -3,7 +3,7 @@ import { trackInitiateCheckout, trackMemorialStarted } from '@/lib/metaPixel';
 import { trackGa4BeginCheckout, trackGa4MemorialStarted } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
@@ -250,7 +250,11 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
 const KreirajMemorijal = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user: accountUser, guestUser, loading: authLoading } = useAuth();
+  // Visitors may start without an account: a guest session holds the draft until checkout.
+  const user = accountUser ?? guestUser;
+  const isGuest = !accountUser && Boolean(guestUser);
+  const guestStarting = useRef(false);
   const { toast } = useToast();
 
   const deceasedIdParam = params.get('deceased_id');
@@ -307,8 +311,12 @@ const KreirajMemorijal = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate(`/prijava?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+    if (!authLoading && !user && !guestStarting.current) {
+      guestStarting.current = true;
+      supabase.auth.signInAnonymously().then(({ error }) => {
+        // Guest sign-in unavailable: fall back to the regular login.
+        if (error) navigate(`/prijava?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+      });
     }
     if (!authLoading && user) void trackFunnel('auth', { userId: user.id });
   }, [authLoading, user, navigate, redirectTarget]);
@@ -450,7 +458,8 @@ const KreirajMemorijal = () => {
       let chosenPromo: string | null;
       try {
         // A 100 % promo code needs no billing data — publish straight away.
-        chosenPromo = promo?.free ? promo.code : await requestBillingDetails(memorial.id, promo?.code ?? null);
+        // Guests always pass through billing, which is where we first get their e-mail.
+        chosenPromo = promo?.free && !isGuest ? promo.code : await requestBillingDetails(memorial.id, promo?.code ?? null);
       } catch {
         setBusy(false);
         return;
@@ -505,6 +514,11 @@ const KreirajMemorijal = () => {
     setBusy(true);
     try {
       await updateMemorial(memorial.id, { quote: quote.trim() || null, life_story: lifeStory || null, visibility });
+      if (isGuest) {
+        // "Moji memorijali" needs an account, so a guest keeps working here.
+        toast({ title: 'Skica je spremljena', description: 'Skica ostaje u ovom pregledniku. Dovršite memorijal kad budete spremni.' });
+        return;
+      }
       toast({ title: 'Skica je spremljena', description: 'Memorijal možete dovršiti kasnije iz "Moji memorijali".' });
       navigate('/moji-memorijali');
     } catch {

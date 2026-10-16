@@ -49,7 +49,9 @@ const empty = {
 
 /** Collects billing data before Stripe checkout. Mounted once, driven by requestBillingDetails(). */
 const BillingDetailsDialog = () => {
-  const { user, profile } = useAuth();
+  const { user: accountUser, guestUser, profile } = useAuth();
+  // Guests who started a memorial without registering fill in billing too.
+  const user = accountUser ?? guestUser;
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [memorialId, setMemorialId] = useState<string | null>(null);
