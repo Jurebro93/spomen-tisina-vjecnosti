@@ -10,6 +10,8 @@ import { hasConsent } from '@/lib/consent';
 
 export const META_PIXEL_ID = '2915138225551446';
 export const CONSENT_EVENT = 'cookie-consent-changed';
+/** The pixel runs only on the live site: editor, preview and test domains never send ad data. */
+const PRODUCTION_HOSTS = ['osmrtnica.com.hr', 'www.osmrtnica.com.hr'];
 
 type FbqFn = ((...args: unknown[]) => void) & { queue?: unknown[]; loaded?: boolean; version?: string; push?: unknown; callMethod?: (...args: unknown[]) => void };
 
@@ -53,6 +55,7 @@ const loadBaseCode = () => {
 /** Initialises the pixel once and sends the first PageView. */
 export const initMetaPixel = () => {
   if (initialised || typeof window === 'undefined') return;
+  if (!PRODUCTION_HOSTS.includes(window.location.hostname)) return;
   if (!hasAdvertisingConsent()) return;
 
   loadBaseCode();
@@ -80,17 +83,6 @@ export const trackEvent = (
   if (typeof window === 'undefined') return;
   if (!initialised) initMetaPixel();
   if (!initialised) return;
-  // Preview-only: mirror ViewContent to Conversions API with a shared event_id.
-  if (event === 'ViewContent' && window.location.hostname === 'spomen-tisina-vjecnosti.lovable.app') {
-    const vcId = eventId ?? `vc_${crypto.randomUUID()}`;
-    window.fbq?.('track', event, params, { eventID: vcId });
-    void import('@/integrations/supabase/client').then(({ supabase }) =>
-      supabase.functions.invoke('meta-capi-viewcontent', {
-        body: { event_id: vcId, params, url: window.location.href },
-      }),
-    ).catch(() => {});
-    return;
-  }
   // Custom (non-standard) events must go through trackCustom.
   const method = STANDARD_EVENTS.has(event) ? 'track' : 'trackCustom';
   if (eventId) window.fbq?.(method, event, params, { eventID: eventId });
@@ -99,8 +91,6 @@ export const trackEvent = (
 
 /** Stable Purchase event id for a Stripe checkout session (must match the backend). */
 export const purchaseEventId = (sessionId: string) => `purchase_${sessionId}`;
-
-const PRODUCTION_HOSTS = ['osmrtnica.com.hr', 'www.osmrtnica.com.hr'];
 
 const readCookie = (name: string) => {
   const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`));
