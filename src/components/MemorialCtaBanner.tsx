@@ -1,7 +1,17 @@
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight, Flower2 } from 'lucide-react';
+import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
-const MemorialCtaBanner = () => {
+interface Props {
+  /** Where the banner sits, sent with the click so GA4 can compare placements. */
+  placement?: string;
+}
+
+const MemorialCtaBanner = ({ placement = 'banner' }: Props) => {
+  const track = (memorial_action: string) =>
+    trackObituaryEvent('obituary_memorial_click', null, { placement, memorial_action });
+
   return (
     <section className="mt-6 sm:mt-8 mb-14 sm:mb-20">
       <div className="relative overflow-hidden bg-memorial-gold text-foreground rounded-sm border border-memorial-gold shadow-2xl">
@@ -18,12 +28,13 @@ const MemorialCtaBanner = () => {
             Sačuvajte sjećanje na voljenu osobu
           </h2>
           <p className="text-foreground/75 text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-            Digitalni memorijal je mirna stranica posvećena vašoj voljenoj osobi — s fotografijama, životnom pričom, porukama obitelji i virtualnim svijećama.
+            Digitalni memorijal je mirna stranica posvećena vašoj voljenoj osobi — s fotografijama, životnom pričom, porukama obitelji i virtualnim svijećama. {MEMORIAL_PRICE_LABEL} jednokratno.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <Link
               to="/digitalni-memorijal/kreiraj"
+              onClick={() => track('create')}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-foreground text-memorial-gold font-bold uppercase tracking-[0.15em] text-xs sm:text-sm hover:bg-foreground/90 transition-colors duration-300"
             >
               Kreiraj memorijal
@@ -31,6 +42,7 @@ const MemorialCtaBanner = () => {
             </Link>
             <Link
               to="/digitalni-memorijal"
+              onClick={() => track('learn_more')}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 border border-foreground/60 text-foreground font-bold uppercase tracking-[0.15em] text-xs sm:text-sm hover:bg-foreground/10 transition-colors duration-300"
             >
               <Flower2 className="w-4 h-4" />

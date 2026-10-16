@@ -17,6 +17,8 @@ import { formatLifespan, formatObituaryLocation, calculateObituaryAge } from '@/
 import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
+import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -314,10 +316,15 @@ const Umrli = () => {
 
                           <div className="mt-auto w-full flex flex-col gap-3">
                             <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/kreiraj-memorijal?deceased_id=${obituary.id}`); }}
-                              className="w-full py-3.5 bg-foreground text-memorial-gold border border-foreground/80 flex items-center justify-center gap-2 hover:bg-foreground/90 transition-colors duration-300 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'city_card', memorial_action: 'create' });
+                                navigate(`/kreiraj-memorijal?deceased_id=${obituary.id}`);
+                              }}
+                              className="w-full py-3 bg-foreground text-memorial-gold border border-foreground/80 flex flex-col items-center justify-center gap-0.5 hover:bg-foreground/90 transition-colors duration-300 cursor-pointer"
                             >
-                              <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Kreiraj memorijal</span>
+                              <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Memorijal za {obituary.ime}</span>
+                              <span className="text-[10px] tracking-[0.05em] opacity-80">{MEMORIAL_PRICE_LABEL} jednokratno</span>
                             </button>
 
                             <button
@@ -364,7 +371,7 @@ const Umrli = () => {
         </div>
 
         {/* Digital Memorial CTA — prominent banner */}
-        <MemorialCtaBanner />
+        <MemorialCtaBanner placement="city_banner" />
 
         {/* Funeral Schedule Section */}
         <section className="mb-12">
