@@ -5,6 +5,7 @@ import { hasConsent } from '@/lib/consent';
  * - The pixel is initialised exactly once, and only after the visitor accepted cookies.
  * - PageView is sent on the first load and on every SPA route change, with de-duplication
  *   so the same URL never reports PageView twice in a row.
+ * - Signed-in visitors are matched by hashed e-mail and account id (advanced matching).
  * - No access tokens or other secrets live in the frontend; only the public Pixel ID.
  */
 
@@ -24,6 +25,26 @@ declare global {
 
 let initialised = false;
 let lastPageViewUrl: string | null = null;
+/** Advanced matching for signed-in visitors (SHA-256 hashed, same values the Conversions API sends). */
+let matchData: { em?: string; external_id?: string } = {};
+
+const sha256Hex = async (value: string) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
+/** Remembers the signed-in account so the pixel is initialised with it. Call before initMetaPixel. */
+export const setMetaUser = async (user: { id: string; email?: string | null } | null) => {
+  if (!user || typeof crypto === 'undefined' || !crypto.subtle) {
+    matchData = {};
+    return;
+  }
+  const email = user.email?.trim().toLowerCase();
+  matchData = {
+    external_id: await sha256Hex(user.id),
+    ...(email ? { em: await sha256Hex(email) } : {}),
+  };
+};
 
 export const hasAdvertisingConsent = () => {
   if (typeof window === 'undefined') return false;
@@ -59,7 +80,7 @@ export const initMetaPixel = () => {
   if (!hasAdvertisingConsent()) return;
 
   loadBaseCode();
-  window.fbq?.('init', META_PIXEL_ID);
+  window.fbq?.('init', META_PIXEL_ID, matchData);
   initialised = true;
   trackPageView();
 };
