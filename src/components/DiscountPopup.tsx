@@ -155,7 +155,7 @@ const DiscountPopup = () => {
             </form>
             <p className="text-xs text-muted-foreground text-center mt-1">
               E-mail koristimo za slanje koda za popust.{" "}
-              <Link to="/politika-privatnosti/" className="underline hover:text-foreground" onClick={() => handleOpenChange(false)}>
+              <Link to="/politika-privatnosti" className="underline hover:text-foreground" onClick={() => handleOpenChange(false)}>
                 Politika privatnosti
               </Link>
             </p>
@@ -183,7 +183,7 @@ const DiscountPopup = () => {
                 : "Spremi ovaj kod — trenutačno ga nismo mogli poslati e-mailom."}
             </p>
             <Button asChild className="w-full h-12 text-base font-semibold bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90">
-              <Link to="/digitalni-memorijal/" onClick={() => setOpen(false)}>Izradi digitalni memorijal</Link>
+              <Link to="/digitalni-memorijal" onClick={() => setOpen(false)}>Izradi digitalni memorijal</Link>
             </Button>
           </>
         )}
