@@ -38,7 +38,7 @@ const features = [
 ];
 
 const steps = [
-  { title: 'Prijavite se i dodajte podatke', text: 'Prijavite se postojećim računom ili Googleom, unesite ime osobe i odaberite fotografije.', icon: Camera },
+  { title: 'Dodajte podatke', text: 'Bez registracije unesite ime osobe i odaberite fotografije. E-poštu ostavljate tek uz plaćanje.', icon: Camera },
   { title: 'Napišite i pregledajte priču', text: 'Dodajte vlastiti tekst ili koristite pomoć pri pisanju. Pregledajte kako će memorijal izgledati.', icon: PenLine },
   { title: 'Dovršite kupnju i podijelite', text: 'Plaćate tek nakon pregleda. Nakon uspješne uplate memorijal se objavljuje i spreman je za dijeljenje.', icon: Share2 },
 ];
