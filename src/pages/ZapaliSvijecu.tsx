@@ -14,6 +14,8 @@ const candlesImage = "/site/memorial-candles.jpg";
 const candleFlame = "/site/candle-flame-large.png";
 const candleNoFlame = "/site/candle-no-flame.png";
 import { SEOHelmet } from '@/hooks/useSEO';
+import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
 const ZapaliSvijecu = () => {
   const [formData, setFormData] = useState({
@@ -27,6 +29,8 @@ const ZapaliSvijecu = () => {
   const [recentCandles, setRecentCandles] = useState([]);
   const [showAllCandles, setShowAllCandles] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Name of the person a candle was just lit for, to offer a lasting memorial.
+  const [litFor, setLitFor] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Extract URL parameters on component mount
@@ -126,6 +130,7 @@ const ZapaliSvijecu = () => {
         title: 'Svijeća zapaljena!',
         description: 'Vaša svijeća je uspješno zapaljena i odmah je vidljiva.',
       });
+      setLitFor(`${formData.pokojnikIme} ${formData.pokojnikPrezime}`.trim());
       // Reset form and refresh candles list
       setFormData({ pokojnikIme: '', pokojnikPrezime: '', zapalioIme: '', zapalioEmail: '', poruka: '' });
       fetchCandles();
@@ -171,6 +176,25 @@ const ZapaliSvijecu = () => {
 
       <div className="container mx-auto px-4 py-6 sm:py-8 lg:py-12">
         <div className="max-w-2xl mx-auto">
+          {litFor && (
+            <Card className="mb-6 border-memorial-gold bg-memorial-gold/10">
+              <CardContent className="p-5 sm:p-6 text-center">
+                <p className="font-display text-lg sm:text-xl font-semibold text-foreground mb-2">
+                  Svijeća za {litFor} gori 7 dana
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Sačuvajte uspomenu trajno: digitalni memorijal s fotografijama, životnom pričom i porukama obitelji. {MEMORIAL_PRICE_LABEL} jednokratno.
+                </p>
+                <Link
+                  to="/digitalni-memorijal/kreiraj"
+                  onClick={() => trackObituaryEvent('obituary_memorial_click', null, { placement: 'candle_success', memorial_action: 'create' })}
+                  className="inline-flex items-center justify-center px-6 py-3 bg-foreground text-memorial-gold font-bold uppercase tracking-[0.15em] text-xs hover:bg-foreground/90 transition-colors duration-300"
+                >
+                  Izradite memorijal
+                </Link>
+              </CardContent>
+            </Card>
+          )}
           <Card className="memorial-card bg-white/90 backdrop-blur-sm shadow-memorial">
             <CardHeader className="px-4 sm:px-6">
               <CardTitle className="text-xl sm:text-2xl text-center text-foreground font-display">

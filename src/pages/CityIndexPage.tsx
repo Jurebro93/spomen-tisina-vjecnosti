@@ -166,7 +166,7 @@ const CityIndexPage = ({ kind }: Props) => {
 
         {isSprovodi && funeralTable}
 
-        <MemorialCtaBanner />
+        <MemorialCtaBanner placement="city_index_banner" />
 
         {!isSprovodi && funeralTable}
 
