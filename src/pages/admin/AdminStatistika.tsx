@@ -15,17 +15,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import BlogConversions from '@/components/admin/BlogConversions';
+import SignupStats from '@/components/admin/SignupStats';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Report = Record<string, any>;
 type Order = Record<string, any>;
 
-const StatTabs = ({ active }: { active: 'prodaja' | 'blogovi' }) => (
+const StatTabs = ({ active }: { active: 'prodaja' | 'blogovi' | 'prijave' }) => (
   <div className="flex gap-1 border-b border-border mt-4 mb-6" role="tablist">
     <Link to="/admin/statistika" role="tab" aria-selected={active === 'prodaja'}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'prodaja' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Prodaja</Link>
     <Link to="/admin/statistika?tab=blogovi" role="tab" aria-selected={active === 'blogovi'}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'blogovi' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Blogovi i konverzije</Link>
+    <Link to="/admin/statistika?tab=prijave" role="tab" aria-selected={active === 'prijave'}
+      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'prijave' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Prijave i newsletter</Link>
   </div>
 );
 
@@ -141,7 +144,9 @@ function Metric({ label, value, hint, prev }: { label: string; value: string; hi
 const PAGE = 50;
 
 const Inner = () => {
-  const blogTab = new URLSearchParams(useLocation().search).get('tab') === 'blogovi';
+  const tab = new URLSearchParams(useLocation().search).get('tab');
+  const blogTab = tab === 'blogovi';
+  const signupTab = tab === 'prijave';
   const [preset, setPreset] = useState<Preset>('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -283,14 +288,14 @@ const Inner = () => {
     ['Transakcije', live ? 'stvarne' : 'testne'], ['Osvježeno', dt(state?.refreshed_at)],
   ], `sazetak-${from.toISOString().slice(0, 10)}.csv`);
 
-  if (blogTab) {
+  if (blogTab || signupTab) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto max-w-7xl px-4 py-8">
           <h1 className="text-2xl md:text-3xl font-semibold">Statistika i prodaja</h1>
-          <StatTabs active="blogovi" />
-          <BlogConversions />
+          <StatTabs active={blogTab ? 'blogovi' : 'prijave'} />
+          {blogTab ? <BlogConversions /> : <SignupStats />}
         </main>
         <Footer />
       </div>
