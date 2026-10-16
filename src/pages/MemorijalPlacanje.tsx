@@ -8,10 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { purchaseEventId, trackEvent } from '@/lib/metaPixel';
 import { trackGa4FreeActivation, trackGa4Purchase } from '@/lib/ga4Ecommerce';
 import { Helmet } from 'react-helmet-async';
+import { useAuth } from '@/hooks/useAuth';
+import GuestAccountClaim from '@/components/memorial/GuestAccountClaim';
 
 const MemorijalPlacanje = () => {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { guestUser } = useAuth();
   const sessionId = params.get('session_id');
   const freePromo = params.get('besplatno') === '1';
   const promoMemorialId = params.get('memorial');
@@ -134,10 +137,13 @@ const MemorijalPlacanje = () => {
                     <Link to={`/memorijal/${slug}`}>Pogledaj memorijal</Link>
                   </Button>
                 )}
-                <Button asChild variant="outline">
-                  <Link to="/moji-memorijali">Moji memorijali</Link>
-                </Button>
+                {!guestUser && (
+                  <Button asChild variant="outline">
+                    <Link to="/moji-memorijali">Moji memorijali</Link>
+                  </Button>
+                )}
               </div>
+              {guestUser && <GuestAccountClaim />}
               <div className="text-left border-t border-border pt-6">
                 <h2 className="text-lg font-semibold mb-4">Što sada možete napraviti?</h2>
                 <ul className="space-y-4 text-sm">
