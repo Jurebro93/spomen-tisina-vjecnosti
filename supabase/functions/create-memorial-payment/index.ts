@@ -3,6 +3,7 @@ import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { PRODUCT_PRICES, recordPromoUsage, validatePromoCode } from "../_shared/promo.ts";
 import { cleanAttribution } from "../_shared/orders.ts";
+import { buildUserData, cleanBrowserIds, cleanEventId, clientFromRequest, PRODUCTION_ORIGINS, sendMetaEvent } from "../_shared/metaCapi.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +38,7 @@ serve(async (req) => {
     if (userError || !userData.user) throw new Error("Neautorizirani korisnik");
     const user = userData.user;
 
-    const { memorial_id, promo_code, attribution, terms_accepted, terms_version, immediate_start, marketing_consent } = await req.json();
+    const { memorial_id, promo_code, attribution, terms_accepted, terms_version, immediate_start, marketing_consent, meta } = await req.json();
     if (terms_accepted !== true || typeof terms_version !== "string" || !terms_version) {
       throw new Error("Za nastavak prihvatite Uvjete korištenja i kupnje.");
     }
@@ -183,6 +184,11 @@ serve(async (req) => {
       );
     }
 
+    // Meta browser identifiers travel with the checkout (only with marketing consent, production only),
+    // so the Purchase can be matched to the ad click even if the buyer never returns to the thank-you page.
+    const metaAllowed = marketing_consent === true && PRODUCTION_ORIGINS.includes(origin);
+    const browserIds = metaAllowed ? cleanBrowserIds(meta) : {};
+    const client = clientFromRequest(req);
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email ?? undefined,
@@ -213,10 +219,27 @@ serve(async (req) => {
         immediate_start: immediate ? "true" : "false",
         terms_version: consentFields.terms_version,
         marketing_consent: marketing_consent === true ? "true" : "false",
+        ...(metaAllowed ? {
+          meta_fbp: browserIds.fbp ?? "",
+          meta_fbc: browserIds.fbc ?? "",
+          meta_ua: (client.userAgent ?? "").slice(0, 500),
+        } : {}),
       },
     });
 
     log("Session created", { sessionId: session.id, memorialId: memorial.id, finalPrice });
+
+    // Meta CAPI InitiateCheckout, same event_id as the browser pixel. Never blocks the checkout.
+    const checkoutEventId = metaAllowed ? cleanEventId(meta?.event_id, "ic_") : null;
+    if (checkoutEventId) {
+      await sendMetaEvent({
+        eventName: "InitiateCheckout",
+        eventId: checkoutEventId,
+        sourceUrl: typeof meta?.source_url === "string" && meta.source_url.startsWith(origin) ? meta.source_url.slice(0, 1000) : null,
+        userData: await buildUserData({ email: user.email, fullName: customerName, externalId: user.id, ...client, ...browserIds }),
+        customData: { value: finalPrice, currency: "EUR", content_name: "Digitalni memorijal", content_type: "product", content_ids: [memorial.id] },
+      });
+    }
 
     try {
       const { data: order } = await admin.from("memorial_orders").insert({

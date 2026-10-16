@@ -3,8 +3,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { adminClient, getSettings, logInvoice, processInvoice, upsertInvoiceForSession } from "../_shared/invoices.ts";
-import { purchaseEventId, sendPurchaseEvent } from "../_shared/metaCapi.ts";
-import { deliverPurchase, ensureDelivery, usesReliableCapi } from "../_shared/capiDelivery.ts";
+import { deliverPurchase, ensureDelivery } from "../_shared/capiDelivery.ts";
 import { PRODUCT_PRICES, recordPromoUsage } from "../_shared/promo.ts";
 import { failureLabelHr, findOrder, recordPaymentEvent, setOrderStatus } from "../_shared/orders.ts";
 
@@ -110,8 +109,6 @@ serve(async (req) => {
               entity_type: "stripe_webhook",
             });
 
-            // Meta Conversions API Purchase — only after the payment is paid and the
-            // memorial is really marked as paid. Same event_id as the browser pixel.
             try {
               const { data: ord } = await admin.from("memorial_orders").select("id, customer_name, original_amount, discount_amount, promo_code, terms_version, paid_at")
                 .eq("stripe_checkout_session_id", session.id).maybeSingle();
@@ -129,16 +126,6 @@ serve(async (req) => {
               }
             } catch (e) { log("Confirmation email failed", { message: String(e) }); }
 
-            // Marketing (CAPI) only with the buyer's marketing consent.
-            if (session.metadata?.marketing_consent === "true" && !usesReliableCapi(session.metadata?.user_id)) await sendPurchaseEvent({
-              eventId: purchaseEventId(session.id),
-              eventTime: Math.floor(Date.now() / 1000),
-              value: (session.amount_total ?? 0) / 100,
-              currency: (session.currency ?? "eur").toUpperCase(),
-              contentName: session.metadata?.product_name ?? "Digitalni memorijal",
-              contentIds: [memorialId],
-              externalId: session.metadata?.user_id ?? null,
-            });
           }
         }
       }
@@ -166,13 +153,12 @@ serve(async (req) => {
         await processInvoice(admin, invoice.id);
       }
 
-      // 3) Reliable Meta CAPI Purchase (rollout users only) — independent of who marked it paid.
-      if (usesReliableCapi(session.metadata?.user_id)) {
-        try {
-          await ensureDelivery(admin, session);
-          await deliverPurchase(admin, stripe, session.id);
-        } catch (capiError) { log("CAPI delivery failed", { message: String(capiError) }); }
-      }
+      // 3) Meta CAPI Purchase (deduplicated with the browser pixel, retried on failure).
+      //    Consent decides inside ensureDelivery; independent of who marked the memorial paid.
+      try {
+        await ensureDelivery(admin, session);
+        await deliverPurchase(admin, stripe, session.id);
+      } catch (capiError) { log("CAPI delivery failed", { message: String(capiError) }); }
     }
 
     if (event.type === "charge.refunded") {
