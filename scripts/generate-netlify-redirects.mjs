@@ -30,7 +30,16 @@ if (!fs.existsSync(DIST)) {
 walk(DIST);
 pageDirs.sort();
 
+// Obituary photos (fotografija_url) and old logos still live on the previous
+// Totohost server under /wp/wp-content/uploads and /wp-content/uploads. Since the
+// domain now points to Netlify, proxy those paths to the old server instead of
+// letting the SPA fallback answer them with index.html. mail.osmrtnica.com.hr
+// still resolves to the Totohost server and is served by the same cPanel vhost.
+const OLD_SERVER = 'http://mail.osmrtnica.com.hr';
+
 const lines = [
+  `/wp/* ${OLD_SERVER}/wp/:splat 200!`,
+  `/wp-content/* ${OLD_SERVER}/wp-content/:splat 200!`,
   ...pageDirs.map((p) => `${p} ${p}/index.html 200!`),
   '/* /index.html 200',
 ];
