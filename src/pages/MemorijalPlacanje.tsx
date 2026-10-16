@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { purchaseEventId, trackEvent } from '@/lib/metaPixel';
+import { trackGa4FreeActivation, trackGa4Purchase } from '@/lib/ga4Ecommerce';
 import { Helmet } from 'react-helmet-async';
 
 const MemorijalPlacanje = () => {
@@ -38,6 +39,7 @@ const MemorijalPlacanje = () => {
     document.title = 'Zahvaljujemo | Digitalni memorijal';
     setSlug(promoSlugParam);
     setState('success');
+    trackGa4FreeActivation(promoMemorialId, params.get('kod'));
     const key = `fb_purchase_promo_${promoMemorialId}`;
     if (!sessionStorage.getItem(key)) {
       sessionStorage.setItem(key, '1');
@@ -68,6 +70,7 @@ const MemorijalPlacanje = () => {
         if (data?.paid) {
           setSlug(data.slug ?? null);
           setState('success');
+          trackGa4Purchase(sessionId, Number(data.amount ?? 0), data.currency ?? 'EUR', data.memorial_id);
           // Meta Pixel Purchase — only after the backend confirmed the Stripe payment.
           if (!sessionStorage.getItem(`fb_purchase_${sessionId}`)) {
             sessionStorage.setItem(`fb_purchase_${sessionId}`, '1');

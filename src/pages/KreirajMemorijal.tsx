@@ -1,5 +1,6 @@
 import { trackFunnel, getAttribution } from '@/lib/funnel';
 import { trackInitiateCheckout, trackMemorialStarted } from '@/lib/metaPixel';
+import { trackGa4BeginCheckout, trackGa4MemorialStarted } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -360,6 +361,7 @@ const KreirajMemorijal = () => {
     setMemorial(created);
     void trackFunnel('draft_saved', { userId: user.id, memorialId: created.id });
     trackMemorialStarted(created.id);
+    trackGa4MemorialStarted(created.id);
     return created;
   }, [deceased, user, memorial]);
 
@@ -490,6 +492,7 @@ const KreirajMemorijal = () => {
         return;
       }
       if (!data?.url) throw new Error('Nema URL-a za plaćanje');
+      trackGa4BeginCheckout(memorial.id, MEMORIAL_PRICE_EUR);
       window.location.href = data.url as string;
     } catch {
       toast({ title: 'Plaćanje nije moguće započeti', description: 'Pokušajte ponovno ili nas kontaktirajte.', variant: 'destructive' });
