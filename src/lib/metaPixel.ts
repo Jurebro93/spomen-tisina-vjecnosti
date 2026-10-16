@@ -95,3 +95,59 @@ export const trackEvent = (
 
 /** Stable Purchase event id for a Stripe checkout session (must match the backend). */
 export const purchaseEventId = (sessionId: string) => `purchase_${sessionId}`;
+
+const PRODUCTION_HOSTS = ['osmrtnica.com.hr', 'www.osmrtnica.com.hr'];
+
+const readCookie = (name: string) => {
+  const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`));
+  return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
+};
+
+/**
+ * Pixel cookies that let Meta match server (Conversions API) events to the ad click.
+ * Empty without marketing consent. Falls back to the fbclid in the URL when _fbc is not set yet.
+ */
+export const metaBrowserIds = (): { fbp?: string; fbc?: string } => {
+  if (typeof window === 'undefined' || !hasAdvertisingConsent()) return {};
+  const fbp = readCookie('_fbp') ?? undefined;
+  let fbc = readCookie('_fbc') ?? undefined;
+  const fbclid = new URLSearchParams(window.location.search).get('fbclid');
+  if (!fbc && fbclid) fbc = `fb.1.${Date.now()}.${fbclid}`;
+  return { fbp, fbc };
+};
+
+/**
+ * InitiateCheckout in the browser; returns the shared event_id and browser ids for
+ * create-memorial-payment, which mirrors it to Conversions API and stores the ids for Purchase.
+ */
+export const trackInitiateCheckout = (memorialId: string, value: number) => {
+  const eventId = `ic_${memorialId.replace(/[^A-Za-z0-9-]/g, '')}_${Date.now()}`;
+  trackEvent('InitiateCheckout', {
+    content_name: 'Digitalni memorijal',
+    content_type: 'product',
+    content_ids: [memorialId],
+    currency: 'EUR',
+    value,
+  }, eventId);
+  return { event_id: eventId, source_url: window.location.href, ...metaBrowserIds() };
+};
+
+/** Lead = a memorial draft was created. Browser pixel + Conversions API with one event_id. */
+export const trackMemorialStarted = (memorialId: string) => {
+  if (typeof window === 'undefined' || !hasAdvertisingConsent()) return;
+  const eventId = `lead_${memorialId}`;
+  trackEvent('Lead', { content_name: 'Digitalni memorijal', content_ids: [memorialId] }, eventId);
+  if (!PRODUCTION_HOSTS.includes(window.location.hostname)) return;
+  void import('@/integrations/supabase/client').then(({ supabase }) =>
+    supabase.functions.invoke('meta-capi-event', {
+      body: {
+        event_name: 'Lead',
+        event_id: eventId,
+        memorial_id: memorialId,
+        marketing_consent: true,
+        source_url: window.location.href,
+        ...metaBrowserIds(),
+      },
+    }),
+  ).catch(() => {});
+};

@@ -2,7 +2,7 @@ import { getAttribution } from '@/lib/funnel';
 import { supabase } from '@/integrations/supabase/client';
 import { requestBillingDetails } from '@/lib/billing';
 import { MEMORIAL_PRICE_EUR, isDuplicateMemorialError, logMemorialAction, type Deceased, type ManagerRole, type Memorial } from '@/lib/memorial';
-import { trackEvent } from '@/lib/metaPixel';
+import { trackInitiateCheckout } from '@/lib/metaPixel';
 
 export class DuplicateMemorialError extends Error {
   constructor(public existingSlug?: string) {
@@ -105,13 +105,7 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
   const token = await ensureAuthToken();
   if (!token) throw new NotAuthenticatedError();
 
-  trackEvent('InitiateCheckout', {
-    content_name: 'Digitalni memorijal',
-    content_type: 'product',
-    content_ids: [memorialId],
-    currency: 'EUR',
-    value: MEMORIAL_PRICE_EUR,
-  });
+  const meta = trackInitiateCheckout(memorialId, MEMORIAL_PRICE_EUR);
 
   // Billing data for the invoice is collected before the redirect to Stripe.
   // Always shown so the buyer can review billing data, choose legal entity and enter a promo code.
@@ -119,7 +113,7 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
 
 
   const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
-    body: { memorial_id: memorialId, promo_code: chosenPromo, attribution: getAttribution(), ...consent },
+    body: { memorial_id: memorialId, promo_code: chosenPromo, attribution: getAttribution(), ...consent, meta },
     headers: { Authorization: `Bearer ${token}` },
   });
   if (error) {

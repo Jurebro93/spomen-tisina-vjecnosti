@@ -1,4 +1,5 @@
 import { trackFunnel, getAttribution } from '@/lib/funnel';
+import { trackInitiateCheckout, trackMemorialStarted } from '@/lib/metaPixel';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
@@ -358,6 +359,7 @@ const KreirajMemorijal = () => {
     const created = await createDraftMemorial(deceased, user.id, rel);
     setMemorial(created);
     void trackFunnel('draft_saved', { userId: user.id, memorialId: created.id });
+    trackMemorialStarted(created.id);
     return created;
   }, [deceased, user, memorial]);
 
@@ -451,9 +453,10 @@ const KreirajMemorijal = () => {
         setBusy(false);
         return;
       }
+      const meta = trackInitiateCheckout(memorial.id, MEMORIAL_PRICE_EUR);
       // The server re-validates the promo code and decides the amount; we only send the code.
       const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
-        body: { memorial_id: memorial.id, promo_code: chosenPromo, attribution: getAttribution(), ...consentBody(consent) },
+        body: { memorial_id: memorial.id, promo_code: chosenPromo, attribution: getAttribution(), ...consentBody(consent), meta },
         headers: { Authorization: `Bearer ${token}` },
       });
       if (error) {
