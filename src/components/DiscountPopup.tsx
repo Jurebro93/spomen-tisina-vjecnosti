@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Check, Copy } from "lucide-react";
 import { CONSENT_CHANGED, readConsent } from "@/lib/consent";
+import { trackNewsletterSignup } from "@/lib/newsletterTracking";
 
 const DISMISS_KEY = "discountPopupDismissedAt";
 const CLAIMED_KEY = "discountPopupClaimed";
@@ -109,6 +110,7 @@ const DiscountPopup = () => {
         return;
       }
       setResult({ code: data.code, emailSent: Boolean(data.emailSent) });
+      trackNewsletterSignup("discount_popup", newsletter ? "discount_newsletter" : "discount_only");
       try { localStorage.setItem(CLAIMED_KEY, "1"); } catch { /* ignore */ }
     } finally {
       setSubmitting(false);

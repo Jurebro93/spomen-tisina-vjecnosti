@@ -1,0 +1,22 @@
+import { hasConsent } from '@/lib/consent';
+import { trackEvent } from '@/lib/metaPixel';
+
+/**
+ * One e-mail signup (newsletter widget, footer, homepage or the discount popup).
+ * GA4 gets a `newsletter_signup` dataLayer event with analytics consent; Meta gets the
+ * custom `NewsletterSignup` event with marketing consent, so ad campaigns can count it.
+ */
+export const trackNewsletterSignup = (placement: string, variant?: string) => {
+  if (typeof window === 'undefined') return;
+  if (hasConsent('analytics')) {
+    const w = window as Window & { dataLayer?: unknown[] };
+    w.dataLayer = w.dataLayer ?? [];
+    w.dataLayer.push({
+      event: 'newsletter_signup',
+      newsletter_placement: placement,
+      newsletter_variant: variant,
+      page_path: window.location.pathname,
+    });
+  }
+  trackEvent('NewsletterSignup', { content_name: 'Newsletter', placement });
+};

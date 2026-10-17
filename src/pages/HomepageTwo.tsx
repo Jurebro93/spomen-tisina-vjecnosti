@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 import { formatLifespan } from '@/lib/utils';
+import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 type Obituary = {
@@ -147,6 +148,7 @@ const HomepageTwo = () => {
     }
     setNewsletterEmail('');
     setNewsletterState('success');
+    trackNewsletterSignup('homepage');
   };
 
   return (

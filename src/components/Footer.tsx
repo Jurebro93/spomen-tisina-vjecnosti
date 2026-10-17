@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 import { useToast } from '@/hooks/use-toast';
 import { openCookieSettings } from '@/lib/legal';
 const logo = "/logo-osmrtnica.png";
@@ -57,6 +58,7 @@ const Footer = () => {
           throw new Error(data.error);
         }
       } else {
+        trackNewsletterSignup('footer');
         toast({
           title: "Hvala vam!",
           description: "Uspješno ste se prijavili na naš newsletter. Obavijestit ćemo vas o novostima.",
