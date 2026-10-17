@@ -20,6 +20,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { SEOHelmet } from '@/hooks/useSEO';
 import { useNavigate } from 'react-router-dom';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 const KakoObjavitiOsmrtnicu = () => {
   const navigate = useNavigate();
@@ -260,6 +261,7 @@ const KakoObjavitiOsmrtnicu = () => {
             </Button>
           </CardContent>
         </Card>
+        <NewsletterSignup variant="guide" placement="kako_objaviti" className="mt-10 max-w-4xl mx-auto" />
       </main>
       
       <Footer />

@@ -17,6 +17,7 @@ import { breadcrumbJsonLd } from '@/lib/seo';
 import { formatBlogDate } from '@/lib/utils';
 import BlogSalesSection from '@/components/blog/BlogSalesSection';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 interface BlogPost {
   id: string;
@@ -316,6 +317,8 @@ const BlogPost = () => {
           </article>
 
           {blogPost.slug && <BlogSalesSection blog={{ ...blogPost, slug: blogPost.slug }} />}
+
+          <NewsletterSignup variant="blog" placement="blog_post" className="mb-12" />
 
           {/* Related Articles */}
           <section className="mb-12">

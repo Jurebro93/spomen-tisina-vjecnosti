@@ -18,6 +18,7 @@ import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -591,6 +592,8 @@ const Umrli = () => {
             </div>
           </div>
         </section>
+
+        <NewsletterSignup variant="guide" placement="umrli" className="mt-10 max-w-4xl mx-auto" />
       </main>
 
       <Footer />

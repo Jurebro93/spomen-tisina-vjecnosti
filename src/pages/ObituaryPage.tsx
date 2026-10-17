@@ -28,6 +28,7 @@ const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 import { PersonSEO } from '@/hooks/usePersonSEO';
 import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
+import NewsletterSignup from '@/components/NewsletterSignup';
 
 const ObituaryPage = () => {
   const { slug } = useParams();
@@ -423,6 +424,9 @@ const ObituaryPage = () => {
               </Button>
             </div>
           </div>
+        </div>
+        <div className="container mx-auto px-4 pb-6 max-w-2xl">
+          <NewsletterSignup variant="obituary" placement="obituary" />
         </div>
         <div className="container mx-auto px-4 pb-8 text-center">
           <Link to={`/prijava-sadrzaja?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}`} className="text-xs text-muted-foreground underline hover:text-foreground">Prijavi sadržaj</Link>
