@@ -1,13 +1,13 @@
 // Inline email signup shown on high-traffic pages (blog posts, obituaries, guides).
 // Stores subscribers via the existing subscribe-newsletter function (newsletter_users table)
-// and pushes a `newsletter_signup` dataLayer event for GA4 when analytics consent is given.
+// and reports the signup to GA4 and Meta (each only with the matching cookie consent).
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { hasConsent } from '@/lib/consent';
+import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 
 export type NewsletterVariant = 'blog' | 'obituary' | 'guide';
 
@@ -46,18 +46,6 @@ const alreadySubscribed = () => {
   try { return localStorage.getItem(DONE_KEY) === '1'; } catch { return false; }
 };
 
-const trackSignup = (placement: string, variant: NewsletterVariant) => {
-  if (typeof window === 'undefined' || !hasConsent('analytics')) return;
-  const w = window as Window & { dataLayer?: unknown[] };
-  w.dataLayer = w.dataLayer ?? [];
-  w.dataLayer.push({
-    event: 'newsletter_signup',
-    newsletter_placement: placement,
-    newsletter_variant: variant,
-    page_path: window.location.pathname,
-  });
-};
-
 interface Props {
   variant?: NewsletterVariant;
   /** Where on the site the widget sits, sent to GA4 (e.g. "blog_post", "obituary"). */
@@ -83,7 +71,7 @@ export default function NewsletterSignup({ variant = 'blog', placement, classNam
     if (status === 409 || data?.error === 'Email already subscribed') { setState('exists'); return; }
     if (error || data?.error) { setState('error'); return; }
     try { localStorage.setItem(DONE_KEY, '1'); } catch { /* storage unavailable */ }
-    trackSignup(placement, variant);
+    trackNewsletterSignup(placement, variant);
     setState('done');
   };
 

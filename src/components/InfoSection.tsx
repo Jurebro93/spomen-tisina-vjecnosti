@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 import { useToast } from '@/hooks/use-toast';
 import { formatBlogDate } from '@/lib/utils';
 
@@ -80,6 +81,7 @@ const InfoSection = () => {
         throw new Error(data.error);
       }
 
+      trackNewsletterSignup('info_section');
       toast({
         title: "Uspješno!",
         description: "Uspješno ste se pretplatili na naše obavijesti.",
