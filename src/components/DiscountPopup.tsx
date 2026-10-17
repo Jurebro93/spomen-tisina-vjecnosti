@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Check, Copy } from "lucide-react";
+import { CONSENT_CHANGED, readConsent } from "@/lib/consent";
 
 const DISMISS_KEY = "discountPopupDismissedAt";
 const CLAIMED_KEY = "discountPopupClaimed";
@@ -43,9 +44,17 @@ const DiscountPopup = () => {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ code: string; emailSent: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  // Wait until the cookie prompt is answered, so a visitor never faces two popups at once.
+  const [consentDecided, setConsentDecided] = useState(() => readConsent() !== null);
 
   useEffect(() => {
-    if (open || result || loading || isBlockedPath(pathname) || shouldSuppressPopup()) return;
+    const onConsent = () => setConsentDecided(readConsent() !== null);
+    window.addEventListener(CONSENT_CHANGED, onConsent);
+    return () => window.removeEventListener(CONSENT_CHANGED, onConsent);
+  }, []);
+
+  useEffect(() => {
+    if (!consentDecided || open || result || loading || isBlockedPath(pathname) || shouldSuppressPopup()) return;
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       if (user) {
@@ -62,7 +71,7 @@ const DiscountPopup = () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [pathname, user, loading, open, result]);
+  }, [pathname, user, loading, open, result, consentDecided]);
 
   // Hide immediately if user navigates into checkout/admin.
   useEffect(() => {

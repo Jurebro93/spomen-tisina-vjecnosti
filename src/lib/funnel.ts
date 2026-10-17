@@ -4,8 +4,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { hasConsent as hasCat } from '@/lib/consent';
 import { getBlogTouch } from '@/lib/blogTracking';
+import { landingParams, landingReferrer } from '@/lib/landing';
 
-export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_saved' | 'checkout_started' | 'checkout_returned';
+export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_saved' | 'checkout_started' | 'checkout_returned'
+  | 'consent_accepted' | 'consent_rejected' | 'consent_custom';
 
 const hasConsent = () => {
   return hasCat('analytics');
@@ -18,13 +20,14 @@ const device = () => {
 
 type Touch = { source: string | null; medium: string | null; campaign: string | null };
 
+// Reads the landing URL, so consent given after navigating away still credits the ad or link that brought the visitor.
 function currentTouch(): Touch {
-  const p = new URLSearchParams(window.location.search);
+  const p = landingParams();
   const utm = { source: p.get('utm_source'), medium: p.get('utm_medium'), campaign: p.get('utm_campaign') };
   if (utm.source) return utm;
   if (p.get('fbclid')) return { source: 'facebook', medium: 'paid_or_social', campaign: utm.campaign };
   if (p.get('gclid')) return { source: 'google', medium: 'cpc', campaign: utm.campaign };
-  const ref = document.referrer;
+  const ref = landingReferrer();
   if (ref) {
     try {
       const host = new URL(ref).hostname.replace(/^www\./, '');

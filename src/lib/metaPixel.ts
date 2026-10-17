@@ -1,4 +1,5 @@
 import { hasConsent } from '@/lib/consent';
+import { LANDED_AT, landingFbclid } from '@/lib/landing';
 /**
  * Meta (Facebook) Pixel helper.
  *
@@ -52,12 +53,24 @@ const loadBaseCode = () => {
   document.head.appendChild(script);
 };
 
+/**
+ * The pixel only sets _fbc when fbclid is in the URL at init. Consent often comes after the
+ * visitor has navigated away from the ad's landing URL, so set it from the landing snapshot.
+ */
+const storeClickId = () => {
+  const fbclid = landingFbclid();
+  if (!fbclid || readCookie('_fbc')) return;
+  const value = `fb.1.${LANDED_AT}.${fbclid}`;
+  document.cookie = `_fbc=${encodeURIComponent(value)}; path=/; max-age=${90 * 86400}; SameSite=Lax; Secure`;
+};
+
 /** Initialises the pixel once and sends the first PageView. */
 export const initMetaPixel = () => {
   if (initialised || typeof window === 'undefined') return;
   if (!PRODUCTION_HOSTS.includes(window.location.hostname)) return;
   if (!hasAdvertisingConsent()) return;
 
+  storeClickId();
   loadBaseCode();
   window.fbq?.('init', META_PIXEL_ID);
   initialised = true;
@@ -92,7 +105,7 @@ export const trackEvent = (
 /** Stable Purchase event id for a Stripe checkout session (must match the backend). */
 export const purchaseEventId = (sessionId: string) => `purchase_${sessionId}`;
 
-const readCookie = (name: string) => {
+function readCookie(name: string) {
   const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`));
   return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
 };
@@ -105,8 +118,8 @@ export const metaBrowserIds = (): { fbp?: string; fbc?: string } => {
   if (typeof window === 'undefined' || !hasAdvertisingConsent()) return {};
   const fbp = readCookie('_fbp') ?? undefined;
   let fbc = readCookie('_fbc') ?? undefined;
-  const fbclid = new URLSearchParams(window.location.search).get('fbclid');
-  if (!fbc && fbclid) fbc = `fb.1.${Date.now()}.${fbclid}`;
+  const fbclid = landingFbclid();
+  if (!fbc && fbclid) fbc = `fb.1.${LANDED_AT}.${fbclid}`;
   return { fbp, fbc };
 };
 
