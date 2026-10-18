@@ -20,6 +20,6 @@ UPDATE public.blogs SET
   interactive_type = 'quiz',
   interactive_items = ARRAY['Gdje ćete se sjećati ako nema klasičnog groba?'],
   sales_heading = 'Mjesto sjećanja i nakon kremiranja',
-  sales_text = 'Kad se urna čuva kod kuće ili se pepeo rasipa, obitelji često nedostaje mjesto na koje se može vratiti. Digitalni memorijal je takvo mjesto na mreži: fotografije, životna priča, svijeće i poruke bližnjih, dostupni svima koje pozovete, na godišnjice i bilo koji drugi dan.',
+  sales_text = 'Kad se pepeo rasipa ili urna počiva daleko od mjesta gdje obitelj živi, bližnjima često nedostaje mjesto na koje se mogu vratiti. Digitalni memorijal je takvo mjesto na mreži: fotografije, životna priča, svijeće i poruke bližnjih, dostupni svima koje pozovete, na godišnjice i bilo koji drugi dan.',
   cta_text = 'Kreiraj memorijal'
 WHERE slug = 'kremiranje-sto-je-to-i-kako-se-obavlja';

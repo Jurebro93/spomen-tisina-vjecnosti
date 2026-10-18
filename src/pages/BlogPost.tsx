@@ -297,6 +297,7 @@ const BlogPost = () => {
                     .prose li { margin-bottom: 0.4rem; }
                     .prose figure { margin: 2.5rem 0 !important; }
                     .prose figure img { width: 100%; height: auto; border-radius: 0.75rem; margin: 0 !important; }
+                    .prose figure img[src*="/infografike/"] { max-width: 520px; margin: 0 auto !important; display: block; }
                     .prose figcaption { margin-top: 0.75rem; font-size: 0.9rem; text-align: center; opacity: 0.7; }
                     .prose blockquote { border-left: 4px solid hsl(var(--accent)); background: hsl(var(--muted)); padding: 1.25rem 1.5rem; border-radius: 0.5rem; font-style: normal; margin: 1.5rem 0 2rem; }
                     .prose blockquote p { margin-bottom: 0.75rem !important; }
