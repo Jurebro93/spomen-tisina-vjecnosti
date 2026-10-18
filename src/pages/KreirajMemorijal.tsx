@@ -1,5 +1,5 @@
 import { trackFunnel, getAttribution } from '@/lib/funnel';
-import { trackInitiateCheckout, trackMemorialStarted } from '@/lib/metaPixel';
+import { trackInitiateCheckout, trackMemorialStarted, trackStartMemorial } from '@/lib/metaPixel';
 import { trackGa4BeginCheckout, trackGa4MemorialStarted } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
@@ -321,6 +321,13 @@ const KreirajMemorijal = () => {
     }
     if (!authLoading && user) void trackFunnel('auth', { userId: user.id });
   }, [authLoading, user, navigate, redirectTarget]);
+
+  const startSent = useRef(false);
+  useEffect(() => {
+    if (!deceased || !user || startSent.current) return;
+    startSent.current = true;
+    trackStartMemorial(user.id);
+  }, [deceased, user]);
 
   // Returned from Stripe via the cancel link — a separate event, never "abandoned".
   useEffect(() => {
