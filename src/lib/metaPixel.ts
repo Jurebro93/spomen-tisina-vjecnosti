@@ -179,3 +179,25 @@ export const trackMemorialStarted = (memorialId: string) => {
     }),
   ).catch(() => {});
 };
+
+/**
+ * StartMemorial = the visitor chose the person and opened the memorial form (signed in or guest).
+ * Custom event the AON ad sets optimise for; browser pixel + Conversions API share one event_id per account.
+ */
+export const trackStartMemorial = (userId: string) => {
+  if (typeof window === 'undefined' || !hasAdvertisingConsent()) return;
+  const eventId = `start_${userId}`;
+  trackEvent('StartMemorial', { content_name: 'Digitalni memorijal' }, eventId);
+  if (!PRODUCTION_HOSTS.includes(window.location.hostname)) return;
+  void import('@/integrations/supabase/client').then(({ supabase }) =>
+    supabase.functions.invoke('meta-capi-event', {
+      body: {
+        event_name: 'StartMemorial',
+        event_id: eventId,
+        marketing_consent: true,
+        source_url: window.location.href,
+        ...metaBrowserIds(),
+      },
+    }),
+  ).catch(() => {});
+};

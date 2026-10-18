@@ -1,4 +1,5 @@
-// Mirrors memorial-creation events (Lead = memorial draft created) to Meta Conversions API.
+// Mirrors memorial-creation events to Meta Conversions API: StartMemorial = person chosen and form opened,
+// Lead = memorial draft created.
 // Signed-in owner only, production site only, and only with the visitor's marketing consent.
 // Payment events are not accepted here: InitiateCheckout is sent by create-memorial-payment
 // and Purchase by the Stripe-verified delivery pipeline.
@@ -21,6 +22,25 @@ Deno.serve(async (req) => {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return json({ ok: false, error: "bad json" }, 400); }
   if (b.marketing_consent !== true) return json({ ok: true, skipped: "no_consent" });
+  const fullName = [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(" ")
+    || user.user_metadata?.full_name || null;
+  const sourceUrl = typeof b.source_url === "string" && b.source_url.startsWith(origin) ? b.source_url.slice(0, 1000) : null;
+  const userData = async () =>
+    buildUserData({ email: user.email, fullName, externalId: user.id, ...clientFromRequest(req), ...cleanBrowserIds(b) });
+
+  if (b.event_name === "StartMemorial") {
+    const startId = cleanEventId(b.event_id, "start_");
+    if (startId !== `start_${user.id}`) return json({ ok: false, error: "bad event" }, 400);
+    const r = await sendMetaEvent({
+      eventName: "StartMemorial",
+      eventId: startId,
+      sourceUrl,
+      userData: await userData(),
+      customData: { content_name: "Digitalni memorijal" },
+    });
+    return json({ ok: r.ok, meta_status: r.status });
+  }
+
   if (b.event_name !== "Lead") return json({ ok: false, error: "unsupported event" }, 400);
   const memorialId = typeof b.memorial_id === "string" ? b.memorial_id : "";
   const eventId = cleanEventId(b.event_id, "lead_");
@@ -29,13 +49,11 @@ Deno.serve(async (req) => {
   const { data: memorial } = await admin.from("memorials").select("id, owner_id").eq("id", memorialId).maybeSingle();
   if (!memorial || memorial.owner_id !== user.id) return json({ ok: false, error: "forbidden" }, 403);
 
-  const fullName = [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(" ")
-    || user.user_metadata?.full_name || null;
   const r = await sendMetaEvent({
     eventName: "Lead",
     eventId,
-    sourceUrl: typeof b.source_url === "string" && b.source_url.startsWith(origin) ? b.source_url.slice(0, 1000) : null,
-    userData: await buildUserData({ email: user.email, fullName, externalId: user.id, ...clientFromRequest(req), ...cleanBrowserIds(b) }),
+    sourceUrl,
+    userData: await userData(),
     customData: { content_name: "Digitalni memorijal", content_ids: [memorialId] },
   });
   return json({ ok: r.ok, meta_status: r.status });
