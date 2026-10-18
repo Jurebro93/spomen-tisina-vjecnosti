@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   const fullName = [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(" ")
     || user.user_metadata?.full_name || null;
   const sourceUrl = typeof b.source_url === "string" && b.source_url.startsWith(origin) ? b.source_url.slice(0, 1000) : null;
-  const userData = async () =>
+  const metaUser = async () =>
     buildUserData({ email: user.email, fullName, externalId: user.id, ...clientFromRequest(req), ...cleanBrowserIds(b) });
 
   if (b.event_name === "StartMemorial") {
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       eventName: "StartMemorial",
       eventId: startId,
       sourceUrl,
-      userData: await userData(),
+      userData: await metaUser(),
       customData: { content_name: "Digitalni memorijal" },
     });
     return json({ ok: r.ok, meta_status: r.status });
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     eventName: "Lead",
     eventId,
     sourceUrl,
-    userData: await userData(),
+    userData: await metaUser(),
     customData: { content_name: "Digitalni memorijal", content_ids: [memorialId] },
   });
   return json({ ok: r.ok, meta_status: r.status });
