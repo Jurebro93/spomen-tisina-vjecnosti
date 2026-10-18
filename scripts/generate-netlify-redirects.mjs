@@ -37,7 +37,13 @@ pageDirs.sort();
 // still resolves to the Totohost server and is served by the same cPanel vhost.
 const OLD_SERVER = 'http://mail.osmrtnica.com.hr';
 
+// Retired URLs that Google still shows, moved to the page that now covers the topic.
+const MOVED = [
+  ['/groblja/krematorij-mirogoj', '/groblje/gaj-urni-krematorij'],
+];
+
 const lines = [
+  ...MOVED.map(([from, to]) => `${from} ${to} 301!`),
   `/wp/* ${OLD_SERVER}/wp/:splat 200!`,
   `/wp-content/* ${OLD_SERVER}/wp-content/:splat 200!`,
   ...pageDirs.map((p) => `${p} ${p}/index.html 200!`),
