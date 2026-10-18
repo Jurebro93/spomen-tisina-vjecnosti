@@ -1,7 +1,7 @@
 import { Check, ExternalLink, Lock } from 'lucide-react';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 
-const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';
+export const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';
 
 const included = [
   'Trajna stranica posvećena voljenoj osobi, bez roka isteka',

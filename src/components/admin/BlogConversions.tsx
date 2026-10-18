@@ -30,7 +30,7 @@ const CTA_HR: Record<string, string> = {
   '—': 'Nepoznato',
 };
 const INTERACTIVE_HR: Record<string, string> = {
-  none: 'Bez interaktivnog elementa', dedication: 'Odabir posvete', song: 'Odabir pjesme', anniversary: 'Unos imena (godišnjica)', photos: 'Fotografije i uspomene (CTA)',
+  none: 'Bez interaktivnog elementa', dedication: 'Odabir posvete', song: 'Odabir pjesme', anniversary: 'Unos imena (godišnjica)', photos: 'Fotografije i uspomene (CTA)', quiz: 'Upitnik u članku (3 pitanja)',
 };
 
 type Preset = '7' | '30' | '90' | 'custom';
@@ -346,6 +346,10 @@ const BlogDetail = ({ row, data, onSaved }: { row: Row; data: any; onSaved: () =
             {(form.interactive_type === 'dedication' || form.interactive_type === 'song') && (
               <div><Label>{form.interactive_type === 'song' ? 'Pjesme (jedna po retku)' : 'Posvete (jedna po retku)'}</Label>
                 <Textarea rows={5} value={form.items} onChange={(e) => setForm({ ...form, items: e.target.value })} /></div>
+            )}
+            {form.interactive_type === 'quiz' && (
+              <div><Label>Naslov upitnika (prvi redak, neobavezno)</Label>
+                <Textarea rows={2} value={form.items} onChange={(e) => setForm({ ...form, items: e.target.value })} /></div>
             )}
             <Button onClick={save} disabled={saving} className="bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90">
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Spremi

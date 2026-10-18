@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { recordBlogClick, setMemorialPrefill, trackBlog } from '@/lib/blogTracking';
+import { MemorialPreview } from '@/components/blog/BlogMemorialQuiz';
 
 export type BlogSales = {
   slug: string;
@@ -66,7 +67,12 @@ const BlogSalesSection = ({ blog }: { blog: BlogSales }) => {
         <span className="text-xs uppercase tracking-wider font-semibold">Digitalni memorijal</span>
       </div>
       <h2 id="blog-sales-heading" className="font-serif text-2xl md:text-3xl text-foreground mb-3">{heading}</h2>
-      {blog.sales_text && <p className="text-muted-foreground leading-relaxed mb-5">{blog.sales_text}</p>}
+      {type === 'quiz' ? (
+        <div className="grid gap-6 md:grid-cols-[1fr_16rem] md:items-center mb-5">
+          {blog.sales_text && <p className="text-muted-foreground leading-relaxed">{blog.sales_text}</p>}
+          <MemorialPreview />
+        </div>
+      ) : blog.sales_text && <p className="text-muted-foreground leading-relaxed mb-5">{blog.sales_text}</p>}
 
       {type === 'dedication' && items.length > 0 && (
         <div className="space-y-3 mb-5">
@@ -133,8 +139,8 @@ const BlogSalesSection = ({ blog }: { blog: BlogSales }) => {
         </form>
       )}
 
-      <Button type="button" size="lg" variant={type === 'none' || type === 'photos' ? 'default' : 'outline'} onClick={() => go('final_cta')}
-        className={type === 'none' || type === 'photos' ? 'bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90' : 'border-memorial-gold text-foreground'}>
+      <Button type="button" size="lg" variant={type === 'none' || type === 'photos' || type === 'quiz' ? 'default' : 'outline'} onClick={() => go('final_cta')}
+        className={type === 'none' || type === 'photos' || type === 'quiz' ? 'bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90' : 'border-memorial-gold text-foreground'}>
         {ctaText}
       </Button>
     </section>
