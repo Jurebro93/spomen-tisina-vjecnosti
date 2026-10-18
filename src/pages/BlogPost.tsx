@@ -16,6 +16,7 @@ import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { formatBlogDate } from '@/lib/utils';
 import BlogSalesSection from '@/components/blog/BlogSalesSection';
+import BlogMemorialQuiz from '@/components/blog/BlogMemorialQuiz';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
 
@@ -48,6 +49,13 @@ const withContextLink = (html: string, enabled: boolean) => {
   let c = 0;
   const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + link : m));
   return c >= 3 ? out : html + link;
+};
+
+/** Splits article HTML right after the nth paragraph, so a widget can sit inside the text. */
+const splitAfterParagraph = (html: string, n: number): [string, string] => {
+  let c = 0, at = -1;
+  html.replace(/<\/p>/g, (m, i: number) => { if (++c === n) at = i + m.length; return m; });
+  return at < 0 ? [html, ''] : [html.slice(0, at), html.slice(at)];
 };
 
 const BlogPost = () => {
@@ -303,15 +311,26 @@ const BlogPost = () => {
                     .prose a:hover { color: hsl(var(--memorial-gold-muted)); }
                   `
                 }} />
-                <div 
-                  className="prose prose-lg prose-gray dark:prose-invert max-w-none"
-                  onClick={handleContentClick}
-                  dangerouslySetInnerHTML={{ __html: withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false) }}
-                  style={{
-                    fontSize: '1.125rem',
-                    lineHeight: '1.8',
-                  }}
-                />
+                {(blogPost.interactive_type === 'quiz' && blogPost.cta_enabled !== false && blogPost.slug
+                  // Quiz blogs: the quiz replaces the in-text link and sits after the 3rd paragraph.
+                  ? splitAfterParagraph(blogPost.content || '', 3)
+                  : [withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), '']
+                ).map((html, i) => (
+                  <React.Fragment key={i}>
+                    {i === 1 && <BlogMemorialQuiz slug={blogPost.slug!} heading={blogPost.interactive_items?.[0]} />}
+                    {html && (
+                      <div
+                        className="prose prose-lg prose-gray dark:prose-invert max-w-none"
+                        onClick={handleContentClick}
+                        dangerouslySetInnerHTML={{ __html: html }}
+                        style={{
+                          fontSize: '1.125rem',
+                          lineHeight: '1.8',
+                        }}
+                      />
+                    )}
+                  </React.Fragment>
+                ))}
               </CardContent>
             </Card>
           </article>
