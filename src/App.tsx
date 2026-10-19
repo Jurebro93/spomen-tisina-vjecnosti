@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { HelmetProvider } from 'react-helmet-async';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { useEffect, useLayoutEffect } from "react";
 import Index from "./pages/Index";
 import HomepageTwo from "./pages/HomepageTwo";
@@ -106,6 +106,11 @@ const App = () => {
   console.log('App component rendering');
   return (
   <HelmetProvider>
+    {/* Site-wide fallback: index.html's description is managed by Helmet (data-rh),
+        so pages without their own description still get this one. */}
+    <Helmet>
+      <meta name="description" content="Osmrtnice, digitalni memorijali, sprovodi i groblja u Hrvatskoj. Pretražite osmrtnice po imenu ili gradu, zapalite virtualnu svijeću i sačuvajte uspomenu digitalnim memorijalom." />
+    </Helmet>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

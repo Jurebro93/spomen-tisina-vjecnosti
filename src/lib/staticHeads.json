@@ -1,0 +1,34 @@
+{
+  "/kontakt": {
+    "title": "Kontakt i podaci o obrtu | Osmrtnica.com.hr",
+    "description": "Kontakt i podaci o obrtu koji upravlja stranicom Osmrtnica.com.hr. Javite nam se za pomoć oko objave osmrtnica, virtualnih svijeća i digitalnog memorijala."
+  },
+  "/uvjeti-koristenja": {
+    "title": "Uvjeti korištenja i kupnje | Osmrtnica.com.hr",
+    "description": "Uvjeti korištenja stranice Osmrtnica.com.hr: objava besplatnih osmrtnica, virtualne svijeće i kupnja digitalnog memorijala."
+  },
+  "/politika-privatnosti": {
+    "title": "Politika privatnosti | Osmrtnica.com.hr",
+    "description": "Kako Osmrtnica.com.hr prikuplja, koristi i čuva osobne podatke korisnika i preminulih osoba te koja prava imate prema GDPR-u."
+  },
+  "/kolacici": {
+    "title": "Kolačići i postavke privatnosti | Osmrtnica.com.hr",
+    "description": "Koje kolačiće koristi Osmrtnica.com.hr, čemu služe i kako u svakom trenutku možete promijeniti postavke privatnosti."
+  },
+  "/raskid-i-povrat": {
+    "title": "Jednostrani raskid i povrat | Osmrtnica.com.hr",
+    "description": "Kako odustati od kupnje digitalnog memorijala u roku od 14 dana i kako dobiti povrat novca."
+  },
+  "/prigovori": {
+    "title": "Prigovori i reklamacije | Osmrtnica.com.hr",
+    "description": "Kako poslati prigovor ili reklamaciju za Osmrtnica.com.hr: obrazac, e-mail ili pošta, i u kojem roku odgovaramo."
+  },
+  "/pravila-objavljivanja": {
+    "title": "Pravila objavljivanja | Osmrtnica.com.hr",
+    "description": "Pravila za objavu osmrtnica, fotografija, sjećanja i virtualnih svijeća na Osmrtnica.com.hr."
+  },
+  "/prijava-sadrzaja": {
+    "title": "Prijava sadržaja | Osmrtnica.com.hr",
+    "description": "Prijavite osmrtnicu ili drugi sadržaj na Osmrtnica.com.hr koji je netočan, neovlašten ili protivan pravilima stranice."
+  }
+}
