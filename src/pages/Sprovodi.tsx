@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Star, ExternalLink, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { cityOrFilter } from '@/lib/cityMatch';
+import { cityOrFilter, cityPattern } from '@/lib/cityMatch';
 import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
@@ -124,18 +124,38 @@ const Sprovodi = () => {
           })));
         }
       } else {
-        const { data: sprovodiData, error: sprovodiError } = await supabase
-          .from('obituaries')
-          .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
-          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
-          .gte('datum_ukopa', zagrebToday())
-          .order('datum_ukopa', { ascending: true });
+        const [{ data: sprovodiData, error: sprovodiError }, { data: scheduleData }] = await Promise.all([
+          supabase
+            .from('obituaries')
+            .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
+            .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
+            .gte('datum_ukopa', zagrebToday())
+            .order('datum_ukopa', { ascending: true }),
+          // Schedules scraped from the city's cemetery company (sync-gradovi-sprovodi).
+          supabase
+            .from('sprovodi')
+            .select('id, ime, prezime, godina, groblje, tip_sprovoda, datum_sprovoda, vrijeme_sprovoda')
+            .filter('grad', 'imatch', `^${cityPattern(cityName)}$`)
+            .not('izvor', 'is', null)
+            .gte('datum_sprovoda', zagrebToday()),
+        ]);
 
         if (sprovodiError) {
           console.error('Error fetching sprovodi:', sprovodiError);
           setSprovodi([]);
         } else {
-          setSprovodi((sprovodiData ?? []).flatMap(toScheduleRow));
+          const scheduled: ScheduleRow[] = (scheduleData ?? []).map((row) => ({
+            id: row.id,
+            ime: row.ime,
+            prezime: row.prezime,
+            groblje: row.groblje,
+            datum: row.datum_sprovoda,
+            vrijeme: row.vrijeme_sprovoda,
+            godine: row.godina,
+            tip: row.tip_sprovoda,
+          }));
+          setSprovodi([...(sprovodiData ?? []).flatMap(toScheduleRow), ...scheduled]
+            .sort((a, b) => `${a.datum} ${a.vrijeme}`.localeCompare(`${b.datum} ${b.vrijeme}`)));
         }
 
         // Past two weeks, so a city with nothing scheduled still shows its recent funerals.
