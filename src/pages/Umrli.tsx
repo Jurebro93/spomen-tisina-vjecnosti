@@ -23,6 +23,7 @@ import NewsletterSignup from '@/components/NewsletterSignup';
 import CityObituaryAlert from '@/components/CityObituaryAlert';
 import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
 import { useCityName } from '@/hooks/useCityName';
+import { isTestCity, testCityTitle, testCityDescription, testCityH1 } from '@/lib/seoCityTest';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -50,6 +51,8 @@ const localDateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDat
 const Umrli = () => {
   const { city } = useParams();
   const cityName = useCityName(city);
+  // Title/H1/H2 test group, see src/lib/seoCityTest.ts
+  const seoTest = isTestCity(city);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -325,8 +328,10 @@ const Umrli = () => {
   return (
     <div className="min-h-screen bg-background">
       <Helmet>
-        <title>{cityName ? `Umrli ${cityName} | Osmrtnice i spomen pokojnika u ${cityName}` : 'Umrli | Pretraživanje osmrtnica u Hrvatskoj'}</title>
-        <meta name="description" content={cityName
+        <title>{seoTest && city ? testCityTitle(city, cityName) : cityName ? `Umrli ${cityName} | Osmrtnice i spomen pokojnika u ${cityName}` : 'Umrli | Pretraživanje osmrtnica u Hrvatskoj'}</title>
+        <meta name="description" content={seoTest
+          ? testCityDescription(cityName, stats.obituariesThisMonth, stats.funeralsThisWeek)
+          : cityName
           ? `Pretraživanje osmrtnica i pokojnika u ${cityName}. Informacije o sprovodima, grobljima i virtualnim svijećama za naše najmilije.`
           : 'Pretražite osmrtnice u Hrvatskoj. Informacije o sprovodima, grobljima i virtualnim svijećama za naše najmilije.'} />
         <link rel="canonical" href={`https://osmrtnica.com.hr${seoPath}`} />
@@ -348,14 +353,15 @@ const Umrli = () => {
           )}
         </script>
       </Helmet>
-      <SEOHelmet pagePath={seoPath} />
+      {/* on_page_seo rows would override the test wording */}
+      {!seoTest && <SEOHelmet pagePath={seoPath} />}
       <Header />
       
         <main className="container mx-auto px-4 py-6 sm:py-8 pb-16">
         {/* Page Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-display font-bold text-foreground mb-4">
-            {cityName ? `Umrli - ${cityName}` : 'Umrli'}
+            {seoTest ? testCityH1(cityName) : cityName ? `Umrli - ${cityName}` : 'Umrli'}
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto px-2">
             {cityName
@@ -370,7 +376,7 @@ const Umrli = () => {
         {cityName && upcomingFunerals.length > 0 && (
           <section aria-labelledby="sprovodi-danas" className="mb-8 sm:mb-10 rounded-xl border border-border bg-card p-4 sm:p-6">
             <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
-              <h2 id="sprovodi-danas" className="text-xl sm:text-2xl font-display font-semibold text-foreground">Nadolazeći sprovodi</h2>
+              <h2 id="sprovodi-danas" className="text-xl sm:text-2xl font-display font-semibold text-foreground">{seoTest ? `Sprovodi i ukopi – ${cityName}, ovaj tjedan` : 'Nadolazeći sprovodi'}</h2>
               {city && (
                 <Link to={`/sprovodi/${city}`} className="text-sm underline text-muted-foreground hover:text-foreground">Cijeli raspored</Link>
               )}
@@ -414,7 +420,7 @@ const Umrli = () => {
 
         {/* Recent Obituaries */}
         <div className="mb-8 sm:mb-12">
-          <h2 className="text-xl sm:text-2xl font-display font-semibold mb-4 sm:mb-6 px-2">Najnovije osmrtnice{cityName ? ` u gradu ${cityName}` : ''}</h2>
+          <h2 className="text-xl sm:text-2xl font-display font-semibold mb-4 sm:mb-6 px-2">{seoTest ? `Osmrtnice ${cityName} – danas i jučer` : `Najnovije osmrtnice${cityName ? ` u gradu ${cityName}` : ''}`}</h2>
           
           {loading ? (
             <div className="flex justify-center items-center py-20">
@@ -488,7 +494,7 @@ const Umrli = () => {
         {/* Funeral Schedule Section */}
         <section className="mb-12">
           <h2 className="text-3xl font-display font-bold text-foreground mb-6">
-            Raspored sprovoda i ispraćaja
+            {seoTest ? `Raspored sprovoda ${cityName}` : 'Raspored sprovoda i ispraćaja'}
           </h2>
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="px-6 py-4 bg-memorial-gold/10 border-b">
@@ -569,9 +575,9 @@ const Umrli = () => {
 
         {/* Cemeteries internal links (cities from main menu) */}
         <section className="mb-12">
-          <h2 className="text-2xl font-display font-bold text-foreground mb-2">
+          <p className="text-2xl font-display font-bold text-foreground mb-2">
             Groblja po gradovima
-          </h2>
+          </p>
           <p className="text-muted-foreground mb-6">
             Adrese, kontakti i radno vrijeme groblja — izaberite grad.
           </p>
@@ -598,9 +604,9 @@ const Umrli = () => {
 
         {/* Funerals internal links (cities from main menu) */}
         <section className="mb-12">
-          <h2 className="text-2xl font-display font-bold text-foreground mb-2">
+          <p className="text-2xl font-display font-bold text-foreground mb-2">
             Sprovodi po gradovima
-          </h2>
+          </p>
           <p className="text-muted-foreground mb-6">
             Raspored sprovoda i ispraćaja — izaberite grad.
           </p>

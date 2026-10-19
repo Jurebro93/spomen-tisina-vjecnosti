@@ -154,7 +154,7 @@ const Header = () => {
           <Link to="/" className="flex items-center space-x-2 sm:space-x-3 hover:opacity-80 transition-opacity">
             <img src={logo} alt="Osmrtnica.com.hr" className="h-8 sm:h-10 w-auto" />
             <div>
-              <h1 className="font-display text-lg sm:text-xl font-semibold">Osmrtnice</h1>
+              <div className="font-display text-lg sm:text-xl font-semibold">Osmrtnice</div>
               <p className="text-xs text-primary-foreground/80">Dostojanstveno opraštanje</p>
             </div>
           </Link>
