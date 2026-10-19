@@ -59,6 +59,8 @@ const Umrli = () => {
   const seoPath = location.pathname;
   const [obituaries, setObituaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // Only a successful empty result may noindex the page, never a failed request.
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
   const [funeralVisibleCount, setFuneralVisibleCount] = useState(10);
   const [stats, setStats] = useState({
@@ -79,11 +81,14 @@ const Umrli = () => {
 
       if (error) {
         console.error('Error fetching obituaries:', error);
+        setFetchFailed(true);
       } else {
         setObituaries(dedupeObituaries(data || []));
+        setFetchFailed(false);
       }
     } catch (error) {
       console.error('Error fetching obituaries:', error);
+      setFetchFailed(true);
     } finally {
       setLoading(false);
     }
@@ -336,7 +341,7 @@ const Umrli = () => {
           : 'Pretražite osmrtnice u Hrvatskoj. Informacije o sprovodima, grobljima i virtualnim svijećama za naše najmilije.'} />
         <link rel="canonical" href={`https://osmrtnica.com.hr${seoPath}`} />
         {/* Prazne gradske stranice nemaju SEO vrijednost */}
-        {!loading && city && obituaries.length === 0 && <meta name="robots" content="noindex,follow" />}
+        {!loading && !fetchFailed && city && obituaries.length === 0 && <meta name="robots" content="noindex,follow" />}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://osmrtnica.com.hr${seoPath}`} />
         <script type="application/ld+json">

@@ -34,6 +34,8 @@ const ObituaryPage = () => {
   const { slug } = useParams();
   const [obituary, setObituary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // A failed request is not a missing obituary: only a confirmed miss may tell Google to drop the page.
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [showMemoryForm, setShowMemoryForm] = useState(false);
   const [newMemory, setNewMemory] = useState({ author: '', text: '' });
   const [memories, setMemories] = useState<Array<{author: string, text: string}>>([]);
@@ -59,12 +61,15 @@ const ObituaryPage = () => {
       if (error) {
         console.error('Error fetching obituary:', error);
         setObituary(null);
+        setFetchFailed(true);
       } else {
         setObituary(data);
+        setFetchFailed(false);
       }
     } catch (error) {
       console.error('Error fetching obituary:', error);
       setObituary(null);
+      setFetchFailed(true);
     } finally {
       setLoading(false);
     }
@@ -120,7 +125,7 @@ const ObituaryPage = () => {
       <div className="min-h-screen bg-background">
         <Helmet>
           <title>Osmrtnica nije pronađena | Osmrtnica.com.hr</title>
-          <meta name="robots" content="noindex,follow" />
+          {!fetchFailed && <meta name="robots" content="noindex,follow" />}
         </Helmet>
         <Header />
         <main className="container mx-auto px-4 py-8 text-center">
