@@ -240,7 +240,10 @@ const Umrli = () => {
             {/* Content */}
             <div className="w-full">
               <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-3">
-                {obituary.ime} {obituary.prezime}
+                {/* Real link so crawlers can reach each obituary; the card's onClick still handles the rest. */}
+                <Link to={`/${obituary.slug}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                  {obituary.ime} {obituary.prezime}
+                </Link>
               </h3>
               
               <div className="space-y-2 text-xs sm:text-sm text-muted-foreground mb-3">
