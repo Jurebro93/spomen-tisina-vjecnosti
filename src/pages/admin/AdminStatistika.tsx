@@ -16,12 +16,13 @@ import { Tooltip as UiTooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 import { supabase } from '@/integrations/supabase/client';
 import BlogConversions from '@/components/admin/BlogConversions';
 import SignupStats from '@/components/admin/SignupStats';
+import GoogleStats from '@/components/admin/GoogleStats';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Report = Record<string, any>;
 type Order = Record<string, any>;
 
-const StatTabs = ({ active }: { active: 'prodaja' | 'blogovi' | 'prijave' }) => (
+const StatTabs = ({ active }: { active: 'prodaja' | 'blogovi' | 'prijave' | 'google' }) => (
   <div className="flex gap-1 border-b border-border mt-4 mb-6" role="tablist">
     <Link to="/admin/statistika" role="tab" aria-selected={active === 'prodaja'}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'prodaja' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Prodaja</Link>
@@ -29,6 +30,8 @@ const StatTabs = ({ active }: { active: 'prodaja' | 'blogovi' | 'prijave' }) => 
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'blogovi' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Blogovi i konverzije</Link>
     <Link to="/admin/statistika?tab=prijave" role="tab" aria-selected={active === 'prijave'}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'prijave' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Prijave i newsletter</Link>
+    <Link to="/admin/statistika?tab=google" role="tab" aria-selected={active === 'google'}
+      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${active === 'google' ? 'border-memorial-gold text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Google i ponašanje</Link>
   </div>
 );
 
@@ -147,6 +150,7 @@ const Inner = () => {
   const tab = new URLSearchParams(useLocation().search).get('tab');
   const blogTab = tab === 'blogovi';
   const signupTab = tab === 'prijave';
+  const googleTab = tab === 'google';
   const [preset, setPreset] = useState<Preset>('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -288,14 +292,14 @@ const Inner = () => {
     ['Transakcije', live ? 'stvarne' : 'testne'], ['Osvježeno', dt(state?.refreshed_at)],
   ], `sazetak-${from.toISOString().slice(0, 10)}.csv`);
 
-  if (blogTab || signupTab) {
+  if (blogTab || signupTab || googleTab) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto max-w-7xl px-4 py-8">
           <h1 className="text-2xl md:text-3xl font-semibold">Statistika i prodaja</h1>
-          <StatTabs active={blogTab ? 'blogovi' : 'prijave'} />
-          {blogTab ? <BlogConversions /> : <SignupStats />}
+          <StatTabs active={blogTab ? 'blogovi' : googleTab ? 'google' : 'prijave'} />
+          {blogTab ? <BlogConversions /> : googleTab ? <GoogleStats /> : <SignupStats />}
         </main>
         <Footer />
       </div>
