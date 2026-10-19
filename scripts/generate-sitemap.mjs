@@ -38,6 +38,7 @@ const STATIC_PAGES = [
   { path: '/zapali-svijecu', changefreq: 'monthly', priority: '0.7' },
   { path: '/memorijalni-vrt', changefreq: 'weekly', priority: '0.7' },
   { path: '/informacije', changefreq: 'monthly', priority: '0.5' },
+  { path: '/besplatni-vodic', changefreq: 'monthly', priority: '0.6' },
   { path: '/cesto-postavljena-pitanja', changefreq: 'monthly', priority: '0.5' },
   { path: '/uvjeti-koristenja', changefreq: 'yearly', priority: '0.3' },
   { path: '/politika-privatnosti', changefreq: 'yearly', priority: '0.3' },

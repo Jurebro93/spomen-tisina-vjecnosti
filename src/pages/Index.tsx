@@ -11,6 +11,7 @@ import Footer from '@/components/Footer';
 import { MemorialArticlesSection, MemorialFinalCtaSection, MemorialHeroSection } from '@/components/HomepageMemorialSections';
 import { HomepageFaqSection } from '@/components/HomepageFaqSection';
 import { SEOHelmet } from '@/hooks/useSEO';
+import EbookSignup from '@/components/EbookSignup';
 
 const Index = () => {
   return (
@@ -23,6 +24,9 @@ const Index = () => {
       <MemorialPublicListing />
       <MemorialCtaSection />
       <ObituariesGallery />
+      <div className="container mx-auto px-4 py-10">
+        <EbookSignup variant="home" placement="homepage" />
+      </div>
       <MemorialFinalCtaSection />
       <VirtualCandles />
       <CitiesSection />
