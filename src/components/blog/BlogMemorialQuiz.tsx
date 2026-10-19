@@ -73,26 +73,38 @@ export const MemorialPreview = ({ name, priority }: { name?: string; priority?: 
   );
 };
 
+/** Where quiz steps are reported; ids are quiz_q<n>_<answer>, quiz_complete, quiz_create(_name), quiz_example. */
+export interface QuizTracker {
+  step: (ctaId: string) => void;
+  click: (ctaId: string) => void;
+}
+
+const blogTracker = (slug: string): QuizTracker => ({
+  step: (ctaId) => trackBlog('interactive', slug, ctaId),
+  click: (ctaId) => recordBlogClick(slug, ctaId, ctaId === 'quiz_example' ? 'link_click' : 'cta_click'),
+});
+
 /**
- * Three-question quiz shown inside the article; ends with a personalised memorial preview and a CTA.
- * Each answer is logged as an `interactive` blog event (cta_id quiz_q<n>_<answer>) so answer mix is visible in admin.
+ * Three-question quiz shown inside the article (or on city pages via `tracker`); ends with a personalised
+ * memorial preview and a CTA. On blogs each answer is logged as an `interactive` blog event so answer mix is visible in admin.
  */
-const BlogMemorialQuiz = ({ slug, heading }: { slug: string; heading?: string | null }) => {
+const BlogMemorialQuiz = ({ slug, heading, tracker }: { slug: string; heading?: string | null; tracker?: QuizTracker }) => {
   const navigate = useNavigate();
+  const track = tracker ?? blogTracker(slug);
   const [answers, setAnswers] = useState<string[]>([]);
   const [name, setName] = useState('');
   const step = answers.length;
   const done = step >= QUESTIONS.length;
 
   const answer = (id: string) => {
-    trackBlog('interactive', slug, `quiz_q${step + 1}_${id}`);
-    if (step + 1 === QUESTIONS.length) trackBlog('interactive', slug, 'quiz_complete');
+    track.step(`quiz_q${step + 1}_${id}`);
+    if (step + 1 === QUESTIONS.length) track.step('quiz_complete');
     setAnswers([...answers, id]);
   };
 
   const create = () => {
     if (name.trim()) setMemorialPrefill({ name: name.trim().slice(0, 100) });
-    recordBlogClick(slug, name.trim() ? 'quiz_create_name' : 'quiz_create');
+    track.click(name.trim() ? 'quiz_create_name' : 'quiz_create');
     navigate('/digitalni-memorijal/kreiraj');
   };
 
@@ -141,7 +153,7 @@ const BlogMemorialQuiz = ({ slug, heading }: { slug: string; heading?: string | 
               <Button type="button" onClick={create} className="h-11 bg-memorial-gold text-memorial-gold-foreground hover:bg-memorial-gold/90">
                 Kreiraj memorijal <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
-              <a href={EXAMPLE_PATH} target="_blank" rel="noopener" onClick={() => recordBlogClick(slug, 'quiz_example', 'link_click')}
+              <a href={EXAMPLE_PATH} target="_blank" rel="noopener" onClick={() => track.click('quiz_example')}
                 className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm text-foreground hover:bg-muted">
                 Pogledajte primjer
               </a>
