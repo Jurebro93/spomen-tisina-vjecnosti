@@ -22,6 +22,7 @@ import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
 import CityObituaryAlert from '@/components/CityObituaryAlert';
 import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
+import { useCityName } from '@/hooks/useCityName';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -48,7 +49,7 @@ const localDateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDat
 
 const Umrli = () => {
   const { city } = useParams();
-  const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const cityName = useCityName(city);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -585,7 +586,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/groblja/${city.toLowerCase()}`}
+                to={`/groblja/${city}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Groblja {city}</span>
@@ -614,7 +615,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/sprovodi/${city.toLowerCase()}`}
+                to={`/sprovodi/${city}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Sprovodi {city}</span>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { citySlug } from '@/lib/cityMatch';
 
 interface SitemapUrl {
   loc: string;
@@ -94,7 +95,7 @@ const SitemapIndex = () => {
         cities.forEach(city => {
           if (city) {
             urls.push({
-              loc: `${baseUrl}/umrli/${city.toLowerCase()}`,
+              loc: `${baseUrl}/umrli/${citySlug(city)}`,
               lastmod: today,
               changefreq: 'weekly',
               priority: '0.8'
@@ -115,7 +116,7 @@ const SitemapIndex = () => {
         cities.forEach(city => {
           if (city) {
             urls.push({
-              loc: `${baseUrl}/sprovodi/${city.toLowerCase()}`,
+              loc: `${baseUrl}/sprovodi/${citySlug(city)}`,
               lastmod: today,
               changefreq: 'weekly',
               priority: '0.8'

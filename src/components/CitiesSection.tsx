@@ -4,6 +4,7 @@ import { MapPin, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeCityName } from '@/lib/cityRegions';
+import { citySlug } from '@/lib/cityMatch';
 
 interface CityData {
   name: string;
@@ -100,7 +101,7 @@ const CitiesSection = () => {
               {mainCities.map((city) => (
                 <Link
                   key={city.name}
-                  to={`/umrli/${city.name.toLowerCase()}`}
+                  to={`/umrli/${citySlug(city.name)}`}
                   className="flex items-center justify-between rounded-lg border border-memorial-gold/40 bg-memorial-gold/5 px-4 py-3 transition-colors hover:border-memorial-gold hover:bg-memorial-gold/15 group"
                 >
                   <span className="font-semibold text-primary group-hover:text-memorial-gold transition-colors">

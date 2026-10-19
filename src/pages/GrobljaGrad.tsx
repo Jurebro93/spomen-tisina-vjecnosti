@@ -7,6 +7,7 @@ import MemorialCtaSection from '@/components/MemorialCtaSection';
 import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
+import { citySlug } from '@/lib/cityMatch';
 
 const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
 
@@ -38,17 +39,17 @@ const GrobljaGrad = () => {
       <Helmet>
         <title>{title}</title>
         <meta name="description" content={description} />
-        <link rel="canonical" href={`https://osmrtnica.com.hr/groblja/${city.toLowerCase()}`} />
+        <link rel="canonical" href={`https://osmrtnica.com.hr/groblja/${citySlug(city)}`} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://osmrtnica.com.hr/groblja/${city.toLowerCase()}`} />
+        <meta property="og:url" content={`https://osmrtnica.com.hr/groblja/${citySlug(city)}`} />
         {!loading && cemeteries.length === 0 && <meta name="robots" content="noindex,follow" />}
         <script type="application/ld+json">
           {JSON.stringify(
             breadcrumbJsonLd([
               { name: 'Naslovnica', path: '/' },
-              { name: `Umrli ${cityName}`, path: `/umrli/${city.toLowerCase()}` },
+              { name: `Umrli ${cityName}`, path: `/umrli/${citySlug(city)}` },
               { name: `Groblja ${cityName}` },
             ]),
           )}
@@ -76,10 +77,10 @@ const GrobljaGrad = () => {
         )}
 
         <div className="flex flex-wrap gap-4 text-sm">
-          <Link to={`/umrli/${city.toLowerCase()}`} className="text-memorial-gold hover:underline">
+          <Link to={`/umrli/${citySlug(city)}`} className="text-memorial-gold hover:underline">
             Osmrtnice {cityName}
           </Link>
-          <Link to={`/sprovodi/${city.toLowerCase()}`} className="text-memorial-gold hover:underline">
+          <Link to={`/sprovodi/${citySlug(city)}`} className="text-memorial-gold hover:underline">
             Raspored sprovoda {cityName}
           </Link>
         </div>

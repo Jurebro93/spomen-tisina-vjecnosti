@@ -70,12 +70,6 @@ const slugifyCemeteryName = (name) => {
 };
 const withGrobljePrefix = (naziv) => (/\bgroblj/.test(fold(naziv)) ? naziv : `Groblje ${naziv}`);
 
-// Same capitalisation as the React pages (useParams value, first letter upper).
-const cityFromParam = (param) => {
-  const c = decodeURIComponent(param);
-  return c.charAt(0).toUpperCase() + c.slice(1);
-};
-
 const todayZagreb = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const shiftDays = (ymd, days) => {
@@ -155,7 +149,24 @@ async function fetchCemeteries() {
     });
 }
 
-const cemeteriesInCity = (all, city) => all.filter((c) => c.grad && fold(c.grad) === fold(city));
+const slugify = (v) =>
+  fold(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+const cemeteriesInCity = (all, city) => all.filter((c) => c.grad && slugify(c.grad) === slugify(city));
+
+// "metkovic" -> "Metković" as written in the data, else "Slavonski Brod" from the slug.
+async function cityName(param) {
+  const label = decodeURIComponent(param)
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+  try {
+    const rows = await sb(`obituaries?select=mjesto_smrti&mjesto_smrti=imatch.${encodeURIComponent(`^${cityPattern(label)}$`)}&limit=1`);
+    return rows[0]?.mjesto_smrti?.trim() || label;
+  } catch {
+    return label;
+  }
+}
 
 const obituaryItem = (o) => {
   const a = age(o.datum_rodenja, o.datum_smrti);
@@ -189,7 +200,7 @@ const page = (body) => `<main class="container mx-auto px-4 py-8" data-ssr="1">$
 // ---------- page builders: each returns { title, description, canonical, body, jsonld[], noindex } ----------
 
 async function umrliCity(param) {
-  let city = cityFromParam(param);
+  let city = await cityName(param);
   const path = `/umrli/${param}`;
   const [obits, cems] = await Promise.all([
     sb(
@@ -220,7 +231,7 @@ ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cem
 }
 
 async function sprovodiCity(param) {
-  let city = cityFromParam(param);
+  let city = await cityName(param);
   const path = `/sprovodi/${param}`;
   const today = todayZagreb();
   const isZagreb = fold(city) === 'zagreb';
@@ -265,7 +276,7 @@ ${services.length ? `<h2>Pogrebna poduzeća u gradu ${esc(city)}</h2><ul>${servi
 
 async function grobljaCity(param) {
   const path = `/groblja/${param}`;
-  const cityCems = cemeteriesInCity(await fetchCemeteries(), cityFromParam(param));
+  const cityCems = cemeteriesInCity(await fetchCemeteries(), decodeURIComponent(param));
   if (!cityCems.length) return null;
   const city = cityCems[0].grad;
   const title = `Groblja ${city} | Adrese, radno vrijeme i kontakti`;

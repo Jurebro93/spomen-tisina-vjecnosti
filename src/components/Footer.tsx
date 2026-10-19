@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 import { useToast } from '@/hooks/use-toast';
 import { openCookieSettings } from '@/lib/legal';
+import { citySlug } from '@/lib/cityMatch';
 const logo = "/logo-osmrtnica.png";
 const Footer = () => {
   const { toast } = useToast();
@@ -111,7 +112,7 @@ const Footer = () => {
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {cities.map(city => (
-              <Link key={city} to={`/umrli/${city.toLowerCase()}`} className="text-center py-2 px-3 text-sm text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/5 rounded transition-colors">
+              <Link key={city} to={`/umrli/${citySlug(city)}`} className="text-center py-2 px-3 text-sm text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/5 rounded transition-colors">
                 {city}
               </Link>
             ))}

@@ -14,6 +14,7 @@ import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
+import { useCityName } from '@/hooks/useCityName';
 
 type ScheduleRow = {
   id: string;
@@ -75,7 +76,7 @@ const daysAgo = (days: number) => {
 
 const Sprovodi = () => {
   const { city } = useParams();
-  const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const cityName = useCityName(city);
   
   const location = useLocation();
   const seoPath = location.pathname;

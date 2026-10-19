@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import AuthTopBar from '@/components/AuthTopBar';
 import { Button } from '@/components/ui/button';
+import { citySlug } from '@/lib/cityMatch';
 const logo = "/logo-osmrtnica.png";
 
 const cityLinks = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar'];
@@ -77,7 +78,7 @@ const HomepageTwoHeader = () => {
                 <p className="mb-2 px-2 text-xs text-primary-foreground/65">Osmrtnice po gradovima</p>
                 <div className="grid grid-cols-2 gap-1">
                   {cityLinks.map((city) => (
-                    <Link key={city} to={`/umrli/${city.toLowerCase()}`} onClick={() => setOpen(false)} className="min-h-11 rounded px-2 py-3 text-sm hover:bg-primary-foreground/10">{city}</Link>
+                    <Link key={city} to={`/umrli/${citySlug(city)}`} onClick={() => setOpen(false)} className="min-h-11 rounded px-2 py-3 text-sm hover:bg-primary-foreground/10">{city}</Link>
                   ))}
                 </div>
               </div>

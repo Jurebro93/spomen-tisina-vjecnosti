@@ -21,3 +21,22 @@ export const cityOrFilter = (city: string, columns: string[]): string => {
   const pattern = `"${cityPattern(city)}"`;
   return columns.map((col) => `${col}.imatch.${pattern}`).join(',');
 };
+
+/** URL slug for a city page: "Slavonski Brod" -> "slavonski-brod", "Metković" -> "metkovic". */
+export const citySlug = (city: string): string =>
+  city
+    .trim()
+    .toLowerCase()
+    .replace(/[čćžšđ]/g, (ch) => FOLD[ch])
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/** Readable fallback from a slug: "slavonski-brod" -> "Slavonski Brod". */
+export const cityLabelFromSlug = (slug: string): string =>
+  decodeURIComponent(slug)
+    .split(/[-\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
