@@ -14,6 +14,7 @@ import Gradovi from "./pages/Gradovi";
 import Sprovodi from "./pages/Sprovodi";
 import MemorijalniVrt from "./pages/MemorijalniVrt";
 import Informacije from "./pages/Informacije";
+import BesplatniVodic from "./pages/BesplatniVodic";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import ObituaryPage from "./pages/ObituaryPage";
@@ -155,6 +156,7 @@ const App = () => {
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/moj-racun" element={<MojRacun />} />
             <Route path="/informacije" element={<Informacije />} />
+            <Route path="/besplatni-vodic" element={<BesplatniVodic />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/virtualne-svijece" element={<VirtualneSvijece />} />

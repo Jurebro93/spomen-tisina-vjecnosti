@@ -7,3 +7,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+
+# The free guide PDF is handed out after an e-mail signup; keep it out of search results.
+[[headers]]
+  for = "/vodic/*.pdf"
+  [headers.values]
+    X-Robots-Tag = "noindex"
