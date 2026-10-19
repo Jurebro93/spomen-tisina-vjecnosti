@@ -522,14 +522,14 @@ ${cityLinks(cities, 'umrli')}
 
 async function sprovodiHub() {
   const today = todayZagreb();
-  const [obits, zagreb, cities] = await Promise.all([
+  const [obits, scheduled, cities] = await Promise.all([
     sb(`obituaries?select=${OBIT_FIELDS}&datum_ukopa=gte.${today}&order=datum_ukopa.asc,vrijeme_ukopa.asc&limit=80`),
-    sb(`sprovodi?select=ime,prezime,godina,groblje,datum_sprovoda,vrijeme_sprovoda&izvor=eq.gradska-groblja-zagreb&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=80`),
+    sb(`sprovodi?select=ime,prezime,godina,groblje,grad,datum_sprovoda,vrijeme_sprovoda&izvor=not.is.null&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=120`),
     topCities(),
   ]);
   const rows = [
     ...dedupe(obits).map((o) => ({ ...o, date: o.datum_ukopa, time: o.vrijeme_ukopa, place: o.mjesto_smrti })),
-    ...zagreb.map((f) => ({ ...f, date: f.datum_sprovoda, time: f.vrijeme_sprovoda, place: 'Zagreb' })),
+    ...scheduled.map((f) => ({ ...f, date: f.datum_sprovoda, time: f.vrijeme_sprovoda, place: f.grad })),
   ].sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
   const row = (f) => {
     const name = `${esc(f.ime)} ${esc(f.prezime)}`;
