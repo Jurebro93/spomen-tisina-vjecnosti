@@ -85,27 +85,29 @@ export default function BesplatniVodic() {
       <main>
         <section className="border-b border-border bg-memorial-parchment/60 dark:bg-muted/30">
           <div className="container mx-auto grid gap-10 px-4 py-10 md:grid-cols-[minmax(0,1fr)_minmax(240px,340px)] md:items-center md:py-16">
-            <div className="max-w-2xl">
+            {/* On phones the form comes right after the headline; the longer copy follows it. */}
+            <div className="flex max-w-2xl flex-col">
               <p className="text-sm font-semibold uppercase tracking-wide text-memorial-gold">Besplatni vodič za obitelji</p>
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-primary sm:text-4xl lg:text-5xl">
+              <h1 className="order-1 mt-3 text-3xl font-bold leading-tight text-primary sm:text-4xl lg:text-5xl">
                 Kad izgubite voljenu osobu: što učiniti korak po korak
               </h1>
-              <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
+              <p className="order-3 mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
                 Kad netko umre, obitelj u nekoliko dana mora donijeti desetke odluka. Ovaj vodič smo istražili i napisali da vam olakša taj dio:
                 od prvog poziva do obiteljske mirovine i ostavine, redom kojim stvari dolaze i bez pravnog žargona.
               </p>
-              <p className="mt-4 text-base leading-relaxed text-foreground sm:text-lg">
+              <p className="order-3 mt-4 text-base leading-relaxed text-foreground sm:text-lg">
                 Svaki rok i iznos provjerili smo u listopadu 2026. prema službenim izvorima, od gov.hr i HZMO-a do Porezne uprave i Narodnih novina.
                 Dajemo ga <strong>potpuno besplatno</strong>, tražimo samo vaš e-mail.
               </p>
-              <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+              <ul className="order-3 mt-6 grid gap-2 sm:grid-cols-2">
                 {FACTS.map(({ icon: Icon, label }) => (
                   <li key={label} className="flex items-center gap-2 text-sm text-foreground/80">
                     <Icon className="h-4 w-4 shrink-0 text-memorial-gold" aria-hidden="true" /> {label}
                   </li>
                 ))}
               </ul>
-              <div className="mt-8 max-w-md rounded-xl border border-memorial-gold/40 bg-background p-5 shadow-sm">
+              <p className="order-1 mt-3 text-base text-muted-foreground md:hidden">Besplatni PDF od {EBOOK.pages} stranice, provjeren prema službenim izvorima.</p>
+              <div className="order-2 mt-5 max-w-md rounded-xl md:order-3 md:mt-8 border border-memorial-gold/40 bg-background p-5 shadow-sm">
                 <p className="mb-3 font-semibold text-primary">Upišite e-mail i odmah preuzmite vodič</p>
                 <EbookForm placement="landing_top" buttonLabel="Preuzmite besplatni vodič" />
               </div>
@@ -115,7 +117,7 @@ export default function BesplatniVodic() {
               alt="Naslovnica vodiča Kad izgubite voljenu osobu"
               width={800}
               height={1132}
-              className="mx-auto w-56 rounded-sm shadow-2xl sm:w-72 md:w-full"
+              className="hidden w-full rounded-sm shadow-2xl md:block"
             />
           </div>
         </section>
