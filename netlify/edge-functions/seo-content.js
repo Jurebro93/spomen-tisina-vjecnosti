@@ -298,7 +298,13 @@ async function sprovodiCity(param) {
   const isZagreb = fold(city) === 'zagreb';
   const funeralsQ = isZagreb
     ? sb(`sprovodi?select=ime,prezime,godina,groblje,tip_sprovoda,datum_sprovoda,vrijeme_sprovoda&grad=eq.Zagreb&izvor=eq.gradska-groblja-zagreb&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=150`)
-    : sb(`obituaries?select=ime,prezime,groblje,datum_ukopa,vrijeme_ukopa,datum_rodenja,datum_smrti,slug&${cityOr(city, ['mjesto_smrti', 'groblje', 'mjesna_zajednica'])}&datum_ukopa=gte.${today}&order=datum_ukopa.asc&limit=150`);
+    : Promise.all([
+      sb(`obituaries?select=ime,prezime,groblje,datum_ukopa,vrijeme_ukopa,datum_rodenja,datum_smrti,slug&${cityOr(city, ['mjesto_smrti', 'groblje', 'mjesna_zajednica'])}&datum_ukopa=gte.${today}&order=datum_ukopa.asc&limit=150`),
+      // Schedules scraped from the city's cemetery company (sync-gradovi-sprovodi).
+      sb(`sprovodi?select=ime,prezime,godina,groblje,tip_sprovoda,datum_sprovoda,vrijeme_sprovoda&grad=imatch.${encodeURIComponent(`^${cityPattern(city)}$`)}&izvor=not.is.null&datum_sprovoda=gte.${today}&limit=150`),
+    ]).then(([obits, scheduled]) =>
+      [...obits, ...scheduled].sort((a, b) =>
+        `${a.datum_sprovoda || a.datum_ukopa} ${a.vrijeme_sprovoda || a.vrijeme_ukopa || ''}`.localeCompare(`${b.datum_sprovoda || b.datum_ukopa} ${b.vrijeme_sprovoda || b.vrijeme_ukopa || ''}`)));
   const recentQ = isZagreb
     ? Promise.resolve([])
     : sb(`obituaries?select=ime,prezime,groblje,datum_ukopa,vrijeme_ukopa,datum_rodenja,datum_smrti,slug&${cityOr(city, ['mjesto_smrti', 'groblje', 'mjesna_zajednica'])}&datum_ukopa=lt.${today}&datum_ukopa=gte.${shiftDays(today, -14)}&order=datum_ukopa.desc&limit=40`);
@@ -516,14 +522,14 @@ ${cityLinks(cities, 'umrli')}
 
 async function sprovodiHub() {
   const today = todayZagreb();
-  const [obits, zagreb, cities] = await Promise.all([
+  const [obits, scheduled, cities] = await Promise.all([
     sb(`obituaries?select=${OBIT_FIELDS}&datum_ukopa=gte.${today}&order=datum_ukopa.asc,vrijeme_ukopa.asc&limit=80`),
-    sb(`sprovodi?select=ime,prezime,godina,groblje,datum_sprovoda,vrijeme_sprovoda&izvor=eq.gradska-groblja-zagreb&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=80`),
+    sb(`sprovodi?select=ime,prezime,godina,groblje,grad,datum_sprovoda,vrijeme_sprovoda&izvor=not.is.null&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=120`),
     topCities(),
   ]);
   const rows = [
     ...dedupe(obits).map((o) => ({ ...o, date: o.datum_ukopa, time: o.vrijeme_ukopa, place: o.mjesto_smrti })),
-    ...zagreb.map((f) => ({ ...f, date: f.datum_sprovoda, time: f.vrijeme_sprovoda, place: 'Zagreb' })),
+    ...scheduled.map((f) => ({ ...f, date: f.datum_sprovoda, time: f.vrijeme_sprovoda, place: f.grad })),
   ].sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
   const row = (f) => {
     const name = `${esc(f.ime)} ${esc(f.prezime)}`;

@@ -54,6 +54,9 @@ verify_jwt = false
 [functions.sync-zagreb-sprovodi]
 verify_jwt = false
 
+[functions.sync-gradovi-sprovodi]
+verify_jwt = false
+
 [functions.search-famous-portraits]
 verify_jwt = false
 
