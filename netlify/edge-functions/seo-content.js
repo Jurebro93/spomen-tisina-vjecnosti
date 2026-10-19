@@ -99,10 +99,17 @@ async function sb(path) {
   }
 }
 
-// PostgREST or=() filter matching the React pages' .or(...ilike.%city%...).
+// Same as src/lib/cityMatch.ts: ASCII slugs (/umrli/metkovic) must match
+// "Metković", hyphens must match spaces.
+const CLASSES = { c: '[cčć]', s: '[sš]', z: '[zž]', d: '[dđ]' };
+const cityPattern = (city) =>
+  fold(city)
+    .split('')
+    .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
+    .join('');
 const cityOr = (city, cols) => {
-  const v = encodeURIComponent(`*${city.replace(/[,()*]/g, ' ')}*`);
-  return `or=(${cols.map((c) => `${c}.ilike.${v}`).join(',')})`;
+  const v = encodeURIComponent(`"${cityPattern(city)}"`);
+  return `or=(${cols.map((c) => `${c}.imatch.${v}`).join(',')})`;
 };
 
 const dedupe = (rows) => {

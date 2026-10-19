@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Flame, ChevronDown, FileText, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cityOrFilter } from '@/lib/cityMatch';
 const obituary1 = "/site/sample-obituary-1.jpg";
 const obituary2 = "/site/sample-obituary-2.jpg";
 import { SEOHelmet } from '@/hooks/useSEO';
@@ -69,7 +70,7 @@ const Umrli = () => {
       const { data, error } = await supabase
         .from('obituaries')
         .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, biografija, fotografija_url, profesija, slug')
-        .or(`mjesto_smrti.ilike.%${cityName}%,mjesto_rodenja.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'mjesto_rodenja', 'groblje', 'mjesna_zajednica']))
         .order('datum_ukopa', { ascending: false, nullsFirst: false });
 
       if (error) {
@@ -96,14 +97,14 @@ const Umrli = () => {
       const { data: obituariesData, error: obituariesError } = await supabase
         .from('obituaries')
         .select('id')
-        .or(`mjesto_smrti.ilike.%${cityName}%,mjesto_rodenja.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'mjesto_rodenja']))
         .gte('created_at', startOfMonth.toISOString());
 
       // Fetch funerals this week  
       const { data: funeralsData, error: funeralsError } = await supabase
         .from('obituaries')
         .select('id')
-        .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
         .gte('datum_ukopa', startOfWeek.toISOString().split('T')[0]);
 
       if (obituariesError) {
@@ -146,7 +147,7 @@ const Umrli = () => {
           id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, 
           groblje, profesija, mjesto_smrti
         `)
-        .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
         .gte('datum_ukopa', lastWeek.toISOString().split('T')[0])
         .lte('datum_ukopa', nextWeek.toISOString().split('T')[0])
         .order('datum_ukopa', { ascending: false }); // Sort from newest to oldest

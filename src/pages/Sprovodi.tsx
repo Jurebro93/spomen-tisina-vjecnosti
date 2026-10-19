@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Star, ExternalLink, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cityOrFilter } from '@/lib/cityMatch';
 import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
@@ -125,7 +126,7 @@ const Sprovodi = () => {
         const { data: sprovodiData, error: sprovodiError } = await supabase
           .from('obituaries')
           .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
-          .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
           .gte('datum_ukopa', zagrebToday())
           .order('datum_ukopa', { ascending: true });
 
@@ -140,7 +141,7 @@ const Sprovodi = () => {
         const { data: recentData } = await supabase
           .from('obituaries')
           .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
-          .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
           .lt('datum_ukopa', zagrebToday())
           .gte('datum_ukopa', daysAgo(14))
           .order('datum_ukopa', { ascending: false })
