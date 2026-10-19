@@ -1,4 +1,4 @@
-import { trackFunnel, getAttribution } from '@/lib/funnel';
+import { trackFunnel, getAttribution, type FunnelStep } from '@/lib/funnel';
 import { trackInitiateCheckout, trackMemorialStarted, trackStartMemorial } from '@/lib/metaPixel';
 import { trackGa4BeginCheckout, trackGa4MemorialStarted } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
@@ -302,6 +302,10 @@ const KreirajMemorijal = () => {
   );
 
   useEffect(() => { void trackFunnel('start_create'); trackStartFromBlog(); }, []);
+  // Wizard drop-off: one count per step reached in this tab (shown in Admin → Statistika → Google i ponašanje).
+  useEffect(() => {
+    if (deceased) void trackFunnel(`wizard_${step + 1}` as FunnelStep);
+  }, [deceased, step]);
 
   // Content chosen in a blog widget (dedication / song) is offered as a starting suggestion.
   useEffect(() => {
