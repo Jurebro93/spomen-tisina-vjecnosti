@@ -8,6 +8,7 @@ const logo = "/logo-osmrtnica.png";
 import { useAuth } from '@/hooks/useAuth';
 import AuthTopBar from '@/components/AuthTopBar';
 import { useSignOut } from '@/hooks/useSignOut';
+import { citySlug } from '@/lib/cityMatch';
 
 
 interface NavDropdownItem {
@@ -113,7 +114,7 @@ const Header = () => {
   const handleSearch = () => {
     // If only city is selected (no name entered), navigate to city page
     if (searchCity && searchCity !== 'all' && !searchName.trim()) {
-      navigate(`/umrli/${searchCity}`);
+      navigate(`/umrli/${citySlug(searchCity)}`);
     } else if (searchName.trim()) {
       // Navigate to search results page with query parameters
       const searchParams = new URLSearchParams();
@@ -124,7 +125,7 @@ const Header = () => {
       navigate(`/pretraga?${searchParams.toString()}`);
     } else if (searchCity && searchCity !== 'all') {
       // Navigate to city page if only city is selected
-      navigate(`/umrli/${searchCity}`);
+      navigate(`/umrli/${citySlug(searchCity)}`);
     }
   };
 
@@ -172,7 +173,7 @@ const Header = () => {
               label="Umrli"
               to="/umrli"
               items={mainCities.map((city) => ({
-                to: `/umrli/${city.toLowerCase()}`,
+                to: `/umrli/${citySlug(city)}`,
                 title: `Umrli ${city}`,
                 description: `Osmrtnice za grad ${city}`,
               }))}
@@ -182,7 +183,7 @@ const Header = () => {
               label="Sprovodi"
               to="/sprovodi"
               items={mainCities.map((city) => ({
-                to: `/sprovodi/${city.toLowerCase()}`,
+                to: `/sprovodi/${citySlug(city)}`,
                 title: `Sprovodi ${city}`,
                 description: `Pogrebne usluge u gradu ${city}`,
               }))}
@@ -192,7 +193,7 @@ const Header = () => {
               label="Groblja"
               to="/groblja"
               items={mainCities.map((city) => ({
-                to: `/groblja/${city.toLowerCase()}`,
+                to: `/groblja/${citySlug(city)}`,
                 title: `Groblja ${city}`,
                 description: `Groblja u gradu ${city}`,
               }))}
@@ -321,7 +322,7 @@ const Header = () => {
                     {mainCities.map((city) => (
                       <Link
                         key={city}
-                        to={`/umrli/${city.toLowerCase()}`}
+                        to={`/umrli/${citySlug(city)}`}
                         className="block text-sm text-primary-foreground/80 hover:text-memorial-gold transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -349,7 +350,7 @@ const Header = () => {
                     {mainCities.map((city) => (
                       <Link
                         key={city}
-                        to={`/sprovodi/${city.toLowerCase()}`}
+                        to={`/sprovodi/${citySlug(city)}`}
                         className="block text-sm text-primary-foreground/80 hover:text-memorial-gold transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -377,7 +378,7 @@ const Header = () => {
                     {mainCities.map((city) => (
                       <Link
                         key={city}
-                        to={`/groblja/${city.toLowerCase()}`}
+                        to={`/groblja/${citySlug(city)}`}
                         className="block text-sm text-primary-foreground/80 hover:text-memorial-gold transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >

@@ -14,34 +14,13 @@ export const useSEO = (pagePath: string) => {
   useEffect(() => {
     const fetchSEOData = async () => {
       try {
-        // Build candidate paths: exact, trailing variant, dynamic patterns, parent, root
+        // Exact path only (with and without trailing slash). Falling back to
+        // the parent path gave every city without its own row the /umrli title
+        // ("Umrli | Pretraživanje osmrtnica"), overriding the page's own title.
         const normalize = (p: string) => (p.endsWith('/') && p !== '/' ? p.slice(0, -1) : p);
         const normalized = normalize(pagePath);
         const altNormalized = normalized === pagePath ? `${pagePath}/` : normalized;
-
-        const dynamicUmrliColon = normalized.replace(/^\/umrli\/[^/]+\/?$/, '/umrli/:city');
-        const dynamicUmrliBracket = normalized.replace(/^\/umrli\/[^/]+\/?$/, '/umrli/[city]');
-
-        const parentPath = (() => {
-          const parts = normalized.split('/');
-          if (parts.length > 1) {
-            const parent = parts.slice(0, -1).join('/') || '/';
-            return parent === '' ? '/' : parent;
-          }
-          return '/';
-        })();
-
-        const candidates = Array.from(
-          new Set([
-            normalized,
-            altNormalized,
-            dynamicUmrliColon,
-            dynamicUmrliBracket,
-            '/umrli/*',
-            parentPath,
-            '/',
-          ].filter(Boolean))
-        );
+        const candidates = Array.from(new Set([normalized, altNormalized]));
 
         const { data, error } = await supabase
           .from('on_page_seo')

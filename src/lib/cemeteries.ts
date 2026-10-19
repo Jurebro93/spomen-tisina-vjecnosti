@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { citySlug } from '@/lib/cityMatch';
 
 export type CemeteryRow = {
   Grad: string | null;
@@ -75,8 +76,8 @@ export const slugifyCemeteryName = (name: string): string => {
   return s;
 };
 
-const normalizeCity = (city: string) =>
-  city.trim().toLowerCase().replace(/[čćžšđ]/g, (c) => DIACRITICS[c] || c);
+// Compare as URL slugs so "slavonski-brod" (from the URL) matches "Slavonski Brod".
+const normalizeCity = (city: string) => citySlug(decodeURIComponent(city));
 
 /** Fetch all cemeteries with deterministic, de-duplicated slugs. */
 export const fetchCemeteries = async (): Promise<Cemetery[]> => {

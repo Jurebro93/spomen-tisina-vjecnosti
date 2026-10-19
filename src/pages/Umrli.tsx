@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Flame, ChevronDown, FileText, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cityOrFilter } from '@/lib/cityMatch';
 const obituary1 = "/site/sample-obituary-1.jpg";
 const obituary2 = "/site/sample-obituary-2.jpg";
 import { SEOHelmet } from '@/hooks/useSEO';
@@ -21,6 +22,7 @@ import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
 import CityObituaryAlert from '@/components/CityObituaryAlert';
 import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
+import { useCityName } from '@/hooks/useCityName';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -47,7 +49,7 @@ const localDateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDat
 
 const Umrli = () => {
   const { city } = useParams();
-  const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const cityName = useCityName(city);
   
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ const Umrli = () => {
       const { data, error } = await supabase
         .from('obituaries')
         .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, biografija, fotografija_url, profesija, slug')
-        .or(`mjesto_smrti.ilike.%${cityName}%,mjesto_rodenja.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'mjesto_rodenja', 'groblje', 'mjesna_zajednica']))
         .order('datum_ukopa', { ascending: false, nullsFirst: false });
 
       if (error) {
@@ -96,14 +98,14 @@ const Umrli = () => {
       const { data: obituariesData, error: obituariesError } = await supabase
         .from('obituaries')
         .select('id')
-        .or(`mjesto_smrti.ilike.%${cityName}%,mjesto_rodenja.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'mjesto_rodenja']))
         .gte('created_at', startOfMonth.toISOString());
 
       // Fetch funerals this week  
       const { data: funeralsData, error: funeralsError } = await supabase
         .from('obituaries')
         .select('id')
-        .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
         .gte('datum_ukopa', startOfWeek.toISOString().split('T')[0]);
 
       if (obituariesError) {
@@ -146,7 +148,7 @@ const Umrli = () => {
           id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, 
           groblje, profesija, mjesto_smrti
         `)
-        .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+        .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
         .gte('datum_ukopa', lastWeek.toISOString().split('T')[0])
         .lte('datum_ukopa', nextWeek.toISOString().split('T')[0])
         .order('datum_ukopa', { ascending: false }); // Sort from newest to oldest
@@ -240,7 +242,10 @@ const Umrli = () => {
             {/* Content */}
             <div className="w-full">
               <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-3">
-                {obituary.ime} {obituary.prezime}
+                {/* Real link so crawlers can reach each obituary; the card's onClick still handles the rest. */}
+                <Link to={`/${obituary.slug}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+                  {obituary.ime} {obituary.prezime}
+                </Link>
               </h3>
               
               <div className="space-y-2 text-xs sm:text-sm text-muted-foreground mb-3">
@@ -581,7 +586,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/groblja/${city.toLowerCase()}`}
+                to={`/groblja/${city}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Groblja {city}</span>
@@ -610,7 +615,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/sprovodi/${city.toLowerCase()}`}
+                to={`/sprovodi/${city}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Sprovodi {city}</span>

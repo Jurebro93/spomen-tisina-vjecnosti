@@ -12,6 +12,7 @@ import VirtualCandles from '@/components/VirtualCandles';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { classifyCityRegion, CityRegion, isLikelyCityName } from '@/lib/cityRegions';
+import { citySlug } from '@/lib/cityMatch';
 
 type City = { name: string; count: number };
 
@@ -151,7 +152,7 @@ const Gradovi = () => {
                       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Glavni gradovi</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                         {mainCities.map((c) => (
-                          <Link key={c.name} to={`/umrli/${c.name.toLowerCase()}`}
+                          <Link key={c.name} to={`/umrli/${citySlug(c.name)}`}
                             className="flex items-center justify-between rounded-lg border border-memorial-gold/40 bg-memorial-gold/5 px-4 py-3 transition-colors hover:border-memorial-gold hover:bg-memorial-gold/15 group">
                             <span className="font-semibold text-primary group-hover:text-memorial-gold">{c.name}</span>
                             <span className="flex items-center gap-1 text-sm text-muted-foreground"><Users className="h-3.5 w-3.5 text-memorial-gold" />{c.count}</span>
@@ -166,7 +167,7 @@ const Gradovi = () => {
                         <h3 className="text-xl font-semibold text-memorial-gold border-b border-memorial-gold/30 pb-1 mb-3">{letter}</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
                           {list.map((c) => (
-                            <Link key={c.name} to={`/umrli/${c.name.toLowerCase()}`}
+                            <Link key={c.name} to={`/umrli/${citySlug(c.name)}`}
                               className="flex items-center justify-between p-2.5 rounded-lg hover:bg-memorial-gold/10 transition-colors group">
                               <span className="font-medium text-primary group-hover:text-memorial-gold">{c.name}</span>
                               <span className="flex items-center gap-1 text-sm text-muted-foreground"><Users className="h-3 w-3" />{c.count}</span>
@@ -190,7 +191,7 @@ const Gradovi = () => {
         <h2 className="text-2xl font-bold text-primary mb-6">Groblja po gradovima</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {['Zagreb','Split','Rijeka','Osijek','Zadar','Pula','Varaždin','Dubrovnik'].map((g) => (
-            <Link key={g} to={`/groblja/${g.toLowerCase()}`} className="rounded-lg border border-memorial-gold/30 p-3 font-medium text-primary hover:bg-memorial-gold/10">Groblja {g}</Link>
+            <Link key={g} to={`/groblja/${citySlug(g)}`} className="rounded-lg border border-memorial-gold/30 p-3 font-medium text-primary hover:bg-memorial-gold/10">Groblja {g}</Link>
           ))}
         </div>
       </div></section>

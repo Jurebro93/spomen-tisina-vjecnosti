@@ -1,4 +1,4 @@
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -8,9 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, Star, ExternalLink, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { cityOrFilter } from '@/lib/cityMatch';
 import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
+import CemeteriesSection from '@/components/CemeteriesSection';
+import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
+import { useCityName } from '@/hooks/useCityName';
 
 type ScheduleRow = {
   id: string;
@@ -21,6 +25,7 @@ type ScheduleRow = {
   vrijeme: string;
   godine: number | null;
   tip: string;
+  slug?: string | null;
 };
 
 const ZAGREB_CEMETERY_ORDER = [
@@ -37,15 +42,49 @@ const ZAGREB_CEMETERY_ORDER = [
 const zagrebToday = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb' }).format(new Date());
 
+type ObituaryFuneral = {
+  id: string;
+  ime: string;
+  prezime: string;
+  groblje: string | null;
+  datum_ukopa: string | null;
+  vrijeme_ukopa: string | null;
+  datum_rodenja: string | null;
+  slug: string | null;
+};
+
+const toScheduleRow = (row: ObituaryFuneral): ScheduleRow[] => {
+  if (!row.datum_ukopa) return [];
+  return [{
+    id: row.id,
+    ime: row.ime,
+    prezime: row.prezime,
+    groblje: row.groblje || 'Nepoznato groblje',
+    datum: row.datum_ukopa,
+    vrijeme: row.vrijeme_ukopa || '',
+    godine: row.datum_rodenja ? new Date().getFullYear() - new Date(row.datum_rodenja).getFullYear() : null,
+    tip: 'Sprovod',
+    slug: row.slug,
+  }];
+};
+
+const daysAgo = (days: number) => {
+  const d = new Date(`${zagrebToday()}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+};
+
 const Sprovodi = () => {
   const { city } = useParams();
-  const cityName = city ? city.charAt(0).toUpperCase() + city.slice(1) : '';
+  const cityName = useCityName(city);
   
   const location = useLocation();
   const seoPath = location.pathname;
   
   const [sprovodi, setSprovodi] = useState<ScheduleRow[]>([]);
   const [funeralServices, setFuneralServices] = useState<any[]>([]);
+  const [recentSprovodi, setRecentSprovodi] = useState<ScheduleRow[]>([]);
+  const [cemeteries, setCemeteries] = useState<Cemetery[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,6 +95,8 @@ const Sprovodi = () => {
     try {
       setLoading(true);
       const isZagreb = city?.toLowerCase() === 'zagreb';
+      fetchCemeteriesByCity(cityName).then(setCemeteries);
+      setRecentSprovodi([]);
 
       if (isZagreb) {
         const { data, error } = await supabase
@@ -85,8 +126,8 @@ const Sprovodi = () => {
       } else {
         const { data: sprovodiData, error: sprovodiError } = await supabase
           .from('obituaries')
-          .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja')
-          .or(`mjesto_smrti.ilike.%${cityName}%,groblje.ilike.%${cityName}%,mjesna_zajednica.ilike.%${cityName}%`)
+          .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
+          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
           .gte('datum_ukopa', zagrebToday())
           .order('datum_ukopa', { ascending: true });
 
@@ -94,20 +135,19 @@ const Sprovodi = () => {
           console.error('Error fetching sprovodi:', sprovodiError);
           setSprovodi([]);
         } else {
-          setSprovodi((sprovodiData ?? []).flatMap((row) => {
-            if (!row.datum_ukopa) return [];
-            return [{
-              id: row.id,
-              ime: row.ime,
-              prezime: row.prezime,
-              groblje: row.groblje || 'Nepoznato groblje',
-              datum: row.datum_ukopa,
-              vrijeme: row.vrijeme_ukopa || '',
-              godine: row.datum_rodenja ? new Date().getFullYear() - new Date(row.datum_rodenja).getFullYear() : null,
-              tip: 'Sprovod',
-            }];
-          }));
+          setSprovodi((sprovodiData ?? []).flatMap(toScheduleRow));
         }
+
+        // Past two weeks, so a city with nothing scheduled still shows its recent funerals.
+        const { data: recentData } = await supabase
+          .from('obituaries')
+          .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
+          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
+          .lt('datum_ukopa', zagrebToday())
+          .gte('datum_ukopa', daysAgo(14))
+          .order('datum_ukopa', { ascending: false })
+          .limit(40);
+        setRecentSprovodi((recentData ?? []).flatMap(toScheduleRow));
       }
 
       // Fetch funeral services for the city
@@ -247,7 +287,11 @@ const Sprovodi = () => {
                                 {sprovod.vrijeme ? formatTime(sprovod.vrijeme) : '—'}
                               </td>
                               <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">
-                                {sprovod.ime} {sprovod.prezime}
+                                {sprovod.slug ? (
+                                  <Link to={`/${sprovod.slug}`} className="hover:underline">{sprovod.ime} {sprovod.prezime}</Link>
+                                ) : (
+                                  <>{sprovod.ime} {sprovod.prezime}</>
+                                )}
                               </td>
                               <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm text-muted-foreground hidden sm:table-cell whitespace-nowrap">
                                 {formatDate(sprovod.datum)}
@@ -268,24 +312,45 @@ const Sprovodi = () => {
           )}
         </div>
 
+        {recentSprovodi.length > 0 && (
+          <section className="mb-6 sm:mb-8">
+            <h2 className="text-xl sm:text-2xl font-display font-semibold mb-4 px-2">Sprovodi u posljednjih 14 dana</h2>
+            <Card>
+              <CardContent className="p-4 sm:p-6">
+                <ul className="divide-y divide-border/50 text-sm">
+                  {recentSprovodi.map((s) => (
+                    <li key={s.id} className="py-2 flex flex-wrap gap-x-3">
+                      <span className="text-muted-foreground whitespace-nowrap">{formatDate(s.datum)}{s.vrijeme ? ` u ${formatTime(s.vrijeme)}` : ''}</span>
+                      {s.slug ? <Link to={`/${s.slug}`} className="font-medium hover:underline">{s.ime} {s.prezime}</Link> : <span className="font-medium">{s.ime} {s.prezime}</span>}
+                      <span className="text-muted-foreground">{s.groblje}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        <CemeteriesSection cemeteries={cemeteries} cityName={cityName} />
+
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">12</div>
-              <div className="text-sm text-muted-foreground">Pogrebna poduzeća</div>
+              <div className="text-2xl font-bold text-primary mb-1">{sprovodi.length}</div>
+              <div className="text-sm text-muted-foreground">Najavljenih sprovoda</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">8</div>
+              <div className="text-2xl font-bold text-primary mb-1">{cemeteries.length}</div>
               <div className="text-sm text-muted-foreground">Groblja</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">4</div>
-              <div className="text-sm text-muted-foreground">Krematoriji</div>
+              <div className="text-2xl font-bold text-primary mb-1">{funeralServices.length}</div>
+              <div className="text-sm text-muted-foreground">Pogrebna poduzeća</div>
             </CardContent>
           </Card>
         </div>

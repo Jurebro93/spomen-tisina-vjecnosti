@@ -40,6 +40,9 @@ const OLD_SERVER = 'http://mail.osmrtnica.com.hr';
 // Retired URLs that Google still shows, moved to the page that now covers the topic.
 const MOVED = [
   ['/groblja/krematorij-mirogoj', '/groblje/gaj-urni-krematorij'],
+  // Old sitemap address still registered in Search Console; it rendered the SPA
+  // (HTML, not XML), which GSC reports as a sitemap error.
+  ['/sitemap_index.xml', '/sitemap.xml'],
 ];
 
 const lines = [

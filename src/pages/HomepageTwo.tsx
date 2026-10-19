@@ -28,6 +28,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
 import { formatLifespan } from '@/lib/utils';
 import { trackNewsletterSignup } from '@/lib/newsletterTracking';
+import { citySlug } from '@/lib/cityMatch';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 type Obituary = {
@@ -128,7 +129,7 @@ const HomepageTwo = () => {
     event.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName && city !== 'all') {
-      navigate(`/umrli/${city}`);
+      navigate(`/umrli/${citySlug(city)}`);
       return;
     }
     const params = new URLSearchParams();
@@ -272,7 +273,7 @@ const HomepageTwo = () => {
               <>
                 <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                   {orderedCities.slice(0, showAllCities ? undefined : 5).map((item) => (
-                    <Link key={item.name} to={`/umrli/${item.name.toLowerCase()}`} className="flex min-h-14 items-center justify-between rounded-md border border-border bg-card px-4 font-medium shadow-sm hover:border-accent hover:text-accent">
+                    <Link key={item.name} to={`/umrli/${citySlug(item.name)}`} className="flex min-h-14 items-center justify-between rounded-md border border-border bg-card px-4 font-medium shadow-sm hover:border-accent hover:text-accent">
                       <span className="break-words">{item.name}</span><ArrowRight className="ml-2 h-4 w-4 shrink-0" />
                     </Link>
                   ))}
