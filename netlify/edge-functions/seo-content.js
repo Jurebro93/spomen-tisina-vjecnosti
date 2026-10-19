@@ -6,9 +6,10 @@
 // HTML. React's createRoot replaces #root on load, so visitors end up with
 // the normal app and see the same data.
 //
-// Covered: /umrli/:grad, /sprovodi/:grad, /groblja/:grad, /groblje/:slug,
-// /blog/:slug and obituary pages /:slug. Anything else, any non-200 response
-// and any Supabase error fall through unchanged.
+// Covered: the homepage, the hubs /umrli, /sprovodi, /groblja, /gradovi and
+// /blog, /umrli/:grad, /sprovodi/:grad, /groblja/:grad, /groblje/:slug,
+// /blog/:slug, /memorijal/:slug and obituary pages /:slug. Anything else, any
+// non-200 response and any Supabase error fall through unchanged.
 
 const SUPABASE_URL = 'https://umpvnepxsqfkxjpclkxc.supabase.co';
 // Public anon key, already shipped in the client bundle.
@@ -444,8 +445,231 @@ ${o.biografija ? `<h2>O pokojniku</h2><p>${esc(stripTags(o.biografija))}</p>` : 
   };
 }
 
+// ---------- homepage and hubs ----------
+
+// obituary_city_counts mixes towns with parishes, regions and countries; keep
+// names that look like a place and have enough obituaries to fill a page.
+const NOT_CITIES = new Set(['bosna i hercegovina', 'hrvatska', 'dalmacija', 'lovrinac', 'sv', 'njemacka', 'austrija', 'srbija']);
+async function topCities(min = 10, max = 80) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/obituary_city_counts`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json' },
+      body: '{}',
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`supabase ${res.status}`);
+    const rows = await res.json();
+    return rows
+      .filter((c) => c.name && c.count >= min)
+      .filter((c) => !NOT_CITIES.has(fold(c.name)) && !/\s(u|na|kod|s|o)(\s|$)|\s-\s|groblje|župa|zupa|\d/i.test(c.name))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, max)
+      .map((c) => ({ name: c.name.trim(), slug: slugify(c.name) }));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const cityLinks = (cities, section) =>
+  `<ul>${cities.map((c) => `<li><a href="/${section}/${esc(c.slug)}">${esc(c.name)}</a></li>`).join('')}</ul>`;
+
+const OBIT_FIELDS = 'ime,prezime,datum_rodenja,datum_smrti,datum_ukopa,vrijeme_ukopa,mjesto_smrti,groblje,slug';
+
+async function homePage() {
+  const [obits, cities, seo] = await Promise.all([
+    sb(`obituaries?select=${OBIT_FIELDS}&order=datum_ukopa.desc.nullslast&limit=40`),
+    topCities(),
+    sb('on_page_seo?select=meta_title,meta_description&page_path=eq.%2F&limit=1'),
+  ]);
+  const body = page(`
+<h1>Osmrtnice Hrvatska</h1>
+<p>Osmrtnice, raspored sprovoda, groblja i virtualne svijeće za Hrvatsku i BiH. Obitelji ovdje objavljuju osmrtnice i čuvaju uspomenu na pokojnike u digitalnom memorijalu.</p>
+<h2>Najnovije osmrtnice</h2>
+<ul>${dedupe(obits).slice(0, 30).map(obituaryItem).join('')}</ul>
+<p><a href="/umrli">Sve osmrtnice</a> · <a href="/sprovodi">Raspored sprovoda</a> · <a href="/groblja">Groblja</a> · <a href="/blog">Blog</a></p>
+<h2>Umrli po gradovima</h2>
+${cityLinks(cities.slice(0, 40), 'umrli')}
+<h2>Digitalni memorijal</h2>
+<p><a href="/digitalni-memorijal">Digitalni memorijal</a> je trajna spomen-stranica s pričom o životu, fotografijama, sjećanjima obitelji i virtualnim svijećama.</p>`);
+  return {
+    title: seo[0]?.meta_title || null, description: seo[0]?.meta_description || '', canonical: SITE + '/', body, noindex: false,
+    jsonld: [{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Osmrtnica.com.hr', url: SITE + '/' }],
+  };
+}
+
+async function umrliHub() {
+  const [obits, cities] = await Promise.all([
+    sb(`obituaries?select=${OBIT_FIELDS}&order=datum_ukopa.desc.nullslast&limit=80`),
+    topCities(),
+  ]);
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / Umrli</nav>
+<h1>Umrli</h1>
+<p>Aktualne osmrtnice i informacije o sprovodima. Pretražite umrle po gradu ili otvorite osmrtnicu za datum i mjesto sprovoda.</p>
+<h2>Najnovije osmrtnice</h2>
+<ul>${dedupe(obits).slice(0, 60).map(obituaryItem).join('')}</ul>
+<h2>Umrli po gradovima</h2>
+${cityLinks(cities, 'umrli')}
+<p><a href="/gradovi">Svi gradovi</a> · <a href="/sprovodi">Raspored sprovoda</a></p>`);
+  return {
+    title: null, canonical: SITE + '/umrli', body, noindex: false,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli']])],
+  };
+}
+
+async function sprovodiHub() {
+  const today = todayZagreb();
+  const [obits, zagreb, cities] = await Promise.all([
+    sb(`obituaries?select=${OBIT_FIELDS}&datum_ukopa=gte.${today}&order=datum_ukopa.asc,vrijeme_ukopa.asc&limit=80`),
+    sb(`sprovodi?select=ime,prezime,godina,groblje,datum_sprovoda,vrijeme_sprovoda&izvor=eq.gradska-groblja-zagreb&datum_sprovoda=gte.${today}&order=datum_sprovoda.asc,vrijeme_sprovoda.asc&limit=80`),
+    topCities(),
+  ]);
+  const rows = [
+    ...dedupe(obits).map((o) => ({ ...o, date: o.datum_ukopa, time: o.vrijeme_ukopa, place: o.mjesto_smrti })),
+    ...zagreb.map((f) => ({ ...f, date: f.datum_sprovoda, time: f.vrijeme_sprovoda, place: 'Zagreb' })),
+  ].sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
+  const row = (f) => {
+    const name = `${esc(f.ime)} ${esc(f.prezime)}`;
+    const link = f.slug ? `<a href="/${esc(f.slug)}">${name}</a>` : name;
+    return `<li>${hrDate(f.date)}${f.time ? ' u ' + hhmm(f.time) : ''} – ${link}${f.groblje ? ', ' + esc(f.groblje) : ''}${f.place ? ` (${esc(f.place)})` : ''}</li>`;
+  };
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / Sprovodi</nav>
+<h1>Sprovodi u Hrvatskoj</h1>
+<p>Raspored sprovoda i ispraćaja po gradovima i grobljima u Hrvatskoj: datum, vrijeme i groblje.</p>
+<h2>Nadolazeći sprovodi</h2>
+${rows.length ? `<ul>${rows.slice(0, 120).map(row).join('')}</ul>` : '<p>Trenutno nema najavljenih sprovoda.</p>'}
+<h2>Sprovodi po gradovima</h2>
+${cityLinks(cities, 'sprovodi')}`);
+  return {
+    title: null, canonical: SITE + '/sprovodi', body, noindex: false,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Sprovodi', '/sprovodi']])],
+  };
+}
+
+async function grobljaHub() {
+  const cems = await fetchCemeteries();
+  const byCity = new Map();
+  for (const c of cems) {
+    if (!c.grad) continue;
+    const slug = slugify(c.grad);
+    if (!byCity.has(slug)) byCity.set(slug, { name: c.grad, slug, n: 0 });
+    byCity.get(slug).n += 1;
+  }
+  const cities = [...byCity.values()].sort((a, b) => a.name.localeCompare(b.name, 'hr'));
+  const described = cems.filter((c) => c.slug);
+  const title = 'Groblja u Hrvatskoj – popis po gradovima';
+  const description = 'Popis svih groblja u Hrvatskoj po gradovima – adrese, kontakti, radno vrijeme i raspored sprovoda.';
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / Groblja</nav>
+<h1>Groblja u Hrvatskoj</h1>
+<p>${esc(description)}</p>
+<h2>Groblja po gradovima</h2>
+<ul>${cities.map((c) => `<li><a href="/groblja/${esc(c.slug)}">${esc(c.name)}</a> (${c.n})</li>`).join('')}</ul>
+${described.length ? `<h2>Opisi groblja</h2><ul>${described.map(cemeteryItem).join('')}</ul>` : ''}`);
+  return {
+    title: `${title} | Osmrtnica.com.hr`, description, canonical: SITE + '/groblja', body, noindex: false,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Groblja', '/groblja']])],
+  };
+}
+
+async function gradoviHub() {
+  const cities = (await topCities(10, 400)).sort((a, b) => a.name.localeCompare(b.name, 'hr'));
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / Gradovi</nav>
+<h1>Umrli po gradovima</h1>
+<p>Popis gradova i mjesta u Hrvatskoj i Bosni i Hercegovini s osmrtnicama. Odaberite grad za osmrtnice, raspored sprovoda i groblja.</p>
+${cityLinks(cities, 'umrli')}`);
+  return {
+    title: 'Umrli po gradovima | Hrvatska i BiH | Osmrtnica.com.hr',
+    description: 'Popis svih gradova i mjesta u Hrvatskoj i Bosni i Hercegovini s osmrtnicama, poredan abecedno. Pronađite osmrtnice, memorijale, svijeće i groblja u svom gradu.',
+    canonical: SITE + '/gradovi', body, noindex: false,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Gradovi', '/gradovi']])],
+  };
+}
+
+async function blogHub() {
+  const posts = await sb('blogs?select=title,slug,excerpt,created_at&order=created_at.desc');
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / Blog</nav>
+<h1>Blog</h1>
+<p>Članci i savjeti za obitelji: organizacija sprovoda, osmrtnice, žalovanje i čuvanje uspomene.</p>
+<ul>${posts.filter((b) => b.slug).map((b) => `<li><a href="/blog/${esc(b.slug)}">${esc(b.title)}</a>${b.excerpt ? ` – ${esc(stripTags(b.excerpt).slice(0, 200))}` : ''}</li>`).join('')}</ul>`);
+  return {
+    title: null, canonical: SITE + '/blog', body, noindex: false,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog']])],
+  };
+}
+
+// Mirrors the head of src/pages/MemorijalStranica.tsx. Private or unpublished
+// memorials fall through: the page shows a request-access screen, not content.
+const yearOf = (iso) => (iso ? String(iso).slice(0, 4) : '');
+const lifeYears = (b, d) => {
+  const by = yearOf(b), dy = yearOf(d);
+  if (by && dy) return `${by}. – ${dy}.`;
+  if (dy) return `† ${dy}.`;
+  if (by) return `${by}. –`;
+  return '';
+};
+const richTextBlocks = (html) =>
+  String(html || '')
+    .split(/<\/(?:p|h[1-6]|li|blockquote|div)>|<br\s*\/?>/i)
+    .map(stripTags)
+    .filter(Boolean);
+
+async function memorijalSlug(slug) {
+  const rows = await sb(`memorials?select=deceased_id,slug,quote,life_story,visibility,status&slug=eq.${encodeURIComponent(slug)}&limit=1`);
+  const m = rows[0];
+  if (!m || m.status !== 'published' || m.visibility === 'private') return null;
+  const deceased = (await sb(`obituaries?select=ime,prezime,datum_rodenja,datum_smrti,mjesto_rodenja,mjesto_smrti,fotografija_url&id=eq.${encodeURIComponent(m.deceased_id)}&limit=1`))[0];
+  if (!deceased) return null;
+  const name = `${deceased.ime ?? ''} ${deceased.prezime ?? ''}`.trim();
+  const years = lifeYears(deceased.datum_rodenja, deceased.datum_smrti);
+  const path = `/memorijal/${slug}`;
+  const description = (m.quote
+    ? `${name} (${years}) — ${m.quote}`
+    : `Digitalni memorijal i mjesto sjećanja na ${name} (${years}). Podijelite uspomene, zapalite svijeću i pogledajte fotografije.`).slice(0, 155);
+  const facts = [
+    deceased.datum_rodenja && `Rođen/a: ${hrDate(deceased.datum_rodenja)}${deceased.mjesto_rodenja ? `, ${esc(deceased.mjesto_rodenja)}` : ''}`,
+    deceased.datum_smrti && `Preminuo/la: ${hrDate(deceased.datum_smrti)}${deceased.mjesto_smrti ? `, ${esc(deceased.mjesto_smrti)}` : ''}`,
+  ].filter(Boolean);
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/memorijali">Memorijali</a> / ${esc(name)}</nav>
+<article>
+<h1>${esc(name)}</h1>
+${years ? `<p>${esc(years)}</p>` : ''}
+${m.quote ? `<blockquote>${esc(m.quote)}</blockquote>` : ''}
+${facts.length ? `<ul>${facts.map((f) => `<li>${f}</li>`).join('')}</ul>` : ''}
+${richTextBlocks(m.life_story).map((p) => `<p>${esc(p)}</p>`).join('')}
+</article>
+<p><a href="/digitalni-memorijal">Napravi digitalni memorijal</a> za svoju voljenu osobu.</p>`);
+  const noindex = m.visibility !== 'public';
+  return {
+    title: `${name} (${years}) — memorijal i sjećanja`.slice(0, 60), description, canonical: SITE + path, body, noindex,
+    image: deceased.fotografija_url,
+    jsonld: noindex ? [] : [
+      breadcrumbLd([['Naslovnica', '/'], ['Memorijali', '/memorijali'], [name, path]]),
+      {
+        '@context': 'https://schema.org', '@type': 'Person', name,
+        ...(deceased.datum_rodenja ? { birthDate: deceased.datum_rodenja } : {}),
+        ...(deceased.datum_smrti ? { deathDate: deceased.datum_smrti } : {}),
+        ...(deceased.fotografija_url ? { image: deceased.fotografija_url } : {}),
+        url: SITE + path,
+      },
+    ],
+  };
+}
+
 function route(pathname) {
   const parts = pathname.split('/').filter(Boolean);
+  if (parts.length === 0) return homePage;
+  if (parts.length === 1) {
+    const hub = { umrli: umrliHub, sprovodi: sprovodiHub, groblja: grobljaHub, gradovi: gradoviHub, blog: blogHub }[parts[0]];
+    if (hub) return hub;
+  }
   if (parts.length === 2) {
     const [section, param] = parts;
     if (section === 'umrli') return () => umrliCity(param);
@@ -453,6 +677,7 @@ function route(pathname) {
     if (section === 'groblja') return () => grobljaCity(param);
     if (section === 'groblje') return () => grobljeSlug(decodeURIComponent(param));
     if (section === 'blog') return () => blogSlug(decodeURIComponent(param));
+    if (section === 'memorijal') return () => memorijalSlug(decodeURIComponent(param));
   }
   if (parts.length === 1 && !APP_PAGES.has(parts[0]) && !parts[0].includes('.')) {
     return () => obituarySlug(decodeURIComponent(parts[0]));
@@ -469,8 +694,9 @@ function inject(html, d) {
   const desc = esc(d.description);
   // Hand-written templates in public/ (e.g. /umrli/zadar) already carry a
   // better head; only the generic SPA shell gets these tags, except pages in
-  // the title test, whose head must match the test wording.
-  if (html.includes(GENERIC_TITLE) || d.forceHead) html = withHead(html, d, t, desc);
+  // the title test, whose head must match the test wording. A page without a
+  // title of its own (no on_page_seo row) keeps the shell's head.
+  if (d.title && (html.includes(GENERIC_TITLE) || d.forceHead)) html = withHead(html, d, t, desc);
   if (d.noindex) html = html.replace('</head>', '    <meta name="robots" content="noindex,follow" />\n  </head>');
   const ld = (d.jsonld || [])
     .map((j) => `<script type="application/ld+json" data-ssr="1">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`)

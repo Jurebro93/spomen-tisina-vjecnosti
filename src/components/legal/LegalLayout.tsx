@@ -2,7 +2,9 @@ import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { Helmet } from 'react-helmet-async';
 import { SEOHelmet } from '@/hooks/useSEO';
+import STATIC_HEADS from '@/lib/staticHeads.json';
 import { formatHrDate, LEGAL_EFFECTIVE_DATE } from '@/lib/legal';
 
 interface Props {
@@ -13,9 +15,22 @@ interface Props {
   children: ReactNode;
 }
 
-const LegalLayout = ({ title, path, version, intro, children }: Props) => (
+const HEADS: Record<string, { title: string; description: string }> = STATIC_HEADS;
+
+const LegalLayout = ({ title, path, version, intro, children }: Props) => {
+  const head = HEADS[path];
+  return (
   <>
     <SEOHelmet pagePath={path} />
+    {/* Same title and description as the build-time HTML (scripts/generate-static-heads.mjs) */}
+    {head && (
+      <Helmet>
+        <title>{head.title}</title>
+        <meta name="description" content={head.description} />
+        <meta property="og:title" content={head.title} />
+        <meta property="og:description" content={head.description} />
+      </Helmet>
+    )}
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-12">
@@ -31,7 +46,8 @@ const LegalLayout = ({ title, path, version, intro, children }: Props) => (
       <Footer />
     </div>
   </>
-);
+  );
+};
 
 export const H2 = ({ children }: { children: ReactNode }) => (
   <h2 className="text-xl md:text-2xl font-display font-semibold text-foreground pt-4">{children}</h2>
