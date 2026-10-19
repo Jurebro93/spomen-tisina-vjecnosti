@@ -19,8 +19,31 @@ import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
+import CityObituaryAlert from '@/components/CityObituaryAlert';
+import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
+
+// Guides for families right after a death, linked from every city page.
+const FIRST_STEPS = [
+  { to: '/blog/smrtni-list', label: 'Smrtni list: gdje se vadi i što je potrebno' },
+  { to: '/blog/kako-napisati-osmrtnicu', label: 'Kako napisati osmrtnicu' },
+  { to: '/blog/kako-se-obuci-za-sprovod', label: 'Kako se obući za sprovod' },
+  { to: '/blog/ostavinska-rasprava-koji-dokumenti-su-nam-potrebni', label: 'Ostavinska rasprava: koji su dokumenti potrebni' },
+];
+
+// The same obituary is sometimes imported twice; show it once.
+const dedupeObituaries = <T extends { ime?: string | null; prezime?: string | null; datum_smrti?: string | null }>(rows: T[]) => {
+  const seen = new Set<string>();
+  return rows.filter((o) => {
+    const key = `${(o.ime || '').trim().toLowerCase()}|${(o.prezime || '').trim().toLowerCase()}|${o.datum_smrti || ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const localDateKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 const Umrli = () => {
   const { city } = useParams();
@@ -52,7 +75,7 @@ const Umrli = () => {
       if (error) {
         console.error('Error fetching obituaries:', error);
       } else {
-        setObituaries(data || []);
+        setObituaries(dedupeObituaries(data || []));
       }
     } catch (error) {
       console.error('Error fetching obituaries:', error);
@@ -142,6 +165,7 @@ const Umrli = () => {
           
           return {
             id: funeral.id,
+            rawDate: funeral.datum_ukopa as string | null,
             burialDate: funeral.datum_ukopa ? new Date(funeral.datum_ukopa).toLocaleDateString('hr-HR') : 'N/A',
             burialTime: funeral.datum_ukopa ? new Date(funeral.datum_ukopa).toLocaleTimeString('hr-HR', {
               hour: '2-digit',
@@ -162,6 +186,126 @@ const Umrli = () => {
       console.error('Error fetching funeral schedule:', error);
       setFuneralSchedule([]);
     }
+  };
+
+  // Upcoming funerals (today onwards), earliest first, for the box at the top of the page.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todayKey = localDateKey(new Date());
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowKey = localDateKey(tomorrow);
+  const upcomingFunerals = funeralSchedule
+    .filter((f) => f.rawDate)
+    .map((f) => {
+      const d = new Date(f.rawDate);
+      const key = localDateKey(d);
+      const day = key === todayKey ? 'Danas' : key === tomorrowKey ? 'Sutra' : `${d.getDate()}. ${d.getMonth() + 1}.`;
+      return { ...f, day, time: String(f.rawDate).includes('T') ? f.burialTime : '', ts: d.getTime() };
+    })
+    .filter((f) => f.ts >= startOfToday.getTime())
+    .sort((a, b) => a.ts - b.ts);
+
+  const quizTracker: QuizTracker = {
+    step: (ctaId) => trackObituaryEvent('obituary_memorial_click', null, { placement: 'city_quiz', memorial_action: ctaId }),
+    click: (ctaId) => trackObituaryEvent('obituary_memorial_click', null, { placement: 'city_quiz', memorial_action: ctaId }),
+  };
+
+  const renderObituaryCard = (obituary: any) => {
+    const lifespan = formatLifespan(obituary.datum_rodenja, obituary.datum_smrti);
+    const location = formatObituaryLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti);
+    const age = calculateObituaryAge(obituary.datum_rodenja, obituary.datum_smrti);
+
+    return (
+      <Card
+        key={obituary.id}
+        className="memorial-card group hover:shadow-memorial transition-all duration-300 flex flex-col cursor-pointer"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return;
+          navigate(`/${obituary.slug}`);
+        }}
+      >
+        <CardContent className="p-4 sm:p-6 flex flex-col flex-grow">
+          <div className="flex flex-col items-center text-center flex-grow w-full">
+            {/* Photo */}
+            <div className="relative mb-4">
+              <img 
+                src={obituary.fotografija_url || '/default-obituary-photo.jpg'}
+                alt={`${obituary.ime} ${obituary.prezime}`}
+                className="w-24 h-30 sm:w-32 sm:h-40 object-cover rounded-lg border-2 border-border mx-auto"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg" />
+            </div>
+
+            {/* Content */}
+            <div className="w-full">
+              <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-3">
+                {obituary.ime} {obituary.prezime}
+              </h3>
+              
+              <div className="space-y-2 text-xs sm:text-sm text-muted-foreground mb-3">
+                {lifespan && (
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <span className="text-center">{lifespan}</span>
+                  </div>
+                )}
+                {location && (
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <MapPin size={14} className="flex-shrink-0" />
+                    <span className="text-center break-words">{location}</span>
+                  </div>
+                )}
+              </div>
+
+              {age !== null && (
+                <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full inline-block text-xs font-medium mb-3">
+                  {age} godina
+                </div>
+              )}
+
+              {obituary.biografija && (
+                <p className="text-xs sm:text-sm text-foreground leading-relaxed mb-4 text-center">
+                  {obituary.biografija.length > 80 
+                    ? `${obituary.biografija.substring(0, 80)}...` 
+                    : obituary.biografija}
+                </p>
+              )}
+
+              <div className="mt-auto w-full flex flex-col gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'city_card', memorial_action: 'create' });
+                    navigate(`/kreiraj-memorijal?deceased_id=${obituary.id}`);
+                  }}
+                  className="w-full py-3.5 bg-foreground text-memorial-gold border border-foreground/80 flex items-center justify-center gap-2 hover:bg-foreground/90 transition-colors duration-300 cursor-pointer"
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Kreiraj memorijal</span>
+                </button>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); navigate(`/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`); }}
+                  className="w-full py-3.5 bg-transparent border border-memorial-gold text-foreground flex items-center justify-center gap-2 hover:bg-memorial-gold/5 transition-colors duration-300 group/candle cursor-pointer"
+                >
+                  <Flame className="w-4 h-4 opacity-80 group-hover/candle:opacity-100 transition-opacity" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Zapali svijeću</span>
+                </button>
+
+                <div className="mt-2 pt-3 border-t border-border/60 text-center">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate(`/${obituary.slug}`); }}
+                    className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-[0.1em] hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    Pročitaj više
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   useEffect(() => {
@@ -217,6 +361,30 @@ const Umrli = () => {
         </div>
 
 
+        {/* Upcoming funerals: the first thing people look for on a city page */}
+        {cityName && upcomingFunerals.length > 0 && (
+          <section aria-labelledby="sprovodi-danas" className="mb-8 sm:mb-10 rounded-xl border border-border bg-card p-4 sm:p-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2">
+              <h2 id="sprovodi-danas" className="text-xl sm:text-2xl font-display font-semibold text-foreground">Nadolazeći sprovodi</h2>
+              {city && (
+                <Link to={`/sprovodi/${city}`} className="text-sm underline text-muted-foreground hover:text-foreground">Cijeli raspored</Link>
+              )}
+            </div>
+            <ul className="divide-y divide-border">
+              {upcomingFunerals.slice(0, 6).map((f) => (
+                <li key={f.id} className="grid grid-cols-[3.5rem_1fr_auto] items-center gap-3 py-3">
+                  <span className="font-semibold text-foreground">{f.time}</span>
+                  <span className="min-w-0">
+                    <span className="block font-medium text-foreground truncate">{f.name}</span>
+                    <span className="block text-sm text-muted-foreground truncate">{f.cemetery}</span>
+                  </span>
+                  <span className="rounded-full bg-memorial-gold/15 px-3 py-1 text-xs font-semibold text-foreground">{f.day}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Statistics */}
         <div className="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
@@ -254,103 +422,16 @@ const Umrli = () => {
           ) : (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                {obituaries.slice(0, visibleCount).map((obituary) => {
-                  const lifespan = formatLifespan(obituary.datum_rodenja, obituary.datum_smrti);
-                  const location = formatObituaryLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti);
-                  const age = calculateObituaryAge(obituary.datum_rodenja, obituary.datum_smrti);
-
-                  return (
-                  <Card
-                    key={obituary.id}
-                    className="memorial-card group hover:shadow-memorial transition-all duration-300 flex flex-col cursor-pointer"
-                    onClick={(e) => {
-                      if ((e.target as HTMLElement).closest('button')) return;
-                      navigate(`/${obituary.slug}`);
-                    }}
-                  >
-                    <CardContent className="p-4 sm:p-6 flex flex-col flex-grow">
-                      <div className="flex flex-col items-center text-center flex-grow w-full">
-                        {/* Photo */}
-                        <div className="relative mb-4">
-                          <img 
-                            src={obituary.fotografija_url || '/default-obituary-photo.jpg'}
-                            alt={`${obituary.ime} ${obituary.prezime}`}
-                            className="w-24 h-30 sm:w-32 sm:h-40 object-cover rounded-lg border-2 border-border mx-auto"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg" />
-                        </div>
-
-                        {/* Content */}
-                        <div className="w-full">
-                          <h3 className="font-display text-lg sm:text-xl font-semibold text-foreground mb-3">
-                            {obituary.ime} {obituary.prezime}
-                          </h3>
-                          
-                          <div className="space-y-2 text-xs sm:text-sm text-muted-foreground mb-3">
-                            {lifespan && (
-                              <div className="flex items-center justify-center gap-2 flex-wrap">
-                                <span className="text-center">{lifespan}</span>
-                              </div>
-                            )}
-                            {location && (
-                              <div className="flex items-center justify-center gap-2 flex-wrap">
-                                <MapPin size={14} className="flex-shrink-0" />
-                                <span className="text-center break-words">{location}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {age !== null && (
-                            <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full inline-block text-xs font-medium mb-3">
-                              {age} godina
-                            </div>
-                          )}
-
-                          {obituary.biografija && (
-                            <p className="text-xs sm:text-sm text-foreground leading-relaxed mb-4 text-center">
-                              {obituary.biografija.length > 80 
-                                ? `${obituary.biografija.substring(0, 80)}...` 
-                                : obituary.biografija}
-                            </p>
-                          )}
-
-                          <div className="mt-auto w-full flex flex-col gap-3">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'city_card', memorial_action: 'create' });
-                                navigate(`/kreiraj-memorijal?deceased_id=${obituary.id}`);
-                              }}
-                              className="w-full py-3.5 bg-foreground text-memorial-gold border border-foreground/80 flex items-center justify-center gap-2 hover:bg-foreground/90 transition-colors duration-300 cursor-pointer"
-                            >
-                              <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Kreiraj memorijal</span>
-                            </button>
-
-                            <button
-                              onClick={(e) => { e.stopPropagation(); navigate(`/zapali-svijecu?ime=${encodeURIComponent(obituary.ime)}&prezime=${encodeURIComponent(obituary.prezime)}`); }}
-                              className="w-full py-3.5 bg-transparent border border-memorial-gold text-foreground flex items-center justify-center gap-2 hover:bg-memorial-gold/5 transition-colors duration-300 group/candle cursor-pointer"
-                            >
-                              <Flame className="w-4 h-4 opacity-80 group-hover/candle:opacity-100 transition-opacity" />
-                              <span className="text-[11px] font-bold uppercase tracking-[0.15em]">Zapali svijeću</span>
-                            </button>
-
-                            <div className="mt-2 pt-3 border-t border-border/60 text-center">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigate(`/${obituary.slug}`); }}
-                                className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-[0.1em] hover:text-foreground transition-colors cursor-pointer"
-                              >
-                                Pročitaj više
-                                <ChevronDown className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  );
-                })}
+                {obituaries.slice(0, Math.min(3, visibleCount)).map(renderObituaryCard)}
               </div>
+              {city && cityName && (
+                <CityObituaryAlert city={city} cityName={cityName} className="my-6 sm:my-8" />
+              )}
+              {visibleCount > 3 && obituaries.length > 3 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                  {obituaries.slice(3, visibleCount).map(renderObituaryCard)}
+                </div>
+              )}
               
               {/* Load More Button */}
               {obituaries.length > visibleCount && (
@@ -369,8 +450,35 @@ const Umrli = () => {
           )}
         </div>
 
-        {/* Digital Memorial CTA — prominent banner */}
-        <MemorialCtaBanner placement="city_banner" />
+        {/* Digital Memorial CTA: quiz on city pages, banner on /umrli */}
+        {city ? (
+          <div className="max-w-4xl mx-auto mb-12">
+            <BlogMemorialQuiz
+              slug={`umrli-${city}`}
+              heading="Osmrtnica traje nekoliko dana. Životna priča može trajati zauvijek."
+              tracker={quizTracker}
+            />
+          </div>
+        ) : (
+          <MemorialCtaBanner placement="city_banner" />
+        )}
+
+        {/* First steps after a death + guides newsletter */}
+        <section aria-labelledby="prvi-koraci" className="max-w-4xl mx-auto mb-12 grid gap-6 md:grid-cols-2 md:items-start">
+          <div>
+            <h2 id="prvi-koraci" className="text-xl sm:text-2xl font-display font-semibold text-foreground mb-3">
+              Netko vam je preminuo? Prvi koraci
+            </h2>
+            <ol className="list-decimal pl-5 space-y-2 text-foreground">
+              {FIRST_STEPS.map((step) => (
+                <li key={step.to}>
+                  <Link to={step.to} className="underline decoration-memorial-gold/60 underline-offset-4 hover:text-memorial-gold">{step.label}</Link>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <NewsletterSignup variant="obituary" placement="umrli" />
+        </section>
 
         {/* Funeral Schedule Section */}
         <section className="mb-12">
@@ -593,7 +701,6 @@ const Umrli = () => {
           </div>
         </section>
 
-        <NewsletterSignup variant="guide" placement="umrli" className="mt-10 max-w-4xl mx-auto" />
       </main>
 
       <Footer />

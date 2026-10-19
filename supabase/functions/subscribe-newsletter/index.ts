@@ -25,7 +25,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { email } = await req.json()
+    const { email, city, marketing } = await req.json()
 
     if (!email) {
       return new Response(
@@ -46,6 +46,35 @@ serve(async (req) => {
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
+      )
+    }
+
+    // City alert (/umrli/:city): store the city; join the newsletter only with the opt-in ticked
+    if (city) {
+      const cleanEmail = email.trim().toLowerCase()
+      const cleanCity = String(city).toLowerCase().replace(/[^a-z0-9čćđšž-]/g, '').slice(0, 60)
+      if (!cleanCity) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid city' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const { error: alertError } = await supabaseAdmin
+        .from('obituary_city_alerts')
+        .upsert(
+          [{ email: cleanEmail, city: cleanCity, active: true, marketing_opt_in: marketing === true }],
+          { onConflict: 'email,city' }
+        )
+      if (alertError) throw alertError
+      if (marketing === true) {
+        const { error: nlError } = await supabaseAdmin
+          .from('newsletter_users')
+          .insert([{ email: cleanEmail, active: true }])
+        if (nlError && nlError.code !== '23505') throw nlError
+      }
+      return new Response(
+        JSON.stringify({ success: true, message: 'City alert saved' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
