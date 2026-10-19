@@ -197,6 +197,52 @@ const breadcrumbLd = (items) => ({
 
 const page = (body) => `<main class="container mx-auto px-4 py-8" data-ssr="1">${body}</main>`;
 
+// ---------- title/H1/H2 test: copy of src/lib/seoCityTest.ts, keep them in sync ----------
+const TEST_CITIES = new Set([
+  // Test 1: cities that had the generic "Umrli | Pretraživanje osmrtnica" title
+  'biograd-na-moru', 'blato', 'boruce-kastel-luksic', 'busovaca', 'buzet', 'distrikt-brcko', 'drnis',
+  'durdevac', 'erdut', 'fojnica', 'groblje-bartulusa-drinovci', 'hvar', 'imotski', 'jastrebarsko',
+  'kastela', 'kiseljak', 'metkovic', 'nasice', 'novi-travnik', 'odzak', 'otocac', 'otok', 'pag', 'pazin',
+  'popovaca', 'prijedor', 'prijepolje', 'primosten', 'privlaka', 'rovinj-rovigno', 'sinj', 'slatinama',
+  'solin', 'supetr', 'sv', 'sveta-nedjelja', 'sveti-ivan-zelina', 'varazdinske-toplice', 'velika-gorica',
+  'vinkovci', 'vir', 'vitez', 'vrpolje', 'zmijavci',
+  // Test 2: large cities that already had their own title
+  'dubrovnik', 'osijek', 'pula', 'rijeka', 'sisak', 'split',
+]);
+
+// Titles written for the main queries of a city; others use the template.
+const TITLE_OVERRIDES = {
+  osijek: 'Umrli Osijek danas – osmrtnice, ukopi i sprovodi',
+  dubrovnik: 'Umrli Dubrovnik danas – osmrtnice, Boninovo i sprovodi',
+  metkovic: 'Umrli Metković i okolna mjesta – osmrtnice danas',
+};
+
+const isTestCity = (slug) => !!slug && TEST_CITIES.has(slug);
+
+const testCityTitle = (slug, city) =>
+  TITLE_OVERRIDES[slug] ?? `Umrli ${city} danas – osmrtnice i raspored sprovoda`;
+
+const ddmm = (d) => `${d.getDate()}.${d.getMonth() + 1}.`;
+
+// Croatian number agreement: 1 osmrtnica, 3 osmrtnice, 5 osmrtnica.
+const plural = (n, one, few, many) => {
+  const d = n % 10, h = n % 100;
+  if (d === 1 && h !== 11) return `${n} ${one}`;
+  if (d >= 2 && d <= 4 && (h < 12 || h > 14)) return `${n} ${few}`;
+  return `${n} ${many}`;
+};
+
+/** Description with the update date and counts: freshness is why people click "umrli danas". */
+const testCityDescription = (city, obituaries, funerals, today = new Date()) => {
+  const parts = [`Osmrtnice ${city}, ažurirano ${ddmm(today)}`];
+  const counts = [];
+  if (obituaries > 0) counts.push(`${plural(obituaries, 'osmrtnica', 'osmrtnice', 'osmrtnica')} ovaj mjesec`);
+  if (funerals > 0) counts.push(`${plural(funerals, 'sprovod', 'sprovoda', 'sprovoda')} ovaj tjedan`);
+  return `${parts[0]}${counts.length ? `: ${counts.join(', ')}` : ''}. Vrijeme i groblje ukopa, raspored sprovoda i virtualna svijeća.`;
+};
+
+const testCityH1 = (city) => `Umrli ${city} – osmrtnice danas`;
+
 // ---------- page builders: each returns { title, description, canonical, body, jsonld[], noindex } ----------
 
 async function umrliCity(param) {
@@ -213,13 +259,26 @@ async function umrliCity(param) {
   const list = dedupe(obits).slice(0, 60);
   const cityCems = cemeteriesInCity(cems, city);
   if (cityCems[0]?.grad) city = cityCems[0].grad;
-  const title = `Umrli ${city} | Osmrtnice i spomen pokojnika u ${city}`;
-  const description = `Osmrtnice i umrli u gradu ${city}: najnovije osmrtnice, raspored sprovoda i groblja. Zapalite virtualnu svijeću i sačuvajte uspomenu na pokojnika.`;
+  const test = isTestCity(param);
+  let title = `Umrli ${city} | Osmrtnice i spomen pokojnika u ${city}`;
+  let description = `Osmrtnice i umrli u gradu ${city}: najnovije osmrtnice, raspored sprovoda i groblja. Zapalite virtualnu svijeću i sačuvajte uspomenu na pokojnika.`;
+  if (test) {
+    // Same counts as the page: deaths this month, funerals since Monday.
+    const now = new Date();
+    const monthKey = now.toISOString().slice(0, 7);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const mondayKey = monday.toISOString().slice(0, 10);
+    const thisMonth = list.filter((o) => (o.datum_smrti || '').startsWith(monthKey)).length;
+    const thisWeek = list.filter((o) => (o.datum_ukopa || '') >= mondayKey).length;
+    title = testCityTitle(param, city);
+    description = testCityDescription(city, thisMonth, thisWeek, now);
+  }
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/umrli">Umrli</a> / ${esc(city)}</nav>
-<h1>Umrli ${esc(city)}: osmrtnice</h1>
+<h1>${esc(test ? testCityH1(city) : `Umrli ${city}: osmrtnice`)}</h1>
 <p>Najnovije osmrtnice i obavijesti o smrti za ${esc(city)} i okolicu, s datumom i mjestom sprovoda.</p>
-<h2>Najnovije osmrtnice – ${esc(city)}</h2>
+<h2>${esc(test ? `Osmrtnice ${city} – danas i jučer` : `Najnovije osmrtnice – ${city}`)}</h2>
 ${list.length ? `<ul>${list.map(obituaryItem).join('')}</ul>` : '<p>Trenutno nema objavljenih osmrtnica za ovaj grad.</p>'}
 <p><a href="/sprovodi/${esc(param)}">Raspored sprovoda ${esc(city)}</a> · <a href="/groblja/${esc(param)}">Groblja ${esc(city)}</a></p>
 ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cemeteryItem).join('')}</ul>` : ''}
@@ -414,7 +473,7 @@ function inject(html, d) {
 
 function withHead(html, d, t, desc) {
   html = setTag(html, /<title>[\s\S]*?<\/title>/, `<title>${t}</title>`);
-  html = setTag(html, /<meta name="description"[^>]*>/, `<meta name="description" content="${desc}" />`);
+  html = setTag(html, /<meta name="description"[^>]*>/, `<meta name="description" data-rh="true" content="${desc}" />`);
   html = setTag(html, /<link rel="canonical"[^>]*>/, `<link rel="canonical" href="${esc(d.canonical)}" />`);
   html = setTag(html, /<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${esc(d.canonical)}" />`);
   html = setTag(html, /<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);

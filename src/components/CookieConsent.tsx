@@ -72,7 +72,7 @@ const CookieConsent = () => {
             className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl"
           >
             <Cookie className="w-8 h-8 text-primary mb-3" aria-hidden="true" />
-            <h2 id="cookie-title" className="font-serif text-xl font-semibold text-foreground mb-2">Kolačići</h2>
+            <p id="cookie-title" className="font-serif text-xl font-semibold text-foreground mb-2">Kolačići</p>
             <p className="text-base text-foreground mb-2">
               Nužne kolačiće koristimo za rad stranice. Uz vaše dopuštenje koristimo i kolačiće za analitiku i mjerenje oglasa, kako bismo znali što ljudima pomaže.
             </p>
