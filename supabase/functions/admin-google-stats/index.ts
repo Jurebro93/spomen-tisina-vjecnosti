@@ -14,7 +14,7 @@ const json = (body: unknown, status = 200) =>
 // ---------- page types ----------
 const PAGE_TYPES: [string, string, RegExp][] = [
   ["umrli", "Gradske stranice (/umrli)", /^\/umrli(\/|$)/],
-  ["osmrtnica", "Osmrtnice", /^\/osmrtnica\//],
+  ["osmrtnica", "Osmrtnice (stranica pokojnika)", /^\/osmrtnica\//],
   ["blog", "Blog", /^\/blog(\/|$)/],
   ["memorijal", "Memorijal (prodaja i primjeri)", /^\/(digitalni-memorijal|kreiraj-memorijal|memorijal|memorijali|memorijal-primjer|memorijalni-vrt)(\/|$|-)/],
   ["groblja", "Groblja", /^\/(groblja|groblje)(\/|$)/],
@@ -25,9 +25,17 @@ const PAGE_TYPES: [string, string, RegExp][] = [
 const pathOf = (url: string) => {
   try { return new URL(url, "https://osmrtnica.com.hr").pathname; } catch { return url; }
 };
+// Single-segment paths that are site pages; any other /{slug} is a person's obituary page (route "/:slug").
+const STATIC_PAGES = new Set(["blog", "gradovi", "informacije", "kontakt", "pretraga", "prijava", "registracija", "moj-racun",
+  "objavi-osmrtnicu", "kako-objaviti-osmrtnicu", "cesto-postavljena-pitanja", "pravila-objavljivanja", "prigovori",
+  "prijava-sadrzaja", "raskid-i-povrat", "uvjeti-koristenja", "politika-privatnosti", "kolacici", "zahvaljujemo",
+  "obituary-success", "reset-password", "homepage-2", "homepage-3"]);
 const pageType = (url: string) => {
   const p = pathOf(url);
-  return PAGE_TYPES.find(([, , re]) => re.test(p))?.[0] ?? "ostalo";
+  const hit = PAGE_TYPES.find(([, , re]) => re.test(p))?.[0];
+  if (hit) return hit;
+  const seg = p.replace(/^\/|\/$/g, "");
+  return seg && !seg.includes("/") && !STATIC_PAGES.has(seg) ? "osmrtnica" : "ostalo";
 };
 const TYPE_LABEL: Record<string, string> = Object.fromEntries([...PAGE_TYPES.map(([k, l]) => [k, l]), ["ostalo", "Ostalo"]]);
 
