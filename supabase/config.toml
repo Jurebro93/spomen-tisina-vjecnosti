@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.memorial-draft-reminder]
 verify_jwt = false
+
+[functions.admin-google-stats]
+verify_jwt = true
