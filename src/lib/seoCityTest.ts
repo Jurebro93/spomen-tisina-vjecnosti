@@ -45,7 +45,8 @@ export const testCityDescription = (city: string, obituaries: number, funerals: 
   const counts: string[] = [];
   if (obituaries > 0) counts.push(`${plural(obituaries, 'osmrtnica', 'osmrtnice', 'osmrtnica')} ovaj mjesec`);
   if (funerals > 0) counts.push(`${plural(funerals, 'sprovod', 'sprovoda', 'sprovoda')} ovaj tjedan`);
-  return `${parts[0]}${counts.length ? `: ${counts.join(', ')}` : ''}. Vrijeme i groblje ukopa, raspored sprovoda i virtualna svijeća.`;
+  // ddmm ends with a dot, so no extra full stop after the date.
+  return `${parts[0]}${counts.length ? `: ${counts.join(', ')}.` : ''} Vrijeme i groblje ukopa, raspored sprovoda i virtualna svijeća.`;
 };
 
 export const testCityH1 = (city: string): string => `Umrli ${city} – osmrtnice danas`;

@@ -238,7 +238,8 @@ const testCityDescription = (city, obituaries, funerals, today = new Date()) => 
   const counts = [];
   if (obituaries > 0) counts.push(`${plural(obituaries, 'osmrtnica', 'osmrtnice', 'osmrtnica')} ovaj mjesec`);
   if (funerals > 0) counts.push(`${plural(funerals, 'sprovod', 'sprovoda', 'sprovoda')} ovaj tjedan`);
-  return `${parts[0]}${counts.length ? `: ${counts.join(', ')}` : ''}. Vrijeme i groblje ukopa, raspored sprovoda i virtualna svijeća.`;
+  // ddmm ends with a dot, so no extra full stop after the date.
+  return `${parts[0]}${counts.length ? `: ${counts.join(', ')}.` : ''} Vrijeme i groblje ukopa, raspored sprovoda i virtualna svijeća.`;
 };
 
 const testCityH1 = (city) => `Umrli ${city} – osmrtnice danas`;
@@ -284,7 +285,7 @@ ${list.length ? `<ul>${list.map(obituaryItem).join('')}</ul>` : '<p>Trenutno nem
 ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cemeteryItem).join('')}</ul>` : ''}
 <p><a href="/digitalni-memorijal">Digitalni memorijal</a>: trajna spomen-stranica s pričom, fotografijama i sjećanjima obitelji.</p>`);
   return {
-    title, description, canonical: SITE + path, body, noindex: list.length === 0,
+    title, description, canonical: SITE + path, body, noindex: list.length === 0, forceHead: test,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli'], [city, path]])],
   };
 }
@@ -461,8 +462,9 @@ function inject(html, d) {
   const t = esc(d.title);
   const desc = esc(d.description);
   // Hand-written templates in public/ (e.g. /umrli/zadar) already carry a
-  // better head; only the generic SPA shell gets these tags.
-  if (html.includes(GENERIC_TITLE)) html = withHead(html, d, t, desc);
+  // better head; only the generic SPA shell gets these tags, except pages in
+  // the title test, whose head must match the test wording.
+  if (html.includes(GENERIC_TITLE) || d.forceHead) html = withHead(html, d, t, desc);
   if (d.noindex) html = html.replace('</head>', '    <meta name="robots" content="noindex,follow" />\n  </head>');
   const ld = (d.jsonld || [])
     .map((j) => `<script type="application/ld+json" data-ssr="1">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`)
