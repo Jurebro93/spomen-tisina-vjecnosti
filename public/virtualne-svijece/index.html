@@ -21,11 +21,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="icon" href="/logo-osmrtnica.png" type="image/png" />
     <link rel="canonical" href="https://osmrtnica.com.hr/virtualne-svijece" />
     
-    <!-- Preload critical resources -->
-    <link rel="preload" href="/site/croatian-cemetery-hero.jpg" as="image" type="image/jpeg" />
     
-    <!-- Enable text compression and caching -->
-    <meta http-equiv="Cache-Control" content="public, max-age=31536000" />
     <!-- Open Graph tags -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://osmrtnica.com.hr/virtualne-svijece" />
@@ -38,6 +34,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     <link rel="modulepreload" crossorigin href="/assets/ui.js">
     <link rel="modulepreload" crossorigin href="/assets/router.js">
     <link rel="stylesheet" crossorigin href="/assets/index.css">
+    <!-- Fonts load in parallel with the app CSS instead of after it -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
   </head>
 
   <body>

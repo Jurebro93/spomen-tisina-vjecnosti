@@ -23,7 +23,10 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
+        // Shared chunks keep fixed names (the SEO templates in public/ preload
+        // them); page chunks get a hash so a new deploy never mixes old and new code.
+        chunkFileNames: (chunk) =>
+          ['vendor', 'router', 'ui'].includes(chunk.name) ? 'assets/[name].js' : 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],

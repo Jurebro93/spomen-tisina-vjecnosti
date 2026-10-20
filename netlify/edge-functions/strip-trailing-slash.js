@@ -5,7 +5,14 @@
 // City pages also have one address only: /umrli/metković, /umrli/Zadar and
 // /umrli/slavonski%20brod go to /umrli/metkovic, /umrli/zadar and
 // /umrli/slavonski-brod (same slug as src/lib/cityMatch.ts citySlug).
+//
+// The old WordPress on Totohost (/wp/, proxied in _redirects) is left alone:
+// WordPress adds the slash back (/wp/ and /wp/wp-admin/), so stripping it
+// here sent browsers round in an endless redirect loop. Its folders get the
+// slash here instead, because Apache's own redirect names the old server's
+// host (Netlify's _redirects cannot add a slash: it matches both forms).
 
+const WP_FOLDERS = new Set(['/wp', '/wp/wp-admin']);
 const CITY_SECTIONS = new Set(['umrli', 'sprovodi', 'groblja']);
 const FOLD = { č: 'c', ć: 'c', ž: 'z', š: 's', đ: 'd' };
 
@@ -21,6 +28,11 @@ const citySlug = (value) =>
 
 export default async (request, context) => {
   const url = new URL(request.url);
+  if (WP_FOLDERS.has(url.pathname)) {
+    url.pathname += '/';
+    return Response.redirect(url.toString(), 301);
+  }
+  if (url.pathname.startsWith('/wp/') || url.pathname.startsWith('/wp-content/')) return context.next();
   let path = url.pathname;
   if (path.length > 1 && path.endsWith('/')) path = path.replace(/\/+$/, '') || '/';
 
