@@ -18,6 +18,7 @@ import Footer from '@/components/Footer';
 import RichTextEditor from '@/components/memorial/RichTextEditor';
 import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUploader';
 import MemorialContent from '@/components/memorial/MemorialContent';
+import GuestAccountStep from '@/components/memorial/GuestAccountStep';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -452,7 +453,8 @@ const KreirajMemorijal = () => {
   };
 
   const handlePublish = async () => {
-    if (!memorial || !user || busy) return;
+    // Guests set an e-mail and password first (GuestAccountStep), so every paid memorial has a login.
+    if (!memorial || !user || isGuest || busy) return;
     setBusy(true);
     try {
       await updateMemorial(memorial.id, { quote: quote.trim() || null, life_story: lifeStory || null, visibility });
@@ -470,8 +472,7 @@ const KreirajMemorijal = () => {
       let chosenPromo: string | null;
       try {
         // A 100 % promo code needs no billing data — publish straight away.
-        // Guests always pass through billing, which is where we first get their e-mail.
-        chosenPromo = promo?.free && !isGuest ? promo.code : await requestBillingDetails(memorial.id, promo?.code ?? null);
+        chosenPromo = promo?.free ? promo.code : await requestBillingDetails(memorial.id, promo?.code ?? null);
       } catch {
         setBusy(false);
         return;
@@ -800,8 +801,9 @@ const KreirajMemorijal = () => {
             onApplied={setPromo}
           />
           <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
+          {isGuest && <GuestAccountStep />}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button variant="gold" onClick={handlePublish} disabled={busy || !consent.termsAccepted}>
+            <Button variant="gold" onClick={handlePublish} disabled={busy || isGuest || !consent.termsAccepted}>
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
               {payButtonLabel(promo)}
             </Button>

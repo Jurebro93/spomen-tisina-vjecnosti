@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.admin-google-stats]
 verify_jwt = true
+
+[functions.convert-guest-account]
+verify_jwt = true
