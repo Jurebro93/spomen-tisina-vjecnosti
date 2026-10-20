@@ -10,6 +10,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { runPendingGuestClaim } from '@/lib/guestClaim';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -40,6 +41,8 @@ const ResetPassword = () => {
       });
       return;
     }
+    // A guest who came here from the checkout step gets their draft moved to this account first.
+    await runPendingGuestClaim();
     toast({ title: 'Lozinka je promijenjena', description: 'Prijavljeni ste s novom lozinkom.' });
     navigate('/moji-memorijali', { replace: true });
   };

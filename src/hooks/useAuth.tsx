@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { runPendingGuestClaim, updateGuestClaimToken } from '@/lib/guestClaim';
 
 export interface Profile {
   id: string;
@@ -76,8 +77,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       applyUser(newSession?.user ?? null);
       setLoading(false);
       if (newSession?.user && !newSession.user.is_anonymous) {
-        setTimeout(() => { loadProfile(newSession.user.id); }, 0);
+        setTimeout(() => { loadProfile(newSession.user.id); void runPendingGuestClaim(); }, 0);
       } else {
+        if (newSession?.user?.is_anonymous) updateGuestClaimToken(newSession.refresh_token);
         setProfile(null);
         setIsAdmin(false);
       }
