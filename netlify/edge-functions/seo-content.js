@@ -196,7 +196,26 @@ const breadcrumbLd = (items) => ({
   itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: SITE + path })),
 });
 
-const page = (body) => `<main class="container mx-auto px-4 py-8" data-ssr="1">${body}</main>`;
+// Visitors on a slow connection see this HTML until the app's JavaScript has
+// loaded, so it gets a light, site-like look instead of bare text.
+const SSR_STYLE = `<style>
+.ssr-head{background:#000}
+.ssr-head a{display:inline-block;padding:1rem;color:#fff;text-decoration:none;font:600 1.25rem 'Playfair Display',Georgia,serif}
+.ssr{max-width:56rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:#222;font:16px/1.6 Inter,system-ui,sans-serif}
+.ssr h1{font:600 2rem/1.2 'Playfair Display',Georgia,serif;margin:.5rem 0 1rem;color:#000}
+.ssr h2{font:600 1.4rem/1.3 'Playfair Display',Georgia,serif;margin:2rem 0 .75rem;color:#000}
+.ssr p{margin:0 0 1rem}
+.ssr ul{list-style:none;margin:0 0 1rem;padding:0}
+.ssr li{padding:.6rem 0;border-bottom:1px solid #eee;color:#555}
+.ssr li a{font-weight:600}
+.ssr a{color:#000;text-decoration:underline;text-decoration-color:#d4a72c;text-underline-offset:3px}
+.ssr nav{font-size:.875rem;color:#666;margin-bottom:.5rem}
+.ssr img{max-width:100%;height:auto}
+</style>`;
+
+const page = (body) =>
+  `${SSR_STYLE}<header class="ssr-head"><a href="/">Osmrtnica.com.hr</a></header>` +
+  `<main class="ssr" data-ssr="1">${body}</main>`;
 
 // ---------- title/H1/H2 test: copy of src/lib/seoCityTest.ts, keep them in sync ----------
 const TEST_CITIES = new Set([
