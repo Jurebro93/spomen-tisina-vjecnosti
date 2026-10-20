@@ -36,6 +36,12 @@ pageDirs.sort();
 // letting the SPA fallback answer them with index.html. mail.osmrtnica.com.hr
 // still resolves to the Totohost server and is served by the same cPanel vhost.
 const OLD_SERVER = 'http://mail.osmrtnica.com.hr';
+// WordPress itself (admin, login, its own pages) is fetched over HTTPS: over
+// plain HTTP it redirects every request to the https:// address of the same
+// page, which is this proxy again, so /wp/ and /wp/wp-admin/ never loaded.
+// Photos stay on HTTP above, so they keep working whatever the old server's
+// certificate does.
+const OLD_SERVER_HTTPS = 'https://mail.osmrtnica.com.hr';
 
 // Retired URLs that Google still shows, moved to the page that now covers the topic.
 const MOVED = [
@@ -47,7 +53,8 @@ const MOVED = [
 
 const lines = [
   ...MOVED.map(([from, to]) => `${from} ${to} 301!`),
-  `/wp/* ${OLD_SERVER}/wp/:splat 200!`,
+  `/wp/wp-content/* ${OLD_SERVER}/wp/wp-content/:splat 200!`,
+  `/wp/* ${OLD_SERVER_HTTPS}/wp/:splat 200!`,
   `/wp-content/* ${OLD_SERVER}/wp-content/:splat 200!`,
   ...pageDirs.map((p) => `${p} ${p}/index.html 200!`),
   '/* /index.html 200',
