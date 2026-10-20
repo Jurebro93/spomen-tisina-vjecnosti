@@ -1,10 +1,12 @@
 // Turns the guest session that started a memorial into a real account before checkout,
-// so the buyer can log in later and keep editing. Two modes:
+// so the buyer can log in later and keep editing. Three modes:
 // - "create": the guest user itself gets the e-mail and password (same id, nothing to move).
 // - "login": the e-mail already has an account; after checking its password, everything
 //   the guest created moves to that account.
+// - "claim": the caller is already signed in to a real account (e.g. a Google-only user who just
+//   set a password through the reset e-mail) and proves the guest session with its refresh token.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,10 +21,41 @@ const json = (body: unknown, status = 200) =>
 
 // Auth answers a taken e-mail with a generic "Error updating user", so look it up in profiles
 // (filled from auth.users for every account, Google ones included).
-const emailTaken = async (admin: ReturnType<typeof createClient>, email: string) => {
+const accountIdForEmail = async (admin: SupabaseClient, email: string) => {
   const pattern = email.replace(/[\\%_]/g, (c) => `\\${c}`);
   const { data } = await admin.from("profiles").select("id").ilike("email", pattern).limit(1);
-  return Boolean(data?.length);
+  return (data?.[0]?.id as string | undefined) ?? null;
+};
+
+const moveGuestData = async (admin: SupabaseClient, guestId: string, targetId: string) => {
+  // A guest has at most a few fresh drafts, so a manager row for the target account
+  // on the same memorial can only be the target's own; drop the guest's duplicate.
+  const { data: guestMemorials } = await admin.from("memorials").select("id").eq("owner_id", guestId);
+  const memorialIds = (guestMemorials ?? []).map((m: { id: string }) => m.id);
+  if (memorialIds.length) {
+    const { data: existing } = await admin
+      .from("memorial_managers")
+      .select("memorial_id")
+      .eq("user_id", targetId)
+      .in("memorial_id", memorialIds);
+    const taken = (existing ?? []).map((r: { memorial_id: string }) => r.memorial_id);
+    if (taken.length) {
+      await admin.from("memorial_managers").delete().eq("user_id", guestId).in("memorial_id", taken);
+    }
+  }
+
+  const moves: Array<[string, string]> = [
+    ["memorials", "owner_id"],
+    ["memorial_managers", "user_id"],
+    ["billing_details", "user_id"],
+    ["memorial_orders", "user_id"],
+    ["invoices", "user_id"],
+    ["memorial_audit_log", "user_id"],
+  ];
+  for (const [table, column] of moves) {
+    const { error } = await admin.from(table).update({ [column]: targetId }).eq(column, guestId);
+    if (error) throw new Error(`${table}: ${error.message}`);
+  }
 };
 
 serve(async (req) => {
@@ -34,16 +67,32 @@ serve(async (req) => {
     if (!token) return json({ ok: false, code: "unauthorized" }, 401);
 
     const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const admin = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
       auth: { persistSession: false },
     });
+    const checker = () => createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-    const { data: guestData, error: guestError } = await admin.auth.getUser(token);
-    const guest = guestData?.user;
-    if (guestError || !guest) return json({ ok: false, code: "unauthorized" }, 401);
-    if (!guest.is_anonymous) return json({ ok: false, code: "not_guest" }, 400);
+    const { data: callerData, error: callerError } = await admin.auth.getUser(token);
+    const caller = callerData?.user;
+    if (callerError || !caller) return json({ ok: false, code: "unauthorized" }, 401);
 
     const body = await req.json();
+
+    if (body.mode === "claim") {
+      if (caller.is_anonymous) return json({ ok: false, code: "unauthorized" }, 401);
+      const refreshToken = String(body.guest_refresh_token ?? "");
+      if (!refreshToken) return json({ ok: false, code: "invalid" }, 400);
+      const { data: refreshed } = await checker().auth.refreshSession({ refresh_token: refreshToken });
+      const guestUser = refreshed?.user;
+      if (!guestUser || !guestUser.is_anonymous) return json({ ok: false, code: "invalid_guest" });
+      await moveGuestData(admin, guestUser.id, caller.id);
+      return json({ ok: true });
+    }
+
+    const guest = caller;
+    if (!guest.is_anonymous) return json({ ok: false, code: "not_guest" }, 400);
+
     const mode = body.mode === "login" ? "login" : "create";
     const email = String(body.email ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
@@ -55,14 +104,14 @@ serve(async (req) => {
     }
 
     if (mode === "create") {
-      if (await emailTaken(admin, email)) return json({ ok: false, code: "already_exists" });
+      if (await accountIdForEmail(admin, email)) return json({ ok: false, code: "already_exists" });
       const { error } = await admin.auth.admin.updateUserById(guest.id, {
         email,
         password,
         email_confirm: true,
       });
       if (error) {
-        if (await emailTaken(admin, email)) return json({ ok: false, code: "already_exists" });
+        if (await accountIdForEmail(admin, email)) return json({ ok: false, code: "already_exists" });
         throw error;
       }
       await admin.from("profiles").update({ email }).eq("id", guest.id);
@@ -70,42 +119,21 @@ serve(async (req) => {
     }
 
     // "login": the password must match the existing account before anything moves.
-    const checker = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-    const { data: signIn, error: signInError } = await checker.auth.signInWithPassword({ email, password });
+    const { data: signIn, error: signInError } = await checker().auth.signInWithPassword({ email, password });
     const target = signIn?.user;
-    if (signInError || !target) return json({ ok: false, code: "wrong_password" });
+    if (signInError || !target) {
+      // An account that only ever signed in with Google has no password yet; tell the form so.
+      const accountId = await accountIdForEmail(admin, email);
+      if (accountId) {
+        const { data: account } = await admin.auth.admin.getUserById(accountId);
+        const providers = (account?.user?.identities ?? []).map((i) => i.provider);
+        if (providers.length && !providers.includes("email")) return json({ ok: false, code: "google_only" });
+      }
+      return json({ ok: false, code: "wrong_password" });
+    }
     if (target.id === guest.id) return json({ ok: true });
 
-    // A guest has at most a few fresh drafts, so a manager row for the target account
-    // on the same memorial can only be the target's own; drop the guest's duplicate.
-    const { data: guestMemorials } = await admin.from("memorials").select("id").eq("owner_id", guest.id);
-    const memorialIds = (guestMemorials ?? []).map((m: { id: string }) => m.id);
-    if (memorialIds.length) {
-      const { data: existing } = await admin
-        .from("memorial_managers")
-        .select("memorial_id")
-        .eq("user_id", target.id)
-        .in("memorial_id", memorialIds);
-      const taken = (existing ?? []).map((r: { memorial_id: string }) => r.memorial_id);
-      if (taken.length) {
-        await admin.from("memorial_managers").delete().eq("user_id", guest.id).in("memorial_id", taken);
-      }
-    }
-
-    const moves: Array<[string, string]> = [
-      ["memorials", "owner_id"],
-      ["memorial_managers", "user_id"],
-      ["billing_details", "user_id"],
-      ["memorial_orders", "user_id"],
-      ["invoices", "user_id"],
-      ["memorial_audit_log", "user_id"],
-    ];
-    for (const [table, column] of moves) {
-      const { error } = await admin.from(table).update({ [column]: target.id }).eq(column, guest.id);
-      if (error) throw new Error(`${table}: ${error.message}`);
-    }
+    await moveGuestData(admin, guest.id, target.id);
     return json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

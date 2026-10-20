@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Loader2, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureAuthToken } from '@/lib/memorialActions';
+import { rememberGuestForClaim } from '@/lib/guestClaim';
 
 type Mode = 'create' | 'login';
 
@@ -20,6 +20,27 @@ const GuestAccountStep = () => {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [resetSent, setResetSent] = useState(false);
+
+  // Google-only accounts have no password: the reset e-mail sets one, and the draft follows the account.
+  const sendPasswordLink = async () => {
+    setError('');
+    const cleanEmail = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) { setError('Upišite e-mail adresu svog računa.'); return; }
+    setBusy(true);
+    try {
+      await rememberGuestForClaim();
+      const { error: fnError } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: cleanEmail, redirectTo: `${window.location.origin}/reset-password` },
+      });
+      if (fnError) throw fnError;
+      setResetSent(true);
+    } catch {
+      setError('Poveznicu nije bilo moguće poslati. Pokušajte ponovno ili nas kontaktirajte.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +61,10 @@ const GuestAccountStep = () => {
         setMode('login');
         setPassword('');
         setError('Račun s ovim e-mailom već postoji. Upišite lozinku tog računa i memorijal će se spremiti na njega.');
+        return;
+      }
+      if (data?.code === 'google_only') {
+        setError('Ovaj račun ste otvorili preko Googlea pa još nema lozinku. Kliknite "Pošalji poveznicu za lozinku" ispod.');
         return;
       }
       if (data?.code === 'wrong_password') { setError('Lozinka nije točna.'); return; }
@@ -65,6 +90,13 @@ const GuestAccountStep = () => {
             ? 'S ovim e-mailom i lozinkom kasnije se prijavljujete i uređujete memorijal, s bilo kojeg uređaja. Sve što ste upisali ostaje spremljeno.'
             : 'Memorijal i sve što ste upisali spremit ćemo na vaš postojeći račun.'}
         </p>
+        {mode === 'login' && (
+          <p className="text-sm mt-2 rounded-md border border-border bg-background p-3">
+            <strong>Prijavljujete se preko Googlea?</strong> Takav račun nema lozinku. Upišite svoj Gmail i kliknite
+            {' '}<strong>"Pošalji poveznicu za lozinku"</strong>. Na mail ćete dobiti poveznicu, postavite lozinku i memorijal
+            će se sam spremiti na vaš račun. Nakon toga ga nastavljate iz "Moji memorijali".
+          </p>
+        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
@@ -79,6 +111,12 @@ const GuestAccountStep = () => {
         </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {resetSent && (
+        <p className="text-sm rounded-md border border-accent/60 bg-background p-3">
+          Poslali smo poveznicu na <strong>{email.trim()}</strong>. Otvorite je <strong>u ovom pregledniku</strong>,
+          postavite lozinku i memorijal će se spremiti na vaš račun.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="gold" disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
@@ -89,7 +127,9 @@ const GuestAccountStep = () => {
             <button type="button" className="text-sm text-accent hover:underline" onClick={() => { setMode('create'); setError(''); }}>
               Upotrijebi drugi e-mail
             </button>
-            <Link to="/prijava" target="_blank" className="text-sm text-accent hover:underline">Zaboravili ste lozinku?</Link>
+            <button type="button" className="text-sm text-accent hover:underline" onClick={sendPasswordLink} disabled={busy}>
+              Pošalji poveznicu za lozinku (Google račun ili zaboravljena lozinka)
+            </button>
           </>
         ) : (
           <button type="button" className="text-sm text-accent hover:underline" onClick={() => { setMode('login'); setError(''); }}>
