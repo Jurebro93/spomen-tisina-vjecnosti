@@ -88,20 +88,22 @@ const ObituaryPage = () => {
     }
   };
 
+  // The import stores the local funeral time as if it were UTC, and midnight
+  // when it has no time at all; show the time as written, or the date alone.
   const formatDateTime = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('hr-HR', {
+    const iso = String(dateString).replace(' ', 'T');
+    const day = new Date(`${iso.slice(0, 10)}T12:00`).toLocaleDateString('hr-HR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
+    const time = iso.slice(11, 16);
+    return time && time !== '00:00' ? `${day} u ${time}` : day;
   };
 
-  const birthDate = formatObituaryDate(obituary?.datum_rodenja, { yearOnlyIfJan1: true });
+  const birthDate = formatObituaryDate(obituary?.datum_rodenja);
   const deathDate = formatObituaryDate(obituary?.datum_smrti);
   const location = formatObituaryLocation(obituary?.mjesto_rodenja, obituary?.mjesto_smrti);
   const age = calculateObituaryAge(obituary?.datum_rodenja, obituary?.datum_smrti);
@@ -236,14 +238,16 @@ const ObituaryPage = () => {
                       </div>
                     </div>
                     
-                    {obituary.datum_ukopa && (
+                    {(obituary.datum_ukopa || obituary.groblje) && (
                       <div>
                         <h3 className="font-semibold text-primary mb-2 sm:mb-3 text-sm sm:text-base">Sprovod</h3>
                         <div className="space-y-2 text-xs sm:text-sm">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                            <span className="break-words">{formatDateTime(obituary.datum_ukopa)}</span>
-                          </div>
+                          {obituary.datum_ukopa && (
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="break-words">{formatDateTime(obituary.datum_ukopa)}</span>
+                            </div>
+                          )}
                           {obituary.groblje && (
                             <div className="flex items-center gap-2">
                               <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
@@ -430,7 +434,7 @@ const ObituaryPage = () => {
             </div>
           </div>
         </div>
-        <div className="container mx-auto px-4 pb-6 max-w-2xl">
+        <div className="container mx-auto px-4 pt-10 pb-8 max-w-3xl">
           <EbookSignup variant="obituary" placement="obituary" />
         </div>
         <div className="container mx-auto px-4 pb-8 text-center">

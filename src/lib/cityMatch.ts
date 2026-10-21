@@ -16,9 +16,29 @@ export const cityPattern = (city: string): string =>
     .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
     .join('');
 
+// The import often names only the cemetery or the inflected city ("Lovrinac",
+// "u Zadru", "Drenova"), so the city's name alone missed most of its
+// obituaries (Split: 4 of 64 in a month). Distinctive extra words per city
+// slug; generic names such as "Kamen" or "Centralno groblje" are left out on
+// purpose because they also appear in other places.
+const CITY_ALIASES: Record<string, string[]> = {
+  split: ['lovrinac'],
+  zadar: ['zadru', 'belafuža'],
+  zagreb: ['mirogoj', 'miroševac', 'markovo polje'],
+  rijeka: ['rijeci', 'drenova', 'kozala'],
+  dubrovnik: ['boninovo'],
+  karlovac: ['karlovcu'],
+  sisak: ['sisku'],
+  'slavonski-brod': ['slavonskom brodu'],
+};
+
+/** Regex for the city or any of its aliases. */
+const cityAnyPattern = (city: string): string =>
+  [city, ...(CITY_ALIASES[citySlug(city)] ?? [])].map(cityPattern).join('|');
+
 /** PostgREST or() filter: any of the columns contains the city. */
 export const cityOrFilter = (city: string, columns: string[]): string => {
-  const pattern = `"${cityPattern(city)}"`;
+  const pattern = `"${cityAnyPattern(city)}"`;
   return columns.map((col) => `${col}.imatch.${pattern}`).join(',');
 };
 

@@ -27,7 +27,7 @@ const DownloadButton = ({ placement }: { placement: string }) => (
   </Button>
 );
 
-export function EbookForm({ placement, buttonLabel = 'Pošaljite mi vodič' }: { placement: string; buttonLabel?: string }) {
+export function EbookForm({ placement, buttonLabel = 'Pošaljite mi vodič', inline = false }: { placement: string; buttonLabel?: string; inline?: boolean }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error' | 'invalid'>(() => (ebookUnlocked() ? 'done' : 'idle'));
   const [fresh, setFresh] = useState(false);
@@ -60,6 +60,7 @@ export function EbookForm({ placement, buttonLabel = 'Pošaljite mi vodič' }: {
   return (
     <form onSubmit={submit} noValidate className="space-y-3">
       <label htmlFor={`ebook-email-${placement}`} className="sr-only">E-mail adresa</label>
+      <div className={inline ? 'flex flex-col gap-3 sm:flex-row' : 'space-y-3'}>
       <Input
         id={`ebook-email-${placement}`}
         type="email"
@@ -70,9 +71,10 @@ export function EbookForm({ placement, buttonLabel = 'Pošaljite mi vodič' }: {
         className="min-h-12 bg-background text-base"
         aria-invalid={state === 'invalid'}
       />
-      <Button type="submit" size="lg" className="min-h-12 w-full" disabled={state === 'sending'}>
+      <Button type="submit" size="lg" className={`min-h-12 ${inline ? 'w-full sm:w-auto sm:shrink-0' : 'w-full'}`} disabled={state === 'sending'}>
         {state === 'sending' ? 'Šaljemo...' : buttonLabel}
       </Button>
+      </div>
       {state === 'invalid' && <p role="alert" className="text-sm text-destructive">Molimo upišite ispravnu e-mail adresu.</p>}
       {state === 'error' && <p role="alert" className="text-sm text-destructive">Slanje trenutačno nije uspjelo. Molimo pokušajte ponovno.</p>}
       <p className="text-xs leading-snug text-muted-foreground">
@@ -84,13 +86,50 @@ export function EbookForm({ placement, buttonLabel = 'Pošaljite mi vodič' }: {
 }
 
 export default function EbookSignup({ variant, placement, className = '' }: Props) {
-  const compact = variant === 'obituary';
+  if (variant === 'obituary') {
+    // Under an obituary: a calm, roomy card. Cover and text side by side on
+    // wider screens, the address and button on one line, short fine print.
+    return (
+      <section
+        aria-labelledby={`ebook-${placement}`}
+        className={`rounded-xl border border-memorial-gold/40 bg-memorial-parchment/60 p-6 sm:p-8 dark:bg-muted/40 ${className}`}
+      >
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start sm:gap-8">
+          <Link to={EBOOK.landing} className="block w-24 shrink-0 sm:w-28" aria-label="Više o vodiču">
+            <img
+              src={EBOOK.cover}
+              alt="Naslovnica vodiča Kad izgubite voljenu osobu"
+              width={800}
+              height={1132}
+              loading="lazy"
+              className="w-full rounded-sm shadow-lg"
+            />
+          </Link>
+          <div className="w-full min-w-0 text-center sm:text-left">
+            <div className="flex items-center justify-center gap-2 text-memorial-gold sm:justify-start">
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              <span className="text-xs font-semibold uppercase tracking-wide">Besplatni vodič · PDF</span>
+            </div>
+            <h2 id={`ebook-${placement}`} className="mt-3 text-xl font-bold leading-snug text-primary sm:text-2xl">
+              Što učiniti nakon smrti bliske osobe
+            </h2>
+            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
+              Sve korake, od sprovoda do ostavine, redom kojim dolaze.
+            </p>
+            <div className="mt-5 text-left">
+              <EbookForm placement={placement} inline />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
   return (
     <section
       aria-labelledby={`ebook-${placement}`}
-      className={`rounded-xl border border-memorial-gold/40 bg-memorial-parchment/60 dark:bg-muted/40 ${compact ? 'p-5' : 'p-6 sm:p-8'} ${className}`}
+      className={`rounded-xl border border-memorial-gold/40 bg-memorial-parchment/60 dark:bg-muted/40 p-6 sm:p-8 ${className}`}
     >
-      <div className={`grid gap-6 ${compact ? 'sm:grid-cols-[110px_1fr]' : 'md:grid-cols-[180px_1fr_minmax(260px,320px)] md:items-center'}`}>
+      <div className={`grid gap-6 md:grid-cols-[180px_1fr_minmax(260px,320px)] md:items-center`}>
         <Link to={EBOOK.landing} className="mx-auto block w-28 sm:w-full" aria-label="Više o vodiču">
           <img
             src={EBOOK.cover}
@@ -106,20 +145,17 @@ export default function EbookSignup({ variant, placement, className = '' }: Prop
             <BookOpen className="h-5 w-5" aria-hidden="true" />
             <span className="text-xs font-semibold uppercase tracking-wide">Besplatni vodič · {EBOOK.pages} stranice · PDF</span>
           </div>
-          <h2 id={`ebook-${placement}`} className={`mt-2 font-bold text-primary ${compact ? 'text-lg' : 'text-xl sm:text-2xl'}`}>
-            {compact ? 'Što učiniti nakon smrti bliske osobe' : EBOOK.title + ': vodič korak po korak'}
+          <h2 id={`ebook-${placement}`} className={`mt-2 font-bold text-primary text-xl sm:text-2xl`}>
+            {EBOOK.title + ': vodič korak po korak'}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Sprovod, smrtni list, obiteljska mirovina, banke i ostavina, redom kojim dolaze. Podaci su provjereni prema službenim izvorima, a na kraju su kontrolne liste za ispis.
           </p>
-          {!compact && (
-            <Link to={EBOOK.landing} className="mt-2 inline-block text-sm font-medium text-primary underline underline-offset-4">
-              Pogledajte sadržaj vodiča
-            </Link>
-          )}
-          {compact && <div className="mt-4"><EbookForm placement={placement} /></div>}
+          <Link to={EBOOK.landing} className="mt-2 inline-block text-sm font-medium text-primary underline underline-offset-4">
+            Pogledajte sadržaj vodiča
+          </Link>
         </div>
-        {!compact && <EbookForm placement={placement} />}
+        <EbookForm placement={placement} />
       </div>
     </section>
   );

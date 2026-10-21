@@ -47,6 +47,15 @@ const hrDate = (iso) => {
   return `${d.getUTCDate()}. ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}.`;
 };
 
+// Birth and death dates: the import stores a year it has no day for as 1 January,
+// so show those as the year alone (same rule as formatObituaryDate in src/lib/utils.ts).
+const lifeDate = (iso) => {
+  if (!iso) return '';
+  const raw = String(iso).slice(0, 10);
+  if (/^\d{4}-01-01$/.test(raw)) return `${raw.slice(0, 4)}.`;
+  return hrDate(raw);
+};
+
 const hhmm = (t) => (t ? String(t).slice(0, 5) : '');
 
 const age = (born, died) => {
@@ -102,8 +111,21 @@ const cityPattern = (city) =>
     .split('')
     .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
     .join('');
+// Same list as CITY_ALIASES in src/lib/cityMatch.ts; keep them in sync.
+const CITY_ALIASES = {
+  split: ['lovrinac'],
+  zadar: ['zadru', 'belafuža'],
+  zagreb: ['mirogoj', 'miroševac', 'markovo polje'],
+  rijeka: ['rijeci', 'drenova', 'kozala'],
+  dubrovnik: ['boninovo'],
+  karlovac: ['karlovcu'],
+  sisak: ['sisku'],
+  'slavonski-brod': ['slavonskom brodu'],
+};
 const cityOr = (city, cols) => {
-  const v = encodeURIComponent(`"${cityPattern(city)}"`);
+  const slug = fold(city).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const pattern = [city, ...(CITY_ALIASES[slug] ?? [])].map(cityPattern).join('|');
+  const v = encodeURIComponent(`"${pattern}"`);
   return `or=(${cols.map((c) => `${c}.imatch.${v}`).join(',')})`;
 };
 
@@ -172,7 +194,7 @@ async function cityName(param) {
 const obituaryItem = (o) => {
   const a = age(o.datum_rodenja, o.datum_smrti);
   const bits = [
-    o.datum_smrti ? `preminuo/la ${hrDate(o.datum_smrti)}` : '',
+    o.datum_rodenja && o.datum_smrti ? `${lifeDate(o.datum_rodenja)} – ${lifeDate(o.datum_smrti)}` : o.datum_smrti ? `preminuo/la ${lifeDate(o.datum_smrti)}` : '',
     a !== null ? `${a} godina` : '',
     o.mjesto_smrti ? esc(o.mjesto_smrti) : '',
     o.datum_ukopa ? `sprovod ${hrDate(o.datum_ukopa)}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? ', ' + esc(o.groblje) : ''}` : '',
@@ -196,9 +218,17 @@ const breadcrumbLd = (items) => ({
   itemListElement: items.map(([name, path], i) => ({ '@type': 'ListItem', position: i + 1, name, item: SITE + path })),
 });
 
-// Visitors on a slow connection see this HTML until the app's JavaScript has
-// loaded, so it gets a light, site-like look instead of bare text.
+// This HTML is for crawlers that do not run JavaScript. Visitors' browsers run
+// the app, so for them the plain list is hidden (it flashed in the background
+// while the page loaded) and a quiet loading view shows until React replaces
+// #root. If the app has not started after 8 seconds the list is shown after
+// all, so a failed script never leaves an empty page.
 const SSR_STYLE = `<style>
+.ssr-js .ssr{display:none}
+.ssr-wait{display:none}
+.ssr-js .ssr-wait{display:flex;justify-content:center;padding:6rem 1rem}
+.ssr-wait span{width:2.5rem;height:2.5rem;border-radius:50%;border:3px solid #eee;border-top-color:#d4a72c;animation:ssr-spin 1s linear infinite}
+@keyframes ssr-spin{to{transform:rotate(360deg)}}
 .ssr-head{background:#000}
 .ssr-head a{display:inline-block;padding:1rem;color:#fff;text-decoration:none;font:600 1.25rem 'Playfair Display',Georgia,serif}
 .ssr{max-width:56rem;margin:0 auto;padding:1.5rem 1rem 3rem;color:#222;font:16px/1.6 Inter,system-ui,sans-serif}
@@ -213,8 +243,13 @@ const SSR_STYLE = `<style>
 .ssr img{max-width:100%;height:auto}
 </style>`;
 
+const SSR_JS =
+  '<script>(function(){var h=document.documentElement;h.classList.add("ssr-js");' +
+  'setTimeout(function(){if(document.querySelector("[data-ssr]"))h.classList.remove("ssr-js")},8000)})()</script>';
+
 const page = (body) =>
-  `${SSR_STYLE}<header class="ssr-head"><a href="/">Osmrtnica.com.hr</a></header>` +
+  `${SSR_STYLE}${SSR_JS}<header class="ssr-head"><a href="/">Osmrtnica.com.hr</a></header>` +
+  `<div class="ssr-wait" aria-hidden="true"><span></span></div>` +
   `<main class="ssr" data-ssr="1">${body}</main>`;
 
 // ---------- title/H1/H2 test: copy of src/lib/seoCityTest.ts, keep them in sync ----------
@@ -432,7 +467,7 @@ async function obituarySlug(slug) {
   let description = o.meta_description;
   if (!description) {
     description = `Osmrtnica za ${name}`;
-    if (o.datum_smrti) description += `, preminuo ${hrDate(o.datum_smrti)}`;
+    if (o.datum_smrti) description += `, preminuo ${lifeDate(o.datum_smrti)}`;
     if (o.mjesto_smrti) description += ` u ${o.mjesto_smrti}`;
     if (o.datum_ukopa) description += `. Sprovod ${hrDate(o.datum_ukopa)}${o.groblje ? ` na ${o.groblje}` : ''}`;
     else if (o.groblje) description += `. Sprovod na ${o.groblje}`;
@@ -440,8 +475,8 @@ async function obituarySlug(slug) {
   }
   const a = age(o.datum_rodenja, o.datum_smrti);
   const facts = [
-    o.datum_rodenja && `Rođen/a: ${hrDate(o.datum_rodenja)}${o.mjesto_rodenja ? `, ${esc(o.mjesto_rodenja)}` : ''}`,
-    o.datum_smrti && `Preminuo/la: ${hrDate(o.datum_smrti)}${o.mjesto_smrti ? `, ${esc(o.mjesto_smrti)}` : ''}${a !== null ? ` (${a} godina)` : ''}`,
+    o.datum_rodenja && `Rođen/a: ${lifeDate(o.datum_rodenja)}${o.mjesto_rodenja ? `, ${esc(o.mjesto_rodenja)}` : ''}`,
+    o.datum_smrti && `Preminuo/la: ${lifeDate(o.datum_smrti)}${o.mjesto_smrti ? `, ${esc(o.mjesto_smrti)}` : ''}${a !== null ? ` (${a} godina)` : ''}`,
     (o.datum_ukopa || o.groblje) && `Sprovod: ${o.datum_ukopa ? hrDate(o.datum_ukopa) : ''}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? `, ${esc(o.groblje)}` : ''}`,
   ].filter(Boolean);
   const body = page(`
@@ -652,8 +687,8 @@ async function memorijalSlug(slug) {
     ? `${name} (${years}) — ${m.quote}`
     : `Digitalni memorijal i mjesto sjećanja na ${name} (${years}). Podijelite uspomene, zapalite svijeću i pogledajte fotografije.`).slice(0, 155);
   const facts = [
-    deceased.datum_rodenja && `Rođen/a: ${hrDate(deceased.datum_rodenja)}${deceased.mjesto_rodenja ? `, ${esc(deceased.mjesto_rodenja)}` : ''}`,
-    deceased.datum_smrti && `Preminuo/la: ${hrDate(deceased.datum_smrti)}${deceased.mjesto_smrti ? `, ${esc(deceased.mjesto_smrti)}` : ''}`,
+    deceased.datum_rodenja && `Rođen/a: ${lifeDate(deceased.datum_rodenja)}${deceased.mjesto_rodenja ? `, ${esc(deceased.mjesto_rodenja)}` : ''}`,
+    deceased.datum_smrti && `Preminuo/la: ${lifeDate(deceased.datum_smrti)}${deceased.mjesto_smrti ? `, ${esc(deceased.mjesto_smrti)}` : ''}`,
   ].filter(Boolean);
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/memorijali">Memorijali</a> / ${esc(name)}</nav>
