@@ -33,10 +33,11 @@ const chan = (v: string) => CHANNEL_HR[v] ?? v;
 const dev = (v: string) => DEVICE_HR[v] ?? v;
 
 const WIZARD = [
-  ['start_create', 'Otvorena izrada (odabir osobe)'],
-  ['wizard_1', '1. Osoba'], ['wizard_2', '2. Vaš odnos'], ['wizard_3', '3. Biografija'], ['wizard_4', '4. Životni put'],
+  ['start_create', 'Otvorena izrada'],
+  ['person_search', 'Pretraga osobe'], ['person_manual', 'Ručni unos nove osobe'],
+  ['wizard_1', '1. Osoba (odabrana ili unesena)'], ['wizard_2', '2. Vaš odnos'], ['wizard_3', '3. Biografija'], ['wizard_4', '4. Životni put'],
   ['wizard_5', '5. Fotografije'], ['wizard_6', '6. Privatnost'], ['wizard_7', '7. Pregled'],
-  ['checkout', 'Otvoreno plaćanje'], ['paid', 'Plaćeno ili aktivirano'],
+  ['checkout_started', 'Klik na plaćanje'], ['checkout', 'Otvoreno plaćanje'], ['paid', 'Plaćeno ili aktivirano'],
 ] as const;
 
 const Bars = ({ rows }: { rows: { label: string; value: number }[] }) => {
@@ -100,7 +101,9 @@ const TypeName = ({ t }: { t: string }) => <Badge variant="outline" className="f
 export default function GoogleStats() {
   const [days, setDays] = useState('28');
   const [data, setData] = useState<Data | null>(null);
-  const [wizard, setWizard] = useState<{ step: string; device: string; n: number }[] | null>(null);
+  const [wizard, setWizard] = useState<{ step: string; device: string; campaign: string | null; n: number }[] | null>(null);
+  // '' = all traffic; otherwise one utm_campaign (known only for visitors who accepted cookies).
+  const [campaign, setCampaign] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -123,7 +126,9 @@ export default function GoogleStats() {
   const landing = data?.landing;
   const ch = data?.channels;
   const wizardTotal = (step: string, device?: string) =>
-    (wizard ?? []).filter((r) => r.step === step && (!device || r.device === device)).reduce((a, r) => a + r.n, 0);
+    (wizard ?? []).filter((r) => r.step === step && (!device || r.device === device) && (!campaign || r.campaign === campaign))
+      .reduce((a, r) => a + r.n, 0);
+  const campaigns = [...new Set((wizard ?? []).map((r) => r.campaign).filter((c): c is string => Boolean(c)))].sort();
   const wizardDevices = [...new Set((wizard ?? []).map((r) => r.device))].filter((d) => wizardTotal('start_create', d) > 0);
 
   return (
@@ -193,7 +198,19 @@ export default function GoogleStats() {
           <Card className="mt-8">
             <CardHeader><CardTitle className="text-lg">Gdje ljudi odustaju u izradi memorijala</CardTitle></CardHeader>
             <CardContent>
-              {wizard == null ? <p className="text-sm text-muted-foreground">Podaci nisu dostupni.</p> : wizardTotal('wizard_1') === 0 ? (
+              {campaigns.length > 0 && (
+                <div className="mb-4 max-w-xs">
+                  <Select value={campaign || 'all'} onValueChange={(v) => setCampaign(v === 'all' ? '' : v)}>
+                    <SelectTrigger aria-label="Kampanja"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Sav promet</SelectItem>
+                      {campaigns.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {campaign && <p className="text-xs text-muted-foreground mt-1">Samo posjetitelji koji su prihvatili kolačiće (bez pristanka kampanja nije poznata).</p>}
+                </div>
+              )}
+              {wizard == null ? <p className="text-sm text-muted-foreground">Podaci nisu dostupni.</p> : wizardTotal('start_create') === 0 ? (
                 <p className="text-sm text-muted-foreground">Koraci izrade prate se od ove nadogradnje; podaci će se pojaviti nakon prvih posjeta /kreiraj-memorijal.</p>
               ) : (
                 <>

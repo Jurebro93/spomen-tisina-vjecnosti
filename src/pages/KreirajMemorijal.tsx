@@ -1,6 +1,6 @@
 import { trackFunnel, getAttribution, type FunnelStep } from '@/lib/funnel';
-import { trackInitiateCheckout, trackMemorialStarted, trackStartMemorial } from '@/lib/metaPixel';
-import { trackGa4BeginCheckout, trackGa4MemorialStarted } from '@/lib/ga4Ecommerce';
+import { trackInitiateCheckout, trackMemorialStarted, trackPersonSelected, trackStartMemorial } from '@/lib/metaPixel';
+import { trackGa4BeginCheckout, trackGa4MemorialStarted, trackGa4PersonSearch, trackGa4PersonSelected } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -158,7 +158,12 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
   );
 };
 
-const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
+type PersonSource = 'existing' | 'new';
+
+const DeceasedSearch = ({ onSelect, onStart }: {
+  onSelect: (d: Deceased, source: PersonSource) => void;
+  onStart: (method: 'search' | 'manual') => void;
+}) => {
   const [term, setTerm] = useState(() => readMemorialPrefill()?.name ?? '');
   const [results, setResults] = useState<Deceased[]>([]);
   const [searching, setSearching] = useState(false);
@@ -169,6 +174,7 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
     e.preventDefault();
     const q = term.trim();
     if (q.length < 3 || searching) return;
+    onStart('search');
     setSearching(true);
     const parts = q.split(/\s+/);
     const filters = [`ime.ilike.%${q}%`, `prezime.ilike.%${q}%`];
@@ -186,7 +192,7 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
     setSearching(false);
   };
 
-  if (manual) return <ManualDeceasedForm onCreated={onSelect} onCancel={() => setManual(false)} />;
+  if (manual) return <ManualDeceasedForm onCreated={(d) => onSelect(d, 'new')} onCancel={() => setManual(false)} />;
 
   return (
     <div className="space-y-6">
@@ -212,7 +218,7 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
               a memorijal neće imati poveznicu na osmrtnicu.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button type="button" onClick={() => setManual(true)}>
+              <Button type="button" onClick={() => { onStart('manual'); setManual(true); }}>
                 <UserPlus className="h-4 w-4 mr-2" />Unesi podatke ručno
               </Button>
               <Button asChild variant="outline"><Link to="/objavi-osmrtnicu">Objavi osmrtnicu</Link></Button>
@@ -231,7 +237,7 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
                 <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
                 {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
               </div>
-              <Button type="button" onClick={() => onSelect(d)}>Odaberi</Button>
+              <Button type="button" onClick={() => onSelect(d, 'existing')}>Odaberi</Button>
             </CardContent>
           </Card>
         ))}
@@ -241,7 +247,7 @@ const DeceasedSearch = ({ onSelect }: { onSelect: (d: Deceased) => void }) => {
         <p className="text-sm text-muted-foreground mb-3">
           Osoba nije u našoj bazi osmrtnica? Memorijal možete kreirati i bez osmrtnice – podatke unosite sami.
         </p>
-        <Button type="button" variant="outline" onClick={() => setManual(true)}>
+        <Button type="button" variant="outline" onClick={() => { onStart('manual'); setManual(true); }}>
           <UserPlus className="h-4 w-4 mr-2" />Kreiraj memorijal bez osmrtnice
         </Button>
       </div>
@@ -261,6 +267,7 @@ const KreirajMemorijal = () => {
 
   const deceasedIdParam = params.get('deceased_id');
   const [deceased, setDeceased] = useState<Deceased | null>(null);
+  const [personSource, setPersonSource] = useState<PersonSource>('existing');
   const [memorial, setMemorial] = useState<Memorial | null>(null);
   const [existingSlug, setExistingSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(deceasedIdParam));
@@ -327,12 +334,24 @@ const KreirajMemorijal = () => {
     if (!authLoading && user) void trackFunnel('auth', { userId: user.id });
   }, [authLoading, user, navigate, redirectTarget]);
 
+  // Ad events (pixel + Conversions API): StartMemorial on the first search or manual entry,
+  // PersonSelected once the person is chosen or saved (also when opened from an obituary link).
   const startSent = useRef(false);
-  useEffect(() => {
-    if (!deceased || !user || startSent.current) return;
+  const startMemorial = useCallback((method: 'search' | 'manual') => {
+    void trackFunnel(method === 'search' ? 'person_search' : 'person_manual', { userId: user?.id });
+    trackGa4PersonSearch(method);
+    if (!user || startSent.current) return;
     startSent.current = true;
-    trackStartMemorial(user.id);
-  }, [deceased, user]);
+    trackStartMemorial(user.id, method);
+  }, [user]);
+
+  const personSent = useRef(false);
+  useEffect(() => {
+    if (!deceased || !user || personSent.current) return;
+    personSent.current = true;
+    trackPersonSelected(user.id, personSource);
+    trackGa4PersonSelected(personSource);
+  }, [deceased, user, personSource]);
 
   // Returned from Stripe via the cancel link — a separate event, never "abandoned".
   useEffect(() => {
@@ -478,6 +497,7 @@ const KreirajMemorijal = () => {
         return;
       }
       const meta = trackInitiateCheckout(memorial.id, MEMORIAL_PRICE_EUR);
+      void trackFunnel('checkout_started', { userId: user.id, memorialId: memorial.id });
       // The server re-validates the promo code and decides the amount; we only send the code.
       const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
         body: { memorial_id: memorial.id, promo_code: chosenPromo, attribution: getAttribution(), ...consentBody(consent), meta },
@@ -581,7 +601,7 @@ const KreirajMemorijal = () => {
   }
 
   if (!deceased) {
-    return shell(<DeceasedSearch onSelect={(d) => { setDeceased(d); setStep(0); }} />);
+    return shell(<DeceasedSearch onStart={startMemorial} onSelect={(d, source) => { setPersonSource(source); setDeceased(d); setStep(0); }} />);
   }
 
   const cover = media.find((m) => m.is_cover) ?? media[0] ?? null;

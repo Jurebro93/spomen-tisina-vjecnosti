@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { ensureAuthToken } from '@/lib/memorialActions';
 import { rememberGuestForClaim } from '@/lib/guestClaim';
+import { trackFunnel } from '@/lib/funnel';
+import { trackGuestRegistered } from '@/lib/metaPixel';
 
 type Mode = 'create' | 'login';
 
@@ -70,8 +72,12 @@ const GuestAccountStep = () => {
       if (data?.code === 'wrong_password') { setError('Lozinka nije točna.'); return; }
       if (!data?.ok) throw new Error('not ok');
       // Signing in swaps the guest session for the account; the page then continues as a signed-in user.
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
       if (signInError) throw signInError;
+      if (mode === 'create' && signedIn.user) {
+        void trackFunnel('guest_account', { userId: signedIn.user.id });
+        trackGuestRegistered(signedIn.user.id);
+      }
     } catch {
       setError('Račun nije bilo moguće spremiti. Pokušajte ponovno ili nas kontaktirajte.');
     } finally {

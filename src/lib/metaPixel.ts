@@ -180,24 +180,36 @@ export const trackMemorialStarted = (memorialId: string) => {
   ).catch(() => {});
 };
 
-/**
- * StartMemorial = the visitor chose the person and opened the memorial form (signed in or guest).
- * Custom event the AON ad sets optimise for; browser pixel + Conversions API share one event_id per account.
- */
-export const trackStartMemorial = (userId: string) => {
+/** Browser pixel + Conversions API for one memorial-funnel custom event, sharing one event_id. */
+const sendMemorialEvent = (event: string, eventId: string, params: Record<string, unknown>) => {
   if (typeof window === 'undefined' || !hasAdvertisingConsent()) return;
-  const eventId = `start_${userId}`;
-  trackEvent('StartMemorial', { content_name: 'Digitalni memorijal' }, eventId);
+  trackEvent(event, { content_name: 'Digitalni memorijal', ...params }, eventId);
   if (!PRODUCTION_HOSTS.includes(window.location.hostname)) return;
   void import('@/integrations/supabase/client').then(({ supabase }) =>
     supabase.functions.invoke('meta-capi-event', {
       body: {
-        event_name: 'StartMemorial',
+        event_name: event,
         event_id: eventId,
         marketing_consent: true,
         source_url: window.location.href,
+        ...params,
         ...metaBrowserIds(),
       },
     }),
   ).catch(() => {});
 };
+
+/**
+ * StartMemorial = the first real action in the memorial form: a person search or opening the
+ * manual entry for a person who has no obituary. Custom event the sales ad sets optimise for.
+ */
+export const trackStartMemorial = (userId: string, method: 'search' | 'manual') =>
+  sendMemorialEvent('StartMemorial', `start_${userId}`, { start_method: method });
+
+/** PersonSelected = an existing obituary was chosen or a new person was saved; the wizard opens. */
+export const trackPersonSelected = (userId: string, personSource: 'existing' | 'new') =>
+  sendMemorialEvent('PersonSelected', `person_${userId}`, { person_source: personSource });
+
+/** CompleteRegistration for a guest who turned the draft's session into a real account at checkout. */
+export const trackGuestRegistered = (userId: string) =>
+  trackEvent('CompleteRegistration', { content_name: 'Korisnički račun', status: true, method: 'guest_checkout' }, `reg_${userId}`);
