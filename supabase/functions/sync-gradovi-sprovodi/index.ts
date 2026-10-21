@@ -5,8 +5,10 @@ import {
   parseDubrovnikRss,
   parseKarlovac,
   parseKoprivnica,
+  parsePozega,
   parseRijeka,
   parseVarazdin,
+  parseVelikaGorica,
   type ScheduleRow,
 } from './parsers.ts'
 
@@ -25,7 +27,8 @@ const HEADERS = {
   'Accept-Language': 'hr',
 }
 
-type Source = { izvor: string; grad: string; load: (fromDate: string) => Promise<ScheduleRow[]> }
+// keepMissing: the page lists only the latest funerals, so a row missing from it is not cancelled.
+type Source = { izvor: string; grad: string; keepMissing?: boolean; load: (fromDate: string) => Promise<ScheduleRow[]> }
 
 const SOURCES: Source[] = [
   {
@@ -77,8 +80,23 @@ const SOURCES: Source[] = [
   {
     izvor: 'cakom-cakovec',
     grad: 'Čakovec',
+    keepMissing: true,
     // The list is published on the day, so most entries are already past: keep the last two weeks.
     load: async (fromDate) => parseCakovec(await getText('https://www.cakom.hr/groblje-i-pogrebne-usluge/lista-pogreba/'), shiftDays(fromDate, -14)),
+  },
+  {
+    izvor: 'vgkomunalac-velika-gorica',
+    grad: 'Velika Gorica',
+    load: async (fromDate) => {
+      const url = `https://www.axiomgis.com/VelikaGorica/Ispracaji.svc/V_WEB_ISPRACAJI?$filter=DatumIspracaja%20ge%20DateTime'${fromDate}'&$orderby=DATIVR_ISPRACAJA&$format=json`
+      return parseVelikaGorica(await getJson(url), fromDate)
+    },
+  },
+  {
+    izvor: 'komunalac-pozega',
+    grad: 'Požega',
+    keepMissing: true,
+    load: async (fromDate) => parsePozega(await getText('https://komunalac-pozega.hr/osmrtnice'), fromDate),
   },
   {
     izvor: 'kd-kozala-rijeka',
@@ -126,6 +144,8 @@ Deno.serve(async (req) => {
       if (rows.length > 0) {
         const { error } = await supabase.from('sprovodi').upsert(rows, { onConflict: 'source_key' })
         if (error) throw new Error(`upsert: ${error.message}`)
+      }
+      if (rows.length > 0 && !source.keepMissing) {
         const keys = rows.map((row) => `"${row.source_key}"`).join(',')
         const { error: cleanupError, count } = await supabase
           .from('sprovodi')
