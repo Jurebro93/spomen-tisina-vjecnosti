@@ -262,9 +262,11 @@ const Umrli = () => {
       const d = new Date(`${String(f.rawDate).slice(0, 10)}T12:00`);
       const key = localDateKey(d);
       const day = key === todayKey ? 'Danas' : key === tomorrowKey ? 'Sutra' : `${d.getDate()}. ${d.getMonth() + 1}.`;
-      return { ...f, day, time: f.burialTime, ts: d.getTime(), order: `${String(f.rawDate).slice(0, 10)} ${f.burialTime || '99'}` };
+      // With a time, the funeral counts as upcoming until half an hour after it starts; without one, for the whole day.
+      const ts = f.burialTime ? new Date(`${String(f.rawDate).slice(0, 10)}T${f.burialTime}`).getTime() + 30 * 60 * 1000 : d.getTime();
+      return { ...f, day, time: f.burialTime, ts, order: `${String(f.rawDate).slice(0, 10)} ${f.burialTime || '99'}` };
     })
-    .filter((f) => f.ts >= startOfToday.getTime())
+    .filter((f) => f.ts >= (f.time ? Date.now() : startOfToday.getTime()))
     .sort((a, b) => a.order.localeCompare(b.order));
 
   const quizTracker: QuizTracker = {

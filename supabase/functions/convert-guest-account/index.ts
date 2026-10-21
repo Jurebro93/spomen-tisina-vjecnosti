@@ -105,10 +105,15 @@ serve(async (req) => {
 
     if (mode === "create") {
       if (await accountIdForEmail(admin, email)) return json({ ok: false, code: "already_exists" });
+      // The e-mail is confirmed here without a link, so an invited admin's address must never be taken this way:
+      // claim_admin_role would hand the admin role to whoever typed it. The flag keeps that true for later invites.
+      const { data: invited } = await admin.from("admin_users").select("id").ilike("email", email.replace(/[\\%_]/g, (c) => `\\${c}`)).limit(1);
+      if (invited?.length) return json({ ok: false, code: "already_exists" });
       const { error } = await admin.auth.admin.updateUserById(guest.id, {
         email,
         password,
         email_confirm: true,
+        app_metadata: { converted_guest: true },
       });
       if (error) {
         if (await accountIdForEmail(admin, email)) return json({ ok: false, code: "already_exists" });
