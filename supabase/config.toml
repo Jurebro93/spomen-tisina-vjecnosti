@@ -92,3 +92,6 @@ verify_jwt = true
 
 [functions.convert-guest-account]
 verify_jwt = true
+
+[functions.save-draft-email]
+verify_jwt = true

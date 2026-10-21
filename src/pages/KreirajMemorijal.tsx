@@ -19,6 +19,7 @@ import RichTextEditor from '@/components/memorial/RichTextEditor';
 import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUploader';
 import MemorialContent from '@/components/memorial/MemorialContent';
 import GuestAccountStep from '@/components/memorial/GuestAccountStep';
+import DraftEmailCard from '@/components/memorial/DraftEmailCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +27,7 @@ import {
   DECEASED_FIELDS, RELATIONSHIPS, formatCroatianDate, fetchDeceased, fetchMemorialForDeceased,
   lifeYears, fullName, memorialUrl, type Deceased, type Memorial, type MemorialVisibility,
 } from '@/lib/memorial';
-import { createDraftMemorial, DuplicateMemorialError, ensureAuthToken, updateMemorial } from '@/lib/memorialActions';
+import { claimDraft, createDraftMemorial, DuplicateMemorialError, ensureAuthToken, updateMemorial } from '@/lib/memorialActions';
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
@@ -160,6 +161,37 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
 
 type PersonSource = 'existing' | 'new';
 
+type OwnDraft = { id: string; updated_at: string; obituaries: { ime: string; prezime: string } | null };
+
+type ResumeNotice = { text: string; login?: boolean };
+
+const RESUME_NOTICES: Record<'elsewhere' | 'account' | 'done', ResumeNotice> = {
+  elsewhere: {
+    text: 'Ovaj nacrt spremljen je u pregledniku u kojem ste ga započeli, pa ga otvorite ondje. Ako ste si poslali poveznicu e-mailom, otvorite je iz te poruke. Za rad na više uređaja na zadnjem koraku izrade napravite račun.',
+  },
+  account: { text: 'Ovaj nacrt spremljen je na vašem računu. Prijavite se i nastavit ćete ondje gdje ste stali.', login: true },
+  done: { text: 'Ovaj memorijal više nije nacrt, pa ga ovdje ne možete nastaviti. Pronaći ćete ga u "Moji memorijali".' },
+};
+
+const OwnDrafts = ({ drafts, onResume, busyId }: { drafts: OwnDraft[]; onResume: (id: string) => void; busyId: string | null }) => (
+  <div className="space-y-3">
+    <h2 className="font-serif text-xl">Nastavite započeti memorijal</h2>
+    {drafts.map((d) => (
+      <Card key={d.id} className="border-border">
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">Memorijal za {fullName(d.obituaries) || 'osobu'}</p>
+            <p className="text-sm text-muted-foreground">Nacrt, zadnja izmjena {formatCroatianDate(d.updated_at)}</p>
+          </div>
+          <Button type="button" onClick={() => onResume(d.id)} disabled={Boolean(busyId)}>
+            {busyId === d.id && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
+          </Button>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+);
+
 const DeceasedSearch = ({ onSelect, onStart }: {
   onSelect: (d: Deceased, source: PersonSource) => void;
   onStart: (method: 'search' | 'manual') => void;
@@ -266,11 +298,17 @@ const KreirajMemorijal = () => {
   const { toast } = useToast();
 
   const deceasedIdParam = params.get('deceased_id');
+  // Link back to a draft (draft list, e-mail): ?nastavi=<memorial id>, from e-mails also &k=<resume token>.
+  const resumeParam = params.get('nastavi');
+  const resumeKey = params.get('k');
   const [deceased, setDeceased] = useState<Deceased | null>(null);
   const [personSource, setPersonSource] = useState<PersonSource>('existing');
   const [memorial, setMemorial] = useState<Memorial | null>(null);
   const [existingSlug, setExistingSlug] = useState<string | null>(null);
-  const [loading, setLoading] = useState(Boolean(deceasedIdParam));
+  const [loading, setLoading] = useState(Boolean(deceasedIdParam || resumeParam));
+  const [drafts, setDrafts] = useState<OwnDraft[]>([]);
+  const [resumingId, setResumingId] = useState<string | null>(null);
+  const [resumeNotice, setResumeNotice] = useState<ResumeNotice | null>(null);
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
@@ -353,6 +391,105 @@ const KreirajMemorijal = () => {
     trackGa4PersonSelected(personSource);
   }, [deceased, user, personSource]);
 
+  /** Loads the user's own unpaid draft into the wizard at Biografija. False when it is not theirs or not a draft. */
+  const resumeDraft = useCallback(async (memorialId: string) => {
+    if (!user) return false;
+    const { data } = await supabase.from('memorials').select('*').eq('id', memorialId).maybeSingle();
+    const draft = data as Memorial | null;
+    if (!draft || draft.owner_id !== user.id || draft.status !== 'draft' || draft.paid) return false;
+    const [person, events, files] = await Promise.all([
+      fetchDeceased(draft.deceased_id).catch(() => null),
+      supabase.from('memorial_life_events').select('title, event_year, description')
+        .eq('memorial_id', draft.id).order('sort_order', { ascending: true }),
+      supabase.from('memorial_media').select('*').eq('memorial_id', draft.id).order('sort_order', { ascending: true }),
+    ]);
+    if (!person) return false;
+    const rel = draft.relationship ?? '';
+    const known = RELATIONSHIPS.includes(rel);
+    setRelationship(known ? rel : rel ? 'drugo' : '');
+    setCustomRelationship(known ? '' : rel);
+    setQuote(draft.quote ?? '');
+    setLifeStory(draft.life_story ?? '');
+    setVisibility(draft.visibility);
+    setLifeEvents(((events.data ?? []) as Array<{ title: string; event_year: number | null; description: string | null }>)
+      .map((e) => ({ title: e.title, event_year: e.event_year, description: e.description ?? '' })));
+    setMedia((files.data as MediaItem[]) ?? []);
+    // Reopening a draft is not a new start: no second StartMemorial or PersonSelected.
+    startSent.current = true;
+    personSent.current = true;
+    setPersonSource(person.active === true ? 'existing' : 'new');
+    setMemorial(draft);
+    setDeceased(person);
+    setExistingSlug(null);
+    setResumeNotice(null);
+    setStep(2);
+    void trackFunnel('draft_resumed', { userId: user.id, memorialId: draft.id });
+    return true;
+  }, [user]);
+
+  const findOwnDraftId = useCallback(async (deceasedId: string) => {
+    if (!user) return null;
+    const { data } = await supabase.from('memorials').select('id')
+      .eq('deceased_id', deceasedId).eq('owner_id', user.id).eq('status', 'draft').maybeSingle();
+    return (data as { id: string } | null)?.id ?? null;
+  }, [user]);
+
+  // The visitor's unfinished drafts, offered above the person search.
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId || deceased) return;
+    let active = true;
+    supabase.from('memorials').select('id, updated_at, obituaries(ime, prezime)')
+      .eq('owner_id', userId).eq('status', 'draft').eq('paid', false)
+      .order('updated_at', { ascending: false }).limit(5)
+      .then(({ data }) => { if (active) setDrafts((data as unknown as OwnDraft[]) ?? []); });
+    return () => { active = false; };
+  }, [userId, deceased]);
+
+  const resumeFromList = async (memorialId: string) => {
+    if (resumingId) return;
+    setResumingId(memorialId);
+    try {
+      if (!(await resumeDraft(memorialId))) {
+        setDrafts((prev) => prev.filter((d) => d.id !== memorialId));
+        toast({ title: 'Nacrt nije moguće otvoriti', description: 'Pokušajte ponovno.', variant: 'destructive' });
+      }
+    } finally {
+      setResumingId(null);
+    }
+  };
+
+  // ?nastavi=<id>: open the draft once; from another browser the e-mailed token moves it to this session first.
+  const resumeHandled = useRef(false);
+  useEffect(() => {
+    if (!resumeParam || authLoading || !user || resumeHandled.current) return;
+    resumeHandled.current = true;
+    (async () => {
+      try {
+        if (await resumeDraft(resumeParam)) return;
+        if (!resumeKey) { setResumeNotice(RESUME_NOTICES.elsewhere); return; }
+        const claim = await claimDraft(resumeParam, resumeKey);
+        if (claim === 'ok' && await resumeDraft(resumeParam)) return;
+        setResumeNotice(claim === 'has_account' ? RESUME_NOTICES.account : claim === 'not_draft' ? RESUME_NOTICES.done : RESUME_NOTICES.elsewhere);
+      } catch {
+        setResumeNotice(RESUME_NOTICES.elsewhere);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [resumeParam, resumeKey, authLoading, user, resumeDraft]);
+
+  const selectPerson = async (d: Deceased, source: PersonSource) => {
+    // Picking the person of one's own draft again continues that draft instead of "already exists".
+    if (source === 'existing') {
+      const ownDraftId = await findOwnDraftId(d.id);
+      if (ownDraftId && await resumeDraft(ownDraftId)) return;
+    }
+    setPersonSource(source);
+    setDeceased(d);
+    setStep(0);
+  };
+
   // Returned from Stripe via the cancel link — a separate event, never "abandoned".
   useEffect(() => {
     const returnedFor = params.get('otkazano') ? params.get('memorial') : null;
@@ -366,26 +503,28 @@ const KreirajMemorijal = () => {
     });
   }, [params, user]);
 
+  // ?deceased_id= (obituary link): waits for the session so the visitor's own draft for this person is found.
+  const personHandled = useRef(false);
   useEffect(() => {
-    if (!deceasedIdParam) { setLoading(false); return; }
-    let active = true;
+    if (!deceasedIdParam) { if (!resumeParam) setLoading(false); return; }
+    if (resumeParam || authLoading || !user || personHandled.current) return;
+    personHandled.current = true;
     (async () => {
       try {
         const [person, existing] = await Promise.all([
           fetchDeceased(deceasedIdParam),
           fetchMemorialForDeceased(deceasedIdParam),
         ]);
-        if (!active) return;
+        if (existing?.status === 'draft' && await resumeDraft(existing.id)) return;
         setDeceased(person);
         if (existing) setExistingSlug(existing.slug);
       } catch {
-        if (active) setDeceased(null);
+        setDeceased(null);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     })();
-    return () => { active = false; };
-  }, [deceasedIdParam]);
+  }, [deceasedIdParam, resumeParam, authLoading, user, resumeDraft]);
 
   const ensureDraft = useCallback(async (rel: string | null) => {
     if (!deceased || !user) return null;
@@ -415,7 +554,17 @@ const KreirajMemorijal = () => {
       setStep(2);
     } catch (error) {
       if (error instanceof DuplicateMemorialError) {
-        setExistingSlug(error.existingSlug ?? null);
+        const ownDraftId = deceased ? await findOwnDraftId(deceased.id) : null;
+        if (ownDraftId && await resumeDraft(ownDraftId)) return;
+        if (error.existingSlug) setExistingSlug(error.existingSlug);
+        else {
+          // Someone else's unpublished draft: its slug is not readable, so say so instead of doing nothing.
+          toast({
+            title: 'Za ovu osobu već se izrađuje memorijal',
+            description: 'Netko ga je već započeo. Ako ste član obitelji, javite nam se putem stranice Kontakt.',
+            variant: 'destructive',
+          });
+        }
       } else {
         toast({ title: 'Nije uspjelo', description: 'Memorijal nije bilo moguće kreirati. Pokušajte ponovno.', variant: 'destructive' });
       }
@@ -601,7 +750,23 @@ const KreirajMemorijal = () => {
   }
 
   if (!deceased) {
-    return shell(<DeceasedSearch onStart={startMemorial} onSelect={(d, source) => { setPersonSource(source); setDeceased(d); setStep(0); }} />);
+    return shell(
+      <div className="space-y-10">
+        {resumeNotice && (
+          <Card className="border-border">
+            <CardContent className="p-6 space-y-3">
+              <p className="font-medium">Nacrt nije otvoren u ovom pregledniku</p>
+              <p className="text-sm text-muted-foreground">{resumeNotice.text}</p>
+              {resumeNotice.login && (
+                <Button asChild><Link to={`/prijava?redirect=${encodeURIComponent(`/kreiraj-memorijal?nastavi=${resumeParam}`)}`}>Prijava</Link></Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        {drafts.length > 0 && <OwnDrafts drafts={drafts} onResume={resumeFromList} busyId={resumingId} />}
+        <DeceasedSearch onStart={startMemorial} onSelect={selectPerson} />
+      </div>
+    );
   }
 
   const cover = media.find((m) => m.is_cover) ?? media[0] ?? null;
@@ -787,6 +952,8 @@ const KreirajMemorijal = () => {
           </div>
         </div>
       )}
+
+      {isGuest && user && memorial && step >= 2 && step <= 5 && <DraftEmailCard memorialId={memorial.id} userId={user.id} />}
 
       {step === 6 && memorial && (
         <div className="space-y-6">

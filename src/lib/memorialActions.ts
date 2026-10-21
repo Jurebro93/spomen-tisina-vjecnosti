@@ -219,3 +219,35 @@ export const moderateEntry = async (
   if (error) throw error;
   await logMemorialAction(memorialId, userId, decision === 'approved' ? 'tribute_approved' : 'tribute_rejected', table, id);
 };
+
+export type DraftEmailResult = 'ok' | 'too_soon' | 'invalid_email' | 'error';
+
+/** Guest leaves an e-mail for the draft; the server stores it privately and mails a link back to the draft. */
+export const saveDraftEmail = async (memorialId: string, email: string): Promise<DraftEmailResult> => {
+  const token = await ensureAuthToken();
+  if (!token) return 'error';
+  const { data, error } = await supabase.functions.invoke('save-draft-email', {
+    body: { action: 'save', memorial_id: memorialId, email },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (data?.ok) return 'ok';
+  let code = data?.code as string | undefined;
+  if (!code && error) {
+    try { code = (await (error as { context?: Response }).context?.json())?.code; } catch { /* ignore */ }
+  }
+  return code === 'too_soon' || code === 'invalid_email' ? code : 'error';
+};
+
+export type DraftClaimResult = 'ok' | 'has_account' | 'not_draft' | 'invalid';
+
+/** The e-mailed draft link was opened in another browser: move the guest's draft to this session. */
+export const claimDraft = async (memorialId: string, resumeToken: string): Promise<DraftClaimResult> => {
+  const token = await ensureAuthToken();
+  if (!token) return 'invalid';
+  const { data } = await supabase.functions.invoke('save-draft-email', {
+    body: { action: 'claim', memorial_id: memorialId, token: resumeToken },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (data?.ok) return 'ok';
+  return data?.code === 'has_account' || data?.code === 'not_draft' ? data.code : 'invalid';
+};
