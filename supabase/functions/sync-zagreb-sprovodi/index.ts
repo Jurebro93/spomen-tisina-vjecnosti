@@ -35,10 +35,18 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  if (!serviceKey) return json({ error: 'Unauthorized' }, 401)
+  const supabase = createClient(supabaseUrl, serviceKey)
+
+  // The cron job sends the vault secret; a manual run can use the service role key.
   const bearer = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
-  if (!serviceKey || bearer !== serviceKey) {
-    return json({ error: 'Unauthorized' }, 401)
+  const provided = req.headers.get('x-sync-secret') ?? ''
+  let authorized = bearer === serviceKey
+  if (!authorized && provided) {
+    const { data: expected } = await supabase.rpc('sprovodi_sync_secret')
+    authorized = typeof expected === 'string' && expected.length > 0 && provided === expected
   }
+  if (!authorized) return json({ error: 'Unauthorized' }, 401)
 
   try {
     const datumToday = zagrebDatum()
@@ -57,7 +65,6 @@ Deno.serve(async (req) => {
       pages.set(datum, await fetchSchedule(datum))
     }
 
-    const supabase = createClient(supabaseUrl, serviceKey)
     const synced: { datum: string; iso: string; rows: ScheduleRow[] }[] = []
 
     for (const datum of dates) {
