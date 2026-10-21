@@ -18,15 +18,17 @@ export const useCityName = (slug?: string): string => {
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
-    supabase
-      .from('obituaries')
-      .select('mjesto_smrti')
-      .filter('mjesto_smrti', 'imatch', `^${cityPattern(fallback)}$`)
-      .limit(1)
-      .then(({ data }) => {
-        const name = data?.[0]?.mjesto_smrti?.trim();
-        if (!cancelled && name) setFound({ slug, name });
-      });
+    const pattern = `^${cityPattern(fallback)}$`;
+    (async () => {
+      const { data } = await supabase.from('obituaries').select('mjesto_smrti').filter('mjesto_smrti', 'imatch', pattern).limit(1);
+      let name = data?.[0]?.mjesto_smrti?.trim();
+      // Cities known only from funeral schedules (Čakovec) still get their real spelling.
+      if (!name) {
+        const { data: scheduled } = await supabase.from('sprovodi').select('grad').filter('grad', 'imatch', pattern).limit(1);
+        name = scheduled?.[0]?.grad?.trim();
+      }
+      if (!cancelled && name) setFound({ slug, name });
+    })();
     return () => {
       cancelled = true;
     };

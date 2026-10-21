@@ -184,8 +184,12 @@ async function cityName(param) {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
   try {
-    const rows = await sb(`obituaries?select=mjesto_smrti&mjesto_smrti=imatch.${encodeURIComponent(`^${cityPattern(label)}$`)}&limit=1`);
-    return rows[0]?.mjesto_smrti?.trim() || label;
+    const pattern = encodeURIComponent(`^${cityPattern(label)}$`);
+    const rows = await sb(`obituaries?select=mjesto_smrti&mjesto_smrti=imatch.${pattern}&limit=1`);
+    if (rows[0]?.mjesto_smrti?.trim()) return rows[0].mjesto_smrti.trim();
+    // Cities known only from funeral schedules (Čakovec) still get their real spelling.
+    const scheduled = await sb(`sprovodi?select=grad&grad=imatch.${pattern}&limit=1`);
+    return scheduled[0]?.grad?.trim() || label;
   } catch {
     return label;
   }
