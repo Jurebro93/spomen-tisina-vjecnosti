@@ -1,10 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   boninovoGroblje,
+  parseCakovec,
   parseDubrovnikRss,
   parseKarlovac,
   parseKoprivnica,
   parseRijeka,
+  parseVarazdin,
   type ScheduleRow,
 } from './parsers.ts'
 
@@ -66,6 +68,17 @@ const SOURCES: Source[] = [
       }
       return items.map((item) => item.row)
     },
+  },
+  {
+    izvor: 'parkovi-varazdin',
+    grad: 'Varaždin',
+    load: async (fromDate) => parseVarazdin(await getText('https://www.parkovi.eu/raspored-pogreba/'), fromDate),
+  },
+  {
+    izvor: 'cakom-cakovec',
+    grad: 'Čakovec',
+    // The list is published on the day, so most entries are already past: keep the last two weeks.
+    load: async (fromDate) => parseCakovec(await getText('https://www.cakom.hr/groblje-i-pogrebne-usluge/lista-pogreba/'), shiftDays(fromDate, -14)),
   },
   {
     izvor: 'kd-kozala-rijeka',
@@ -154,6 +167,12 @@ function dedupe(rows: ScheduleRow[]) {
 
 function zagrebToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zagreb', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+}
+
+function shiftDays(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 function json(body: unknown, status = 200) {
