@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 const candleFlame = "/site/candle-flame-large.png";
 import { supabase } from '@/integrations/supabase/client';
+import { displayName, timeAgo } from '@/lib/hr';
 
 interface VirtualCandlesForObituaryProps {
   pokojnikIme: string;
@@ -48,19 +49,7 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
     }
   };
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInHours / 24);
-
-    if (diffInHours < 1) return 'prije manje od sata';
-    if (diffInHours < 24) return `prije ${diffInHours} ${diffInHours === 1 ? 'sat' : 'sati'}`;
-    if (diffInDays === 1) return 'prije 1 dan';
-    if (diffInDays < 7) return `prije ${diffInDays} dana`;
-    return `prije ${Math.floor(diffInDays / 7)} ${Math.floor(diffInDays / 7) === 1 ? 'tjedan' : 'tjedana'}`;
-  };
+  const formatTimeAgo = timeAgo;
 
   const handleRelightCandle = async (candleId: string) => {
     setRelightingCandles(prev => new Set([...prev, candleId]));
@@ -142,7 +131,7 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
         {candles.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-muted-foreground mb-4">
-              Još nema zapaljenih svijeća za {pokojnikIme} {pokojnikPrezime}.
+              Još nema zapaljenih svijeća za {displayName(`${pokojnikIme} ${pokojnikPrezime}`)}.
             </div>
             <p className="text-sm text-muted-foreground mb-4">
               Budite prvi koji će zapaliti svijeću sjećanja.

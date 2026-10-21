@@ -195,11 +195,17 @@ async function cityName(param) {
   }
 }
 
+// 1 godina, 2–4 godine, 5+ godina (but 12–14 godina); same rule as src/lib/hr.ts.
+const godine = (n) => {
+  const last = n % 10, lastTwo = n % 100;
+  return `${n} ${last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? 'godine' : 'godina'}`;
+};
+
 const obituaryItem = (o) => {
   const a = age(o.datum_rodenja, o.datum_smrti);
   const bits = [
     o.datum_rodenja && o.datum_smrti ? `${lifeDate(o.datum_rodenja)} – ${lifeDate(o.datum_smrti)}` : o.datum_smrti ? `preminuo/la ${lifeDate(o.datum_smrti)}` : '',
-    a !== null ? `${a} godina` : '',
+    a !== null ? godine(a) : '',
     o.mjesto_smrti ? esc(o.mjesto_smrti) : '',
     o.datum_ukopa ? `sprovod ${hrDate(o.datum_ukopa)}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? ', ' + esc(o.groblje) : ''}` : '',
   ].filter(Boolean);
@@ -366,11 +372,11 @@ async function sprovodiCity(param) {
   const recentQ = isZagreb
     ? Promise.resolve([])
     : sb(`obituaries?select=ime,prezime,groblje,datum_ukopa,vrijeme_ukopa,datum_rodenja,datum_smrti,slug&${cityOr(city, ['mjesto_smrti', 'groblje', 'mjesna_zajednica'])}&datum_ukopa=lt.${today}&datum_ukopa=gte.${shiftDays(today, -14)}&order=datum_ukopa.desc&limit=40`);
-  const [funerals, recent, cems, services] = await Promise.all([
+  // pogrebna_poduzeca holds invented sample companies, so it is not shown.
+  const [funerals, recent, cems] = await Promise.all([
     funeralsQ,
     recentQ,
     fetchCemeteries(),
-    sb(`pogrebna_poduzeca?select=naziv,adresa,telefon,website_url&grad=eq.${encodeURIComponent(city.toLowerCase())}&order=ocjena.desc`),
   ]);
   const cityCems = cemeteriesInCity(cems, city);
   if (cityCems[0]?.grad) city = cityCems[0].grad;
@@ -383,7 +389,7 @@ async function sprovodiCity(param) {
     return `<li>${hrDate(date)}${time ? ' u ' + time : ''} – ${link}${a ? ` (${a})` : ''}${f.groblje ? ', ' + esc(f.groblje) : ''}</li>`;
   };
   const title = `Sprovodi ${city} | Raspored sprovoda i ispraćaja u ${city}`;
-  const description = `Raspored sprovoda i ispraćaja u gradu ${city}: datum, vrijeme i groblje, popis groblja s adresama i radnim vremenom te pogrebna poduzeća.`;
+  const description = `Raspored sprovoda i ispraćaja u gradu ${city}: datum, vrijeme i groblje, te popis groblja s adresama i radnim vremenom.`;
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/sprovodi">Sprovodi</a> / ${esc(city)}</nav>
 <h1>Sprovodi ${esc(city)}: raspored sprovoda i ispraćaja</h1>
@@ -391,7 +397,6 @@ async function sprovodiCity(param) {
 ${funerals.length ? `<ul>${funerals.map(row).join('')}</ul>` : `<p>Trenutno nema najavljenih sprovoda za ${esc(city)}.</p>`}
 ${recent.length ? `<h2>Sprovodi u posljednjih 14 dana</h2><ul>${recent.map(row).join('')}</ul>` : ''}
 ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cemeteryItem).join('')}</ul>` : ''}
-${services.length ? `<h2>Pogrebna poduzeća u gradu ${esc(city)}</h2><ul>${services.map((s) => `<li>${esc(s.naziv)}${s.adresa ? ' – ' + esc(s.adresa) : ''}${s.telefon ? ', tel. ' + esc(s.telefon) : ''}</li>`).join('')}</ul>` : ''}
 <p><a href="/umrli/${esc(param)}">Osmrtnice ${esc(city)}</a></p>`);
   return {
     title, description, canonical: SITE + path, body, noindex: false,
@@ -480,7 +485,7 @@ async function obituarySlug(slug) {
   const a = age(o.datum_rodenja, o.datum_smrti);
   const facts = [
     o.datum_rodenja && `Rođen/a: ${lifeDate(o.datum_rodenja)}${o.mjesto_rodenja ? `, ${esc(o.mjesto_rodenja)}` : ''}`,
-    o.datum_smrti && `Preminuo/la: ${lifeDate(o.datum_smrti)}${o.mjesto_smrti ? `, ${esc(o.mjesto_smrti)}` : ''}${a !== null ? ` (${a} godina)` : ''}`,
+    o.datum_smrti && `Preminuo/la: ${lifeDate(o.datum_smrti)}${o.mjesto_smrti ? `, ${esc(o.mjesto_smrti)}` : ''}${a !== null ? ` (${godine(a)})` : ''}`,
     (o.datum_ukopa || o.groblje) && `Sprovod: ${o.datum_ukopa ? hrDate(o.datum_ukopa) : ''}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? `, ${esc(o.groblje)}` : ''}`,
   ].filter(Boolean);
   const body = page(`

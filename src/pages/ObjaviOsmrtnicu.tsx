@@ -12,6 +12,7 @@ import { SEOHelmet } from '@/hooks/useSEO';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { formatLifespan, formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
+import { ageLabel } from '@/lib/hr';
 
 const ObjaviOsmrtnicu = () => {
   const { toast } = useToast();
@@ -352,7 +353,7 @@ const ObjaviOsmrtnicu = () => {
                   </div>
                   
                   <div>
-                    <Label htmlFor="ozalosceni">Ozalošćene</Label>
+                    <Label htmlFor="ozalosceni">Ožalošćeni</Label>
                     <Textarea
                       id="ozalosceni"
                       name="ozalosceni"
@@ -734,7 +735,7 @@ const ObjaviOsmrtnicu = () => {
 
                           {age !== null && (
                             <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full inline-block text-xs font-medium mb-3">
-                              {age} godina
+                              {ageLabel(age)}
                             </div>
                           )}
 

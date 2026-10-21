@@ -50,9 +50,20 @@ export function formatObituaryDate(
   })
 }
 
+/**
+ * The import fills an unknown death date with the funeral date, which can lie
+ * days ahead ("preminula 23. listopada" on 21 October). A death date after today is not shown.
+ */
+export function isFutureDate(dateString?: string | null): boolean {
+  const iso = ISO_DATE.exec(String(dateString ?? "").trim())
+  if (!iso) return false
+  const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Zagreb" })
+  return iso[0] > today
+}
+
 export function formatLifespan(birth?: string | null, death?: string | null): string {
   const birthFormatted = formatObituaryDate(birth)
-  const deathFormatted = formatObituaryDate(death)
+  const deathFormatted = isFutureDate(death) ? null : formatObituaryDate(death)
 
   if (birthFormatted && deathFormatted) return `${birthFormatted} - ${deathFormatted}`
   if (deathFormatted) return deathFormatted

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateObituaryAge, formatLifespan } from '@/lib/utils';
+import { ageLabel } from '@/lib/hr';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 const ObituariesGallery = () => {
@@ -106,7 +107,7 @@ const ObituariesGallery = () => {
 
                       {obituary.datum_rodenja && obituary.datum_smrti && (
                         <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full inline-block text-xs font-medium mb-3">
-                          {calculateObituaryAge(obituary.datum_rodenja, obituary.datum_smrti)} godina
+                          {ageLabel(calculateObituaryAge(obituary.datum_rodenja, obituary.datum_smrti))}
                         </div>
                       )}
 

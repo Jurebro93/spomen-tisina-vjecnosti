@@ -12,7 +12,7 @@ import VirtualCandles from '@/components/VirtualCandles';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { classifyCityRegion, CityRegion, isLikelyCityName } from '@/lib/cityRegions';
-import { citySlug } from '@/lib/cityMatch';
+import { citySlug, placeInCity } from '@/lib/cityMatch';
 
 type City = { name: string; count: number };
 
@@ -50,11 +50,14 @@ const MAIN_CROATIAN_CITIES = [
 
 const Gradovi = () => {
   const [cities, setCities] = useState<City[]>([]);
+  // Unfiltered rows: cemetery-only names such as "Lovrinac" are not listed but still count for their city.
+  const [allPlaces, setAllPlaces] = useState<City[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
 
   useEffect(() => {
     supabase.rpc('obituary_city_counts').then(({ data }) => {
+      setAllPlaces((data as City[]) || []);
       const list = ((data as City[]) || [])
         .filter((c) => isLikelyCityName(c.name))
         .sort((a, b) => a.name.localeCompare(b.name, 'hr'));
@@ -78,14 +81,16 @@ const Gradovi = () => {
 
     // Glavni hrvatski gradovi — istaknuta kartica iznad abecednog popisa
     const matchedDbNames = new Set<string>();
+    // A city's obituaries are spread over several spellings ("Split", "Lovrinac",
+    // "Lovrinac u Splitu"), so its count adds them all up, as its city page does.
     const mainCities = MAIN_CROATIAN_CITIES
       .map((name) => {
-        const norm = name.toLowerCase();
-        const db = byRegion.get('croatia')!.find((c) => c.name.toLowerCase() === norm || c.name.toLowerCase().startsWith(`${norm}-`));
-        if (!db) return null;
-        matchedDbNames.add(db.name);
-        const matches = !norm || name.toLowerCase().includes(norm) || db.name.toLowerCase().includes(norm);
-        return matches ? { ...db, name } : null;
+        const parts = allPlaces.filter((c) => !matchedDbNames.has(c.name) && placeInCity(c.name, name));
+        if (!parts.length) return null;
+        parts.forEach((c) => matchedDbNames.add(c.name));
+        const count = parts.reduce((sum, c) => sum + c.count, 0);
+        const matches = !norm || name.toLowerCase().includes(norm) || parts.some((c) => c.name.toLowerCase().includes(norm));
+        return matches ? { name, count } : null;
       })
       .filter((c): c is City => Boolean(c));
     const croatiaRest = byRegion.get('croatia')!.filter((c) => !matchedDbNames.has(c.name));
@@ -104,7 +109,7 @@ const Gradovi = () => {
         : list.reduce((s, c) => s + c.count, 0));
       return { region, letters: Array.from(map.entries()), total, mainCities: region === 'croatia' ? mainCities : [] };
     }).filter((g) => g.letters.length > 0 || g.mainCities.length > 0);
-  }, [cities, q]);
+  }, [cities, allPlaces, q]);
 
   const anyResults = groupedByRegion.length > 0;
 

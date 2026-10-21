@@ -36,6 +36,32 @@ const CITY_ALIASES: Record<string, string[]> = {
 const cityAnyPattern = (city: string): string =>
   [city, ...(CITY_ALIASES[citySlug(city)] ?? [])].map(cityPattern).join('|');
 
+// A substring match also finds other places that start with the city's name:
+// "Varaždinske Toplice" for Varaždin, the village "Splitska" on Brač for Split.
+const CITY_EXCLUDE: Record<string, string[]> = {
+  varazdin: ['varaždinsk'],
+  split: ['splitsk'],
+  imotski: ['imotskim poljic', 'imotska poljic'],
+};
+
+/**
+ * True when the row matched the city only through one of the CITY_EXCLUDE
+ * places, so it belongs to another town. Rows that never mention such a place stay.
+ */
+export const isOtherPlace = (row: Record<string, unknown>, city: string, columns: string[]): boolean => {
+  const excluded = CITY_EXCLUDE[citySlug(city)];
+  if (!excluded) return false;
+  const exclude = new RegExp(excluded.map(cityPattern).join('|'), 'gi');
+  const values = columns.map((col) => String(row[col] ?? ''));
+  if (!values.some((v) => new RegExp(exclude.source, 'i').test(v))) return false;
+  const match = new RegExp(cityAnyPattern(city), 'i');
+  return !values.some((v) => match.test(v.replace(exclude, ' ')));
+};
+
+/** Whether a free-text place ("Lovrinac u Splitu", "Grad Zagreb") belongs to the city. */
+export const placeInCity = (place: string, city: string): boolean =>
+  new RegExp(cityAnyPattern(city), 'i').test(place) && !isOtherPlace({ place }, city, ['place']);
+
 /** PostgREST or() filter: any of the columns contains the city. */
 export const cityOrFilter = (city: string, columns: string[]): string => {
   const pattern = `"${cityAnyPattern(city)}"`;

@@ -26,9 +26,10 @@ import MemorialCta from '@/components/memorial/MemorialCta';
 import { supabase } from '@/integrations/supabase/client';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 import { PersonSEO } from '@/hooks/usePersonSEO';
-import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
+import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge, isFutureDate } from '@/lib/utils';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import EbookSignup from '@/components/EbookSignup';
+import { ageLabel, mergeMourners } from '@/lib/hr';
 
 const ObituaryPage = () => {
   const { slug } = useParams();
@@ -104,7 +105,7 @@ const ObituaryPage = () => {
   };
 
   const birthDate = formatObituaryDate(obituary?.datum_rodenja);
-  const deathDate = formatObituaryDate(obituary?.datum_smrti);
+  const deathDate = isFutureDate(obituary?.datum_smrti) ? null : formatObituaryDate(obituary?.datum_smrti);
   const location = formatObituaryLocation(obituary?.mjesto_rodenja, obituary?.mjesto_smrti);
   const age = calculateObituaryAge(obituary?.datum_rodenja, obituary?.datum_smrti);
 
@@ -208,19 +209,19 @@ const ObituaryPage = () => {
                         {birthDate && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                            <span>Rođen: {birthDate}</span>
+                            <span>Datum rođenja: {birthDate}</span>
                           </div>
                         )}
                         {deathDate && (
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                            <span>Preminuo: {deathDate}</span>
+                            <span>Datum smrti: {deathDate}</span>
                           </div>
                         )}
                         {age !== null && (
                           <div className="flex items-center gap-2">
                             <Users className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                            <span>Dob: {age} godina</span>
+                            <span>Dob: {ageLabel(age)}</span>
                           </div>
                         )}
                         {location && (
@@ -315,7 +316,7 @@ const ObituaryPage = () => {
               <CardContent className="p-4 sm:p-6 lg:p-8">
                 <h2 className="text-xl sm:text-2xl font-bold text-primary mb-4 sm:mb-6">Ožalošćeni</h2>
                 <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-                  {obituary.ozalosceni.map((mourner: string, index: number) => (
+                  {mergeMourners(obituary.ozalosceni).map((mourner: string, index: number) => (
                     <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                       <Users className="h-3 w-3 sm:h-4 sm:w-4 text-gray-600 flex-shrink-0" />
                       <span className="text-xs sm:text-sm text-gray-700 break-words">{mourner}</span>

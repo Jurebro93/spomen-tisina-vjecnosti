@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Flame, ChevronDown, FileText, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { cityOrFilter, cityPattern } from '@/lib/cityMatch';
+import { cityOrFilter, cityPattern, citySlug, isOtherPlace } from '@/lib/cityMatch';
 const obituary1 = "/site/sample-obituary-1.jpg";
 const obituary2 = "/site/sample-obituary-2.jpg";
 import { SEOHelmet } from '@/hooks/useSEO';
@@ -24,6 +24,7 @@ import CityObituaryAlert from '@/components/CityObituaryAlert';
 import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
 import { useCityName } from '@/hooks/useCityName';
 import { isTestCity, testCityTitle, testCityDescription, testCityH1 } from '@/lib/seoCityTest';
+import { ageLabel } from '@/lib/hr';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
 
@@ -75,6 +76,14 @@ const Umrli = () => {
   const currentCity = useRef(cityName);
   currentCity.current = cityName;
 
+  // "danas i jučer" only while the newest obituary is that recent; small cities often show older ones.
+  const hasFreshObituary = obituaries.some((o) => {
+    const day = o.datum_ukopa || o.datum_smrti;
+    return day && Date.now() - new Date(String(day).slice(0, 10) + 'T12:00').getTime() < 3 * 24 * 60 * 60 * 1000;
+  });
+  // Funeral schedules carry no death date; an all-"N/A" column only adds noise.
+  const showDeathDate = funeralSchedule.some((f) => f.deathDate && f.deathDate !== 'N/A');
+
   const fetchObituaries = async () => {
     const forCity = cityName;
     try {
@@ -90,7 +99,7 @@ const Umrli = () => {
         console.error('Error fetching obituaries:', error);
         setFetchFailed(true);
       } else {
-        setObituaries(dedupeObituaries(data || []));
+        setObituaries(dedupeObituaries((data || []).filter((row) => !isOtherPlace(row, forCity, ['mjesto_smrti', 'mjesto_rodenja', 'groblje']))));
         setFetchFailed(false);
       }
     } catch (error) {
@@ -191,7 +200,7 @@ const Umrli = () => {
         setFuneralSchedule([]);
       } else {
         // Create a flat array of funerals instead of grouping by cemetery
-        const funeralList = (data || []).map((funeral: any) => {
+        const funeralList = (data || []).filter((row) => !isOtherPlace(row, forCity, ['mjesto_smrti', 'groblje'])).map((funeral: any) => {
           const age = funeral.datum_smrti && funeral.datum_rodenja ? 
             new Date(funeral.datum_smrti).getFullYear() - new Date(funeral.datum_rodenja).getFullYear() : 'N/A';
           
@@ -316,7 +325,7 @@ const Umrli = () => {
 
               {age !== null && (
                 <div className="bg-primary text-primary-foreground px-3 py-1 rounded-full inline-block text-xs font-medium mb-3">
-                  {age} godina
+                  {ageLabel(age)}
                 </div>
               )}
 
@@ -474,7 +483,7 @@ const Umrli = () => {
 
         {/* Recent Obituaries */}
         <div className="mb-8 sm:mb-12">
-          <h2 className="text-xl sm:text-2xl font-display font-semibold mb-4 sm:mb-6 px-2">{seoTest ? `Osmrtnice ${cityName} – danas i jučer` : `Najnovije osmrtnice${cityName ? ` u gradu ${cityName}` : ''}`}</h2>
+          <h2 className="text-xl sm:text-2xl font-display font-semibold mb-4 sm:mb-6 px-2">{seoTest ? `Osmrtnice ${cityName} – ${hasFreshObituary ? 'danas i jučer' : 'najnovije'}` : `Najnovije osmrtnice${cityName ? ` u gradu ${cityName}` : ''}`}</h2>
           
           {loading ? (
             <div className="flex justify-center items-center py-20">
@@ -562,7 +571,7 @@ const Umrli = () => {
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Datum sprovoda</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Vrijeme</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Ime i prezime</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Datum smrti</th>
+                    {showDeathDate && <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Datum smrti</th>}
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Godine</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Groblje</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-900">Mjesto</th>
@@ -587,9 +596,11 @@ const Umrli = () => {
                         <td className="px-4 py-4 text-sm font-medium text-gray-900">
                           {funeral.name}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-700">
-                          {funeral.deathDate}
-                        </td>
+                        {showDeathDate && (
+                          <td className="px-4 py-4 text-sm text-gray-700">
+                            {funeral.deathDate}
+                          </td>
+                        )}
                         <td className="px-4 py-4 text-sm text-gray-700">
                           {funeral.age}
                         </td>
@@ -646,7 +657,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/groblja/${city}`}
+                to={`/groblja/${citySlug(city)}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Groblja {city}</span>
@@ -675,7 +686,7 @@ const Umrli = () => {
             {MAIN_CITIES.map((city) => (
               <Link
                 key={city}
-                to={`/sprovodi/${city}`}
+                to={`/sprovodi/${citySlug(city)}`}
                 className="group flex items-center justify-between gap-2 rounded-lg border border-border bg-card px-4 py-3 hover:border-memorial-gold/60 hover:shadow-sm transition-colors"
               >
                 <span className="font-medium text-foreground group-hover:text-memorial-gold transition-colors">Sprovodi {city}</span>

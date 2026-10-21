@@ -4,7 +4,7 @@ import { MapPin, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { normalizeCityName } from '@/lib/cityRegions';
-import { citySlug } from '@/lib/cityMatch';
+import { citySlug, placeInCity } from '@/lib/cityMatch';
 
 interface CityData {
   name: string;
@@ -51,13 +51,16 @@ const CitiesSection = () => {
         const allCities = Array.from(merged.values());
 
         // Glavni gradovi — istaknute kartice
+        // Each city adds up all its spellings ("Split", "Lovrinac", "Lovrinac u Splitu"),
+        // as its city page does; otherwise Split showed 104 of its ~1000 obituaries.
+        const used = new Set<string>();
         const main: CityData[] = MAIN_CITIES
-          .map((name) => allCities.find((c) => c.name.toLowerCase() === name.toLowerCase() || c.name.toLowerCase().startsWith(`${name.toLowerCase()}-`)))
-          .filter((c): c is CityData => Boolean(c))
-          .map((c) => {
-            const label = MAIN_CITIES.find((n) => c.name.toLowerCase() === n.toLowerCase() || c.name.toLowerCase().startsWith(`${n.toLowerCase()}-`)) || c.name;
-            return { ...c, name: label };
-          });
+          .map((name) => {
+            const parts = allCities.filter((c) => !used.has(c.name) && placeInCity(c.name, name));
+            parts.forEach((c) => used.add(c.name));
+            return { name, count: parts.reduce((sum, c) => sum + c.count, 0) };
+          })
+          .filter((c) => c.count > 0);
 
         setMainCities(main);
       } catch (error) {

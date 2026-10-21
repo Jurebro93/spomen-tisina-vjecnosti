@@ -50,7 +50,7 @@ export default function CityObituaryAlert({ city, cityName, className = '' }: Pr
           <span className="text-xs font-semibold uppercase tracking-wide">Obavijest na e-mail</span>
         </div>
         <h2 id="city-alert-heading" className="mt-2 font-display text-xl sm:text-2xl font-bold">
-          Javite mi kad izađe nova osmrtnica za {cityName}
+          Javite mi kad izađe nova osmrtnica za grad {cityName}
         </h2>
         <p className="mt-2 text-sm sm:text-base text-background/75 leading-relaxed">
           Jednom dnevno, samo kad ima novih osmrtnica i sprovoda. Odjava jednim klikom.
@@ -63,7 +63,7 @@ export default function CityObituaryAlert({ city, cityName, className = '' }: Pr
             <Check className="h-6 w-6 shrink-0 text-memorial-gold" />
             <div>
               <p className="font-semibold">Prijava je zaprimljena.</p>
-              <p className="mt-1 text-sm text-background/75">Javit ćemo vam kad izađe nova osmrtnica za {cityName}.</p>
+              <p className="mt-1 text-sm text-background/75">Javit ćemo vam kad izađe nova osmrtnica za grad {cityName}.</p>
             </div>
           </div>
         ) : (
