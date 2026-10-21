@@ -252,3 +252,47 @@ export function parseCakovec(html: string, fromDate: string): ScheduleRow[] {
   }
   return rows
 }
+
+/**
+ * Velika Gorica, VG Komunalac: OData behind the Axiom Memento iframe on
+ * vgkomunalac.hr/djelatnosti/groblja/raspored-sprovoda-ispracaja.
+ * value[]: IME_OSOB, PREZIME_OSOB, STAROST_GODINA, NAZIV_MJISP, DATIVR_ISPRACAJA (local ISO).
+ */
+export function parseVelikaGorica(json: unknown, fromDate: string): ScheduleRow[] {
+  // deno-lint-ignore no-explicit-any
+  const items: any[] = (json as any)?.value ?? []
+  const rows: ScheduleRow[] = []
+  for (const item of items) {
+    const m = String(item?.DATIVR_ISPRACAJA ?? '').match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/)
+    if (!m || m[1] < fromDate) continue
+    const groblje = cleanGroblje(String(item.NAZIV_MJISP ?? '')) || 'Groblje Velika Gorica'
+    const age = Number(item.STAROST_GODINA)
+    const r = row('vgkomunalac-velika-gorica', 'vgk', 'Velika Gorica', `${item.IME_OSOB ?? ''} ${item.PREZIME_OSOB ?? ''}`, groblje, m[1], m[2], age > 0 ? age : null)
+    if (r) rows.push(r)
+  }
+  return rows
+}
+
+/**
+ * Požega, Komunalac Požega: Joomla blog of current funerals.
+ *   <h2>DRAGO BUŠIĆ</h2> <p>preminuo u 89. godini života</p>
+ *   Groblje: Krista Kralja · Datum sahrane: 21. 10. 2026. u 13.30
+ */
+export function parsePozega(html: string, fromDate: string): ScheduleRow[] {
+  const rows: ScheduleRow[] = []
+  for (const block of html.split(/itemprop="blogPost"/).slice(1)) {
+    const name = stripTags(block.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? '')
+    const field = (cls: string) => stripTags(block.match(new RegExp(`field-entry ${cls}[\\s\\S]*?field-value[^>]*>([\\s\\S]*?)</span>`))?.[1] ?? '')
+    const place = field('groblje')
+    const when = field('datum-sahrane')
+    const date = parseNumericDate(when)
+    const time = when.match(/u\s*(\d{1,2})[:.](\d{2})/)
+    if (!name || !date || !time || date < fromDate) continue
+    const age = stripTags(block).match(/u\s+(\d{1,3})\.\s*godini/i)
+    const groblje = place ? `Groblje ${place}` : 'Groblje Požega'
+    // "u 89. godini života" means 88 full years.
+    const r = row('komunalac-pozega', 'kpz', 'Požega', name, groblje, date, `${time[1]}:${time[2]}`, age ? Number(age[1]) - 1 : null)
+    if (r) rows.push(r)
+  }
+  return rows
+}
