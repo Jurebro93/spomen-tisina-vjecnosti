@@ -1,5 +1,5 @@
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MemorialCtaBanner from '@/components/MemorialCtaBanner';
@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, MapPin, Flame, ChevronDown, FileText, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { cityOrFilter } from '@/lib/cityMatch';
+import { cityOrFilter, cityPattern } from '@/lib/cityMatch';
 const obituary1 = "/site/sample-obituary-1.jpg";
 const obituary2 = "/site/sample-obituary-2.jpg";
 import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
-import { formatLifespan, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
+import { formatLifespan, formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
 import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
@@ -70,15 +70,22 @@ const Umrli = () => {
   });
   const [funeralSchedule, setFuneralSchedule] = useState<any[]>([]);
   const [cemeteries, setCemeteries] = useState<Cemetery[]>([]);
+  // The page stays mounted when moving between cities; answers that arrive for
+  // the previous city must not land on the new one.
+  const currentCity = useRef(cityName);
+  currentCity.current = cityName;
 
   const fetchObituaries = async () => {
+    const forCity = cityName;
     try {
       const { data, error } = await supabase
         .from('obituaries')
-        .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, biografija, fotografija_url, profesija, slug')
+        .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, groblje, biografija, fotografija_url, profesija, slug')
         .or(cityOrFilter(cityName, ['mjesto_smrti', 'mjesto_rodenja', 'groblje', 'mjesna_zajednica']))
-        .order('datum_ukopa', { ascending: false, nullsFirst: false });
+        .order('datum_ukopa', { ascending: false, nullsFirst: false })
+        .limit(300);
 
+      if (currentCity.current !== forCity) return;
       if (error) {
         console.error('Error fetching obituaries:', error);
         setFetchFailed(true);
@@ -88,13 +95,14 @@ const Umrli = () => {
       }
     } catch (error) {
       console.error('Error fetching obituaries:', error);
-      setFetchFailed(true);
+      if (currentCity.current === forCity) setFetchFailed(true);
     } finally {
-      setLoading(false);
+      if (currentCity.current === forCity) setLoading(false);
     }
   };
 
   const fetchStats = async () => {
+    const forCity = cityName;
     try {
       // Get current date boundaries
       const now = new Date();
@@ -124,6 +132,7 @@ const Umrli = () => {
         console.error('Error fetching funerals stats:', funeralsError);
       }
 
+      if (currentCity.current !== forCity) return;
       // Update stats with fetched data
       setStats(prevStats => ({
         obituariesThisMonth: obituariesData?.length || 0,
@@ -136,12 +145,15 @@ const Umrli = () => {
   };
 
   const fetchCemeteries = async () => {
+    const forCity = cityName;
     const data = await fetchCemeteriesByCity(cityName);
+    if (currentCity.current !== forCity) return;
     setCemeteries(data);
     setStats(prevStats => ({ ...prevStats, cemeteriesCount: data.length }));
   };
 
   const fetchFuneralSchedule = async () => {
+    const forCity = cityName;
     try {
       // Get last 7 days and next 7 days
       const today = new Date();
@@ -150,39 +162,49 @@ const Umrli = () => {
       const nextWeek = new Date();
       nextWeek.setDate(today.getDate() + 7);
       
-      const { data, error } = await supabase
-        .from('obituaries')
-        .select(`
-          id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, 
-          groblje, profesija, mjesto_smrti
-        `)
-        .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
-        .gte('datum_ukopa', lastWeek.toISOString().split('T')[0])
-        .lte('datum_ukopa', nextWeek.toISOString().split('T')[0])
-        .order('datum_ukopa', { ascending: false }); // Sort from newest to oldest
+      const from = lastWeek.toISOString().split('T')[0];
+      const to = nextWeek.toISOString().split('T')[0];
+      const [{ data, error }, { data: scheduled }] = await Promise.all([
+        supabase
+          .from('obituaries')
+          .select(`
+            id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, 
+            groblje, profesija, mjesto_smrti
+          `)
+          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
+          .gte('datum_ukopa', from)
+          .lte('datum_ukopa', to)
+          .order('datum_ukopa', { ascending: false }), // Sort from newest to oldest
+        // Funeral schedules published by the city's cemetery company (Zagreb, Rijeka, Karlovac...),
+        // so big cities with few obituaries still show their funerals.
+        supabase
+          .from('sprovodi')
+          .select('id, ime, prezime, godina, groblje, datum_sprovoda, vrijeme_sprovoda')
+          .filter('grad', 'imatch', `^${cityPattern(cityName)}$`)
+          .gte('datum_sprovoda', from)
+          .lte('datum_sprovoda', to),
+      ]);
 
+      if (currentCity.current !== forCity) return;
       if (error) {
         console.error('Error fetching funeral schedule:', error);
         setFuneralSchedule([]);
       } else {
-        console.log('Funeral schedule data:', data);
-        console.log('Date range:', lastWeek.toISOString().split('T')[0], 'to', nextWeek.toISOString().split('T')[0]);
-        
         // Create a flat array of funerals instead of grouping by cemetery
         const funeralList = (data || []).map((funeral: any) => {
           const age = funeral.datum_smrti && funeral.datum_rodenja ? 
             new Date(funeral.datum_smrti).getFullYear() - new Date(funeral.datum_rodenja).getFullYear() : 'N/A';
           
+          // Midnight means the import had no time for the funeral; show the date alone.
+          const hasTime = !!funeral.datum_ukopa && !/T00:00(:00)?/.test(String(funeral.datum_ukopa).replace(' ', 'T'));
           return {
             id: funeral.id,
-            rawDate: funeral.datum_ukopa as string | null,
-            burialDate: funeral.datum_ukopa ? new Date(funeral.datum_ukopa).toLocaleDateString('hr-HR') : 'N/A',
-            burialTime: funeral.datum_ukopa ? new Date(funeral.datum_ukopa).toLocaleTimeString('hr-HR', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }) : 'N/A',
+            rawDate: hasTime ? funeral.datum_ukopa as string : funeral.datum_ukopa ? String(funeral.datum_ukopa).slice(0, 10) : null,
+            burialDate: funeral.datum_ukopa ? new Date(String(funeral.datum_ukopa).slice(0, 10) + 'T12:00').toLocaleDateString('hr-HR') : 'N/A',
+            // The import stores the local funeral time as if it were UTC; read it as written.
+            burialTime: hasTime ? String(funeral.datum_ukopa).replace(' ', 'T').slice(11, 16) : '',
             name: `${funeral.ime || ''} ${funeral.prezime || ''}`.trim(),
-            deathDate: funeral.datum_smrti ? new Date(funeral.datum_smrti).toLocaleDateString('hr-HR') : 'N/A',
+            deathDate: formatObituaryDate(funeral.datum_smrti) || 'N/A',
             age: age.toString(),
             cemetery: funeral.groblje || 'Nepoznato',
             place: funeral.mjesto_smrti || 'Nepoznato',
@@ -190,11 +212,31 @@ const Umrli = () => {
           };
         });
         
-        setFuneralSchedule(funeralList);
+        const known = new Set(funeralList.map((f) => f.name.toLowerCase()));
+        const fromSchedule = (scheduled || [])
+          .filter((row: any) => !known.has(`${row.ime || ''} ${row.prezime || ''}`.trim().toLowerCase()))
+          .map((row: any) => {
+            const time = row.vrijeme_sprovoda ? String(row.vrijeme_sprovoda).slice(0, 5) : '';
+            const rawDate = time ? `${row.datum_sprovoda}T${time}` : row.datum_sprovoda;
+            return {
+              id: `s-${row.id}`,
+              rawDate,
+              burialDate: new Date(`${row.datum_sprovoda}T12:00`).toLocaleDateString('hr-HR'),
+              burialTime: time,
+              name: `${row.ime || ''} ${row.prezime || ''}`.trim(),
+              deathDate: 'N/A',
+              age: row.godina ? String(row.godina) : 'N/A',
+              cemetery: row.groblje || 'Nepoznato',
+              place: cityName,
+              profession: '',
+            };
+          });
+
+        setFuneralSchedule([...funeralList, ...fromSchedule].sort((a, b) => String(b.rawDate).localeCompare(String(a.rawDate))));
       }
     } catch (error) {
       console.error('Error fetching funeral schedule:', error);
-      setFuneralSchedule([]);
+      if (currentCity.current === forCity) setFuneralSchedule([]);
     }
   };
 
@@ -208,13 +250,13 @@ const Umrli = () => {
   const upcomingFunerals = funeralSchedule
     .filter((f) => f.rawDate)
     .map((f) => {
-      const d = new Date(f.rawDate);
+      const d = new Date(`${String(f.rawDate).slice(0, 10)}T12:00`);
       const key = localDateKey(d);
       const day = key === todayKey ? 'Danas' : key === tomorrowKey ? 'Sutra' : `${d.getDate()}. ${d.getMonth() + 1}.`;
-      return { ...f, day, time: String(f.rawDate).includes('T') ? f.burialTime : '', ts: d.getTime() };
+      return { ...f, day, time: f.burialTime, ts: d.getTime(), order: `${String(f.rawDate).slice(0, 10)} ${f.burialTime || '99'}` };
     })
     .filter((f) => f.ts >= startOfToday.getTime())
-    .sort((a, b) => a.ts - b.ts);
+    .sort((a, b) => a.order.localeCompare(b.order));
 
   const quizTracker: QuizTracker = {
     step: (ctaId) => trackObituaryEvent('obituary_memorial_click', null, { placement: 'city_quiz', memorial_action: ctaId }),
@@ -223,7 +265,9 @@ const Umrli = () => {
 
   const renderObituaryCard = (obituary: any) => {
     const lifespan = formatLifespan(obituary.datum_rodenja, obituary.datum_smrti);
-    const location = formatObituaryLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti);
+    // The cemetery says where the funeral is; fall back to the places when it is missing.
+    const cemetery = obituary.groblje ? String(obituary.groblje).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    const location = cemetery || formatObituaryLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti);
     const age = calculateObituaryAge(obituary.datum_rodenja, obituary.datum_smrti);
 
     return (
@@ -322,11 +366,16 @@ const Umrli = () => {
   };
 
   useEffect(() => {
+    setLoading(true);
+    setObituaries([]);
+    setFuneralSchedule([]);
+    setCemeteries([]);
+    setVisibleCount(6);
     fetchObituaries();
     fetchStats();
     fetchFuneralSchedule();
     fetchCemeteries();
-  }, [city]);
+  }, [cityName]);
 
 
 
@@ -533,7 +582,7 @@ const Umrli = () => {
                           {funeral.burialDate}
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-700">
-                          {funeral.burialTime}
+                          {funeral.burialTime || '—'}
                         </td>
                         <td className="px-4 py-4 text-sm font-medium text-gray-900">
                           {funeral.name}

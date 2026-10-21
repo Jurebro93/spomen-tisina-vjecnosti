@@ -1,5 +1,5 @@
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MemorialCtaSection from '@/components/MemorialCtaSection';
@@ -86,17 +86,26 @@ const Sprovodi = () => {
   const [recentSprovodi, setRecentSprovodi] = useState<ScheduleRow[]>([]);
   const [cemeteries, setCemeteries] = useState<Cemetery[]>([]);
   const [loading, setLoading] = useState(true);
+  // The page stays mounted when moving between cities; answers that arrive for
+  // the previous city must not land on the new one.
+  const currentCity = useRef(cityName);
+  currentCity.current = cityName;
 
   useEffect(() => {
+    setCemeteries([]);
+    setSprovodi([]);
+    setFuneralServices([]);
     fetchData();
-  }, [city]);
+  }, [cityName]);
 
   const fetchData = async () => {
+    const forCity = cityName;
+    const live = () => currentCity.current === forCity;
     try {
-      setLoading(true);
+      if (live()) setLoading(true);
       const isZagreb = city?.toLowerCase() === 'zagreb';
-      fetchCemeteriesByCity(cityName).then(setCemeteries);
-      setRecentSprovodi([]);
+      fetchCemeteriesByCity(cityName).then((rows) => { if (live()) setCemeteries(rows); });
+      if (live()) setRecentSprovodi([]);
 
       if (isZagreb) {
         const { data, error } = await supabase
@@ -110,9 +119,9 @@ const Sprovodi = () => {
 
         if (error) {
           console.error('Error fetching sprovodi:', error);
-          setSprovodi([]);
+          if (live()) setSprovodi([]);
         } else {
-          setSprovodi((data ?? []).map((row) => ({
+          if (live()) setSprovodi((data ?? []).map((row) => ({
             id: row.id,
             ime: row.ime,
             prezime: row.prezime,
@@ -142,7 +151,7 @@ const Sprovodi = () => {
 
         if (sprovodiError) {
           console.error('Error fetching sprovodi:', sprovodiError);
-          setSprovodi([]);
+          if (live()) setSprovodi([]);
         } else {
           const scheduled: ScheduleRow[] = (scheduleData ?? []).map((row) => ({
             id: row.id,
@@ -154,7 +163,7 @@ const Sprovodi = () => {
             godine: row.godina,
             tip: row.tip_sprovoda,
           }));
-          setSprovodi([...(sprovodiData ?? []).flatMap(toScheduleRow), ...scheduled]
+          if (live()) setSprovodi([...(sprovodiData ?? []).flatMap(toScheduleRow), ...scheduled]
             .sort((a, b) => `${a.datum} ${a.vrijeme}`.localeCompare(`${b.datum} ${b.vrijeme}`)));
         }
 
@@ -167,7 +176,7 @@ const Sprovodi = () => {
           .gte('datum_ukopa', daysAgo(14))
           .order('datum_ukopa', { ascending: false })
           .limit(40);
-        setRecentSprovodi((recentData ?? []).flatMap(toScheduleRow));
+        if (live()) setRecentSprovodi((recentData ?? []).flatMap(toScheduleRow));
       }
 
       // Fetch funeral services for the city
@@ -180,12 +189,12 @@ const Sprovodi = () => {
       if (servicesError) {
         console.error('Error fetching funeral services:', servicesError);
       } else {
-        setFuneralServices(servicesData || []);
+        if (live()) setFuneralServices(servicesData || []);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setLoading(false);
+      if (live()) setLoading(false);
     }
   };
 

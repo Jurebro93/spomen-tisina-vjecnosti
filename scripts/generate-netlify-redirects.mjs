@@ -51,8 +51,19 @@ const MOVED = [
   ['/sitemap_index.xml', '/sitemap.xml'],
 ];
 
+// Old bookmarks from when WordPress ran at the domain root. WordPress now
+// lives under /wp/, and cPanel/webmail are on the old server's own ports.
+const OLD_ADMIN = [
+  ['/wp-admin', '/wp/wp-admin/'],
+  ['/wp-admin/*', '/wp/wp-admin/:splat'],
+  ['/wp-login.php', '/wp/wp-login.php'],
+  ['/cpanel', 'https://mail.osmrtnica.com.hr:2083/'],
+  ['/webmail', 'https://mail.osmrtnica.com.hr:2096/'],
+];
+
 const lines = [
   ...MOVED.map(([from, to]) => `${from} ${to} 301!`),
+  ...OLD_ADMIN.map(([from, to]) => `${from} ${to} 302!`),
   `/wp/wp-content/* ${OLD_SERVER}/wp/wp-content/:splat 200!`,
   `/wp/* ${OLD_SERVER_HTTPS}/wp/:splat 200!`,
   `/wp-content/* ${OLD_SERVER}/wp-content/:splat 200!`,

@@ -6,13 +6,16 @@ import { cityLabelFromSlug, cityPattern } from '@/lib/cityMatch';
  * City name as written in the data ("Metković", "Slavonski Brod") for an
  * ASCII URL slug. Starts with a readable guess from the slug, then uses the
  * spelling found in obituaries.mjesto_smrti.
+ *
+ * The name always belongs to the current slug: moving from /umrli/zagreb to
+ * /umrli/split keeps the same page mounted, and returning the previous city's
+ * name for even one render made the page load Zagreb's obituaries under Split.
  */
 export const useCityName = (slug?: string): string => {
   const fallback = slug ? cityLabelFromSlug(slug) : '';
-  const [name, setName] = useState(fallback);
+  const [found, setFound] = useState<{ slug?: string; name: string } | null>(null);
 
   useEffect(() => {
-    setName(fallback);
     if (!slug) return;
     let cancelled = false;
     supabase
@@ -21,13 +24,13 @@ export const useCityName = (slug?: string): string => {
       .filter('mjesto_smrti', 'imatch', `^${cityPattern(fallback)}$`)
       .limit(1)
       .then(({ data }) => {
-        const found = data?.[0]?.mjesto_smrti?.trim();
-        if (!cancelled && found) setName(found);
+        const name = data?.[0]?.mjesto_smrti?.trim();
+        if (!cancelled && name) setFound({ slug, name });
       });
     return () => {
       cancelled = true;
     };
   }, [slug, fallback]);
 
-  return name;
+  return found && found.slug === slug ? found.name : fallback;
 };

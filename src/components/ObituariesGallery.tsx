@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { calculateObituaryAge } from '@/lib/utils';
+import { calculateObituaryAge, formatLifespan } from '@/lib/utils';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 const ObituariesGallery = () => {
@@ -21,8 +21,9 @@ const ObituariesGallery = () => {
     try {
     const { data, error } = await supabase
       .from('obituaries')
-      .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, biografija, fotografija_url, profesija, slug')
-      .order('datum_ukopa', { ascending: false, nullsFirst: false });
+      .select('id, ime, prezime, datum_rodenja, datum_smrti, datum_ukopa, mjesto_rodenja, mjesto_smrti, groblje, biografija, fotografija_url, profesija, slug')
+      .order('datum_ukopa', { ascending: false, nullsFirst: false })
+      .limit(60);
 
       if (error) {
         console.error('Error fetching obituaries:', error);
@@ -34,15 +35,6 @@ const ObituariesGallery = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('hr-HR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
   };
 
   const renderLocation = (birthPlace?: string, deathPlace?: string) => {
@@ -104,12 +96,12 @@ const ObituariesGallery = () => {
                       </h3>
                       
                       <div className="space-y-2 text-sm text-muted-foreground mb-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <span>
-                            {formatDate(obituary.datum_rodenja)} - {formatDate(obituary.datum_smrti)}
-                          </span>
-                        </div>
-                        {renderLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti)}
+                        {formatLifespan(obituary.datum_rodenja, obituary.datum_smrti) && (
+                          <div className="flex items-center justify-center gap-2">
+                            <span>{formatLifespan(obituary.datum_rodenja, obituary.datum_smrti)}</span>
+                          </div>
+                        )}
+                        {obituary.groblje ? renderLocation(String(obituary.groblje).replace(/<[^>]+>/g, ' ').trim()) : renderLocation(obituary.mjesto_rodenja, obituary.mjesto_smrti)}
                       </div>
 
                       {obituary.datum_rodenja && obituary.datum_smrti && (

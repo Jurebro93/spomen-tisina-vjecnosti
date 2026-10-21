@@ -12,10 +12,16 @@ function isPlaceholderYearDate(year: string, month: string, day: string) {
   return month === "00" || (month === "01" && (day === "01" || day === "00"))
 }
 
-/** Format an obituary date. Year-only values stay as the year, without "1. siječnja". */
+/**
+ * Format an obituary date. Year-only values stay as the year, without "1. siječnja".
+ * The daily import stores a date it only knows the year of as 1 January
+ * (1961-01-01, 2026-01-01), so 1 January always shows as the year alone; a
+ * real "1. siječnja" death would otherwise be indistinguishable from the
+ * hundreds of placeholders.
+ */
 export function formatObituaryDate(
   dateString?: string | null,
-  options?: { yearOnlyIfJan1?: boolean }
+  options: { yearOnlyIfJan1?: boolean } = { yearOnlyIfJan1: true }
 ): string | null {
   if (!dateString || !String(dateString).trim()) return null
 
@@ -25,7 +31,7 @@ export function formatObituaryDate(
   const iso = ISO_DATE.exec(raw)
   if (iso) {
     const [, year, month, day] = iso
-    if (options?.yearOnlyIfJan1 && isPlaceholderYearDate(year, month, day)) {
+    if (options.yearOnlyIfJan1 && isPlaceholderYearDate(year, month, day)) {
       return year
     }
   }
@@ -33,7 +39,7 @@ export function formatObituaryDate(
   const date = new Date(raw)
   if (Number.isNaN(date.getTime())) return null
 
-  if (options?.yearOnlyIfJan1 && date.getMonth() === 0 && date.getDate() === 1) {
+  if (options.yearOnlyIfJan1 && date.getMonth() === 0 && date.getDate() === 1) {
     return String(date.getFullYear())
   }
 
@@ -45,7 +51,7 @@ export function formatObituaryDate(
 }
 
 export function formatLifespan(birth?: string | null, death?: string | null): string {
-  const birthFormatted = formatObituaryDate(birth, { yearOnlyIfJan1: true })
+  const birthFormatted = formatObituaryDate(birth)
   const deathFormatted = formatObituaryDate(death)
 
   if (birthFormatted && deathFormatted) return `${birthFormatted} - ${deathFormatted}`
