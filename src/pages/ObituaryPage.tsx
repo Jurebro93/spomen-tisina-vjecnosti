@@ -29,6 +29,7 @@ import { PersonSEO } from '@/hooks/usePersonSEO';
 import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge, isFutureDate } from '@/lib/utils';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import EbookSignup from '@/components/EbookSignup';
+import RelatedObituaries from '@/components/RelatedObituaries';
 import { ageLabel, mergeMourners } from '@/lib/hr';
 
 const ObituaryPage = () => {
@@ -151,9 +152,11 @@ const ObituaryPage = () => {
         <PersonSEO 
           ime={obituary.ime}
           prezime={obituary.prezime}
+          datum_rodenja={obituary.datum_rodenja}
           datum_smrti={obituary.datum_smrti}
           mjesto_smrti={obituary.mjesto_smrti}
           datum_ukopa={obituary.datum_ukopa}
+          vrijeme_ukopa={obituary.vrijeme_ukopa}
           groblje={obituary.groblje}
           slug={obituary.slug}
           meta_title={obituary.meta_title}
@@ -414,6 +417,8 @@ const ObituaryPage = () => {
               )}
             </CardContent>
           </Card>
+
+          <RelatedObituaries id={obituary.id} datum_smrti={obituary.datum_smrti} mjesto_smrti={obituary.mjesto_smrti} groblje={obituary.groblje} />
 
           {/* Actions */}
           <div className="text-center space-y-3 sm:space-y-0">

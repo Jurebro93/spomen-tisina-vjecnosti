@@ -21,6 +21,7 @@ const HomepageTwo = lazyPage(() => import("./pages/HomepageTwo"));
 const HomepageThree = lazyPage(() => import("./pages/HomepageThree"));
 const NotFound = lazyPage(() => import("./pages/NotFound"));
 const Umrli = lazyPage(() => import("./pages/Umrli"));
+const UmrliArhiva = lazyPage(() => import("./pages/UmrliArhiva"));
 const Gradovi = lazyPage(() => import("./pages/Gradovi"));
 const Sprovodi = lazyPage(() => import("./pages/Sprovodi"));
 const MemorijalniVrt = lazyPage(() => import("./pages/MemorijalniVrt"));
@@ -81,6 +82,7 @@ export const routes = [
   { path: "/homepage-3/", element: <HomepageThree />, preload: HomepageThree.preload },
   { path: "/umrli", element: <Umrli />, preload: Umrli.preload },
   { path: "/umrli/:city", element: <Umrli />, preload: Umrli.preload },
+  { path: "/umrli/:city/:godina/:mjesec", element: <UmrliArhiva />, preload: UmrliArhiva.preload },
   { path: "/gradovi", element: <Gradovi />, preload: Gradovi.preload },
   { path: "/sprovodi", element: <CityIndexPage kind="sprovodi" />, preload: CityIndexPage.preload },
   { path: "/sprovodi/:city", element: <Sprovodi />, preload: Sprovodi.preload },

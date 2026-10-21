@@ -1,12 +1,15 @@
 import { Helmet } from 'react-helmet-async';
 import { DEFAULT_OG_IMAGE, breadcrumbJsonLd } from '@/lib/seo';
+import { obituaryDescription, obituaryPlace } from '@/lib/obituaryMeta';
 
 interface PersonSEOProps {
   ime: string;
   prezime: string;
+  datum_rodenja?: string;
   datum_smrti?: string;
   mjesto_smrti?: string;
   datum_ukopa?: string;
+  vrijeme_ukopa?: string;
   groblje?: string;
   slug?: string;
   meta_title?: string;
@@ -25,55 +28,12 @@ const citySlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-export const PersonSEO = ({ ime, prezime, datum_smrti, mjesto_smrti, datum_ukopa, groblje, slug, meta_title, meta_description, fotografija_url }: PersonSEOProps) => {
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('hr-HR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-  };
-
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('hr-HR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
+export const PersonSEO = ({ ime, prezime, datum_rodenja, datum_smrti, mjesto_smrti, datum_ukopa, vrijeme_ukopa, groblje, slug, meta_title, meta_description, fotografija_url }: PersonSEOProps) => {
   // Use meta data from database if available, otherwise generate default
   const title = meta_title || `${ime} ${prezime} - Osmrtnica | Osmrtnica.com.hr`;
-  
-  let description = meta_description;
-  
-  if (!description) {
-    description = `Osmrtnica za ${ime} ${prezime}`;
-    
-    if (datum_smrti) {
-      description += `, preminuo ${formatDate(datum_smrti)}`;
-    }
-    
-    if (mjesto_smrti) {
-      description += ` u ${mjesto_smrti}`;
-    }
-    
-    if (datum_ukopa && groblje) {
-      description += `. Sprovod ${formatDateTime(datum_ukopa)} na ${groblje}`;
-    } else if (datum_ukopa) {
-      description += `. Sprovod ${formatDateTime(datum_ukopa)}`;
-    } else if (groblje) {
-      description += `. Sprovod na ${groblje}`;
-    }
-    
-    description += '. Zapali svijeću i ostavi sjećanje.';
-  }
+  const description = obituaryDescription({ ime, prezime, datum_rodenja, datum_smrti, mjesto_smrti, datum_ukopa, vrijeme_ukopa, groblje, meta_description });
+
+  const place = obituaryPlace(mjesto_smrti);
 
   const canonicalUrl = slug 
     ? `https://osmrtnica.com.hr/${slug}`
@@ -104,6 +64,7 @@ export const PersonSEO = ({ ime, prezime, datum_smrti, mjesto_smrti, datum_ukopa
           '@context': 'https://schema.org',
           '@type': 'Person',
           name: `${ime} ${prezime}`.trim(),
+          birthDate: datum_rodenja || undefined,
           deathDate: datum_smrti || undefined,
           deathPlace: mjesto_smrti || undefined,
           image: fotografija_url || undefined,
@@ -114,8 +75,8 @@ export const PersonSEO = ({ ime, prezime, datum_smrti, mjesto_smrti, datum_ukopa
         {JSON.stringify(
           breadcrumbJsonLd([
             { name: 'Naslovnica', path: '/' },
-            ...(mjesto_smrti
-              ? [{ name: `Umrli ${mjesto_smrti}`, path: `/umrli/${citySlug(mjesto_smrti)}` }]
+            ...(place
+              ? [{ name: `Umrli ${place}`, path: `/umrli/${citySlug(place)}` }]
               : []),
             { name: `${ime} ${prezime}`.trim() },
           ]),
