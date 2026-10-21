@@ -21,6 +21,9 @@ export type ScheduleRow = {
 const HR_MONTHS: Record<string, string> = {
   sijecanj: '01', veljaca: '02', ozujak: '03', travanj: '04', svibanj: '05', lipanj: '06',
   srpanj: '07', kolovoz: '08', rujan: '09', listopad: '10', studeni: '11', prosinac: '12',
+  // genitive, as in "21. listopada 2026."
+  sijecnja: '01', veljace: '02', ozujka: '03', travnja: '04', svibnja: '05', lipnja: '06',
+  srpnja: '07', kolovoza: '08', rujna: '09', listopada: '10', studenoga: '11', studenog: '11', prosinca: '12',
 }
 
 export function stripTags(value: string) {
@@ -54,9 +57,9 @@ export function titleCase(value: string) {
     .trim()
 }
 
-function splitName(full: string) {
+function splitName(full: string, surnameFirst = false) {
   const parts = titleCase(full.replace(/\s+/g, ' ').trim()).split(' ')
-  const ime = parts.shift() ?? ''
+  const ime = (surnameFirst ? parts.pop() : parts.shift()) ?? ''
   return { ime, prezime: parts.join(' ') || ime }
 }
 
@@ -71,8 +74,8 @@ function cleanGroblje(value: string) {
   return value.replace(/["“”„]/g, '').replace(/\s+/g, ' ').replace(/(\S) Groblje\b/g, '$1 groblje').trim()
 }
 
-function row(source: string, prefix: string, grad: string, fullName: string, groblje: string, date: string, time: string, godina: number | null): ScheduleRow | null {
-  const { ime, prezime } = splitName(fullName)
+function row(source: string, prefix: string, grad: string, fullName: string, groblje: string, date: string, time: string, godina: number | null, surnameFirst = false): ScheduleRow | null {
+  const { ime, prezime } = splitName(fullName, surnameFirst)
   if (!ime || !date || !/^\d{1,2}:\d{2}$/.test(time)) return null
   const hhmm = time.padStart(5, '0')
   return {
@@ -193,6 +196,58 @@ export function parseRijeka(json: unknown, fromDate: string): ScheduleRow[] {
     if (!m || m[1] < fromDate) continue
     const groblje = cleanGroblje(String(item.graveyard ?? '')) || 'Kozala'
     const r = row('kd-kozala-rijeka', 'kzr', 'Rijeka', `${item.firstName ?? ''} ${item.lastName ?? ''}`, groblje, m[1], m[2], null)
+    if (r) rows.push(r)
+  }
+  return rows
+}
+
+/**
+ * Varaždin, Parkovi d.o.o.: Elementor/JetEngine listing, surname first.
+ *   <div class="jet-listing-dynamic-field__content">21. listopada 2026. u 11:45 h</div>
+ *   <h2 class="elementor-heading-title …">Kolak Tomislav</h2>
+ *   <b>Groblje:</b> Varaždin … <b>Starosna dob:</b> 83
+ */
+export function parseVarazdin(html: string, fromDate: string): ScheduleRow[] {
+  const rows: ScheduleRow[] = []
+  const body = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+  const lines = stripTags(body.replace(/<\/(div|h\d|p|li)>/gi, '\n')).split('\n').map((l) => l.trim()).filter(Boolean)
+  for (let i = 0; i < lines.length; i++) {
+    const when = lines[i].match(/^(\d{1,2})\.\s*([A-Za-zČĆŽŠĐčćžšđ]+)\s+(\d{4})\.?\s*u\s*(\d{1,2})[:.](\d{2})\s*h$/)
+    if (!when) continue
+    const month = HR_MONTHS[slug(when[2]).replace(/-/g, '')]
+    const name = lines[i + 1] ?? ''
+    const place = lines[i + 2]?.match(/^Groblje:\s*(.+)$/)?.[1]?.trim()
+    const age = lines[i + 3]?.match(/^Starosna dob:\s*(\d{1,3})/)?.[1]
+    if (!month || !place) continue
+    const date = `${when[3]}-${month}-${when[1].padStart(2, '0')}`
+    if (date < fromDate) continue
+    const groblje = /^vara[zž]din$/i.test(place) ? 'Gradsko groblje Varaždin' : `Groblje ${place}`
+    const r = row('parkovi-varazdin', 'pvz', 'Varaždin', name, groblje, date, `${when[4]}:${when[5]}`, age ? Number(age) : null, true)
+    if (r) rows.push(r)
+  }
+  return rows
+}
+
+/**
+ * Čakovec, GKP Čakom: the latest funerals, newest first.
+ *   pogrebi__pogreb-ime:         "Nada Marčec rođ. Bacinger st.76 iz Čakovca"
+ *   pogrebi__pogreb-datum:       "Utorak, 20. 10. 2026. u 14:00"
+ *   pogrebi__pogreb-mjesto-text: "Čakovec" (where the cemetery is)
+ */
+export function parseCakovec(html: string, fromDate: string): ScheduleRow[] {
+  const rows: ScheduleRow[] = []
+  const field = (block: string, name: string) =>
+    stripTags(block.match(new RegExp(`pogrebi__pogreb-${name}\\b[^"]*"[^>]*>([\\s\\S]*?)</div>`))?.[1] ?? '')
+  for (const block of html.split(/class="[^"]*\bpogrebi__pogreb(?=[\s"])/).slice(1)) {
+    const who = field(block, 'ime')
+    const when = field(block, 'datum')
+    const place = field(block, 'mjesto-text')
+    const date = parseNumericDate(when)
+    const time = when.match(/(\d{1,2})[:.](\d{2})\s*$/)
+    if (!who || !date || !time || date < fromDate) continue
+    const age = who.match(/\bst\.?\s*(\d{1,3})\b/i)
+    const name = who.replace(/\s+(rođ\.|st\.|iz\s).*$/i, '').trim()
+    const r = row('cakom-cakovec', 'cck', 'Čakovec', name, `Groblje ${place || 'Čakovec'}`, date, `${time[1]}:${time[2]}`, age ? Number(age[1]) : null)
     if (r) rows.push(r)
   }
   return rows
