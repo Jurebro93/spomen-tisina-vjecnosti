@@ -8,19 +8,22 @@ import CemeteriesSection from '@/components/CemeteriesSection';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { citySlug } from '@/lib/cityMatch';
+import { useCityName } from '@/hooks/useCityName';
 
-const capitalize = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
 
 const GrobljaGrad = () => {
   const { city = '' } = useParams();
   const [cemeteries, setCemeteries] = useState<Cemetery[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const cityName = capitalize(decodeURIComponent(city));
+  const lookedUp = useCityName(city);
+  // The slug ("slavonski-brod", "sibenik") lacks the city's spelling; the cemeteries carry it.
+  const cityName = cemeteries[0]?.grad || lookedUp;
 
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setCemeteries([]);
     fetchCemeteriesByCity(decodeURIComponent(city)).then((rows) => {
       if (!active) return;
       setCemeteries(rows);

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { fetchMemorialForDeceased, type MemorialStub } from '@/lib/memorial';
 import { trackObituaryEvent, type ObituaryContext } from '@/lib/obituaryTracking';
+import { displayName } from '@/lib/hr';
 
 interface Props {
   deceasedId: string;
@@ -39,7 +40,7 @@ const MemorialCta = ({ deceasedId, personName, obituary }: Props) => {
             <Sparkles className="h-3.5 w-3.5" /> Digitalni memorijal
           </div>
           <h2 className="font-serif text-xl sm:text-2xl mb-2">
-            {published ? `Memorijalna stranica za ${personName}` : `Stvorite trajno mjesto sjećanja na ${personName}`}
+            {published ? `Memorijalna stranica: ${displayName(personName)}` : `Trajno mjesto sjećanja: ${displayName(personName)}`}
           </h2>
           <p className="text-sm text-muted-foreground">
             {published

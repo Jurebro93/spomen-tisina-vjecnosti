@@ -5,10 +5,9 @@ import Footer from '@/components/Footer';
 import MemorialCtaSection from '@/components/MemorialCtaSection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, Star, ExternalLink, Phone } from 'lucide-react';
+import { MapPin, Clock, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { cityOrFilter, cityPattern } from '@/lib/cityMatch';
+import { isOtherPlace, cityOrFilter, cityPattern } from '@/lib/cityMatch';
 import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
 import { breadcrumbJsonLd } from '@/lib/seo';
@@ -82,7 +81,6 @@ const Sprovodi = () => {
   const seoPath = location.pathname;
   
   const [sprovodi, setSprovodi] = useState<ScheduleRow[]>([]);
-  const [funeralServices, setFuneralServices] = useState<any[]>([]);
   const [recentSprovodi, setRecentSprovodi] = useState<ScheduleRow[]>([]);
   const [cemeteries, setCemeteries] = useState<Cemetery[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +92,6 @@ const Sprovodi = () => {
   useEffect(() => {
     setCemeteries([]);
     setSprovodi([]);
-    setFuneralServices([]);
     fetchData();
   }, [cityName]);
 
@@ -136,7 +133,7 @@ const Sprovodi = () => {
         const [{ data: sprovodiData, error: sprovodiError }, { data: scheduleData }] = await Promise.all([
           supabase
             .from('obituaries')
-            .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
+            .select('id, ime, prezime, groblje, mjesto_smrti, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
             .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
             .gte('datum_ukopa', zagrebToday())
             .order('datum_ukopa', { ascending: true }),
@@ -163,34 +160,48 @@ const Sprovodi = () => {
             godine: row.godina,
             tip: row.tip_sprovoda,
           }));
-          if (live()) setSprovodi([...(sprovodiData ?? []).flatMap(toScheduleRow), ...scheduled]
+          if (live()) setSprovodi([...(sprovodiData ?? []).filter((row) => !isOtherPlace(row, forCity, ['mjesto_smrti', 'groblje'])).flatMap(toScheduleRow), ...scheduled]
             .sort((a, b) => `${a.datum} ${a.vrijeme}`.localeCompare(`${b.datum} ${b.vrijeme}`)));
         }
 
         // Past two weeks, so a city with nothing scheduled still shows its recent funerals.
-        const { data: recentData } = await supabase
-          .from('obituaries')
-          .select('id, ime, prezime, groblje, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
-          .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
-          .lt('datum_ukopa', zagrebToday())
-          .gte('datum_ukopa', daysAgo(14))
-          .order('datum_ukopa', { ascending: false })
-          .limit(40);
-        if (live()) setRecentSprovodi((recentData ?? []).flatMap(toScheduleRow));
+        // Cities known only from a cemetery company's schedule (Čakovec) have no obituaries to show here.
+        const [{ data: recentData }, { data: recentScheduled }] = await Promise.all([
+          supabase
+            .from('obituaries')
+            .select('id, ime, prezime, groblje, mjesto_smrti, datum_ukopa, vrijeme_ukopa, datum_rodenja, slug')
+            .or(cityOrFilter(cityName, ['mjesto_smrti', 'groblje', 'mjesna_zajednica']))
+            .lt('datum_ukopa', zagrebToday())
+            .gte('datum_ukopa', daysAgo(14))
+            .order('datum_ukopa', { ascending: false })
+            .limit(40),
+          supabase
+            .from('sprovodi')
+            .select('id, ime, prezime, godina, groblje, tip_sprovoda, datum_sprovoda, vrijeme_sprovoda')
+            .filter('grad', 'imatch', `^${cityPattern(cityName)}$`)
+            .not('izvor', 'is', null)
+            .lt('datum_sprovoda', zagrebToday())
+            .gte('datum_sprovoda', daysAgo(14))
+            .limit(40),
+        ]);
+        const recentRows = (recentData ?? []).filter((row) => !isOtherPlace(row, forCity, ['mjesto_smrti', 'groblje'])).flatMap(toScheduleRow);
+        const known = new Set(recentRows.map((r) => `${r.ime} ${r.prezime}`.toLowerCase()));
+        const recentFromSchedule: ScheduleRow[] = (recentScheduled ?? [])
+          .filter((row) => !known.has(`${row.ime} ${row.prezime}`.toLowerCase()))
+          .map((row) => ({
+            id: row.id,
+            ime: row.ime,
+            prezime: row.prezime,
+            groblje: row.groblje,
+            datum: row.datum_sprovoda,
+            vrijeme: row.vrijeme_sprovoda,
+            godine: row.godina,
+            tip: row.tip_sprovoda,
+          }));
+        if (live()) setRecentSprovodi([...recentRows, ...recentFromSchedule]
+          .sort((a, b) => `${b.datum} ${b.vrijeme ?? ''}`.localeCompare(`${a.datum} ${a.vrijeme ?? ''}`)));
       }
 
-      // Fetch funeral services for the city
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('pogrebna_poduzeca')
-        .select('*')
-        .eq('grad', city?.toLowerCase() || '')
-        .order('ocjena', { ascending: false });
-
-      if (servicesError) {
-        console.error('Error fetching funeral services:', servicesError);
-      } else {
-        if (live()) setFuneralServices(servicesData || []);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -260,8 +271,8 @@ const Sprovodi = () => {
             Sprovodi - {cityName}
           </h1>
           <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto px-2">
-            Pronađite pouzdane pogrebne usluge u gradu {cityName}. 
-            Nudimo vam pregled najboljih pogrebnih poduzeća i nadolazećih sprovoda.
+            Raspored sprovoda i ispraćaja u gradu {cityName}: tko se ispraća, kada i na kojem groblju,
+            uz adrese i kontakte groblja.
           </p>
         </div>
 
@@ -363,7 +374,7 @@ const Sprovodi = () => {
         <CemeteriesSection cemeteries={cemeteries} cityName={cityName} />
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <Card>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-primary mb-1">{sprovodi.length}</div>
@@ -376,81 +387,9 @@ const Sprovodi = () => {
               <div className="text-sm text-muted-foreground">Groblja</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-primary mb-1">{funeralServices.length}</div>
-              <div className="text-sm text-muted-foreground">Pogrebna poduzeća</div>
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Funeral Services */}
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-display font-semibold mb-6">Pogrebna poduzeća u gradu {cityName}</h2>
-            <div className="space-y-6">
-              {funeralServices.map((service) => (
-                <Card key={service.id} className={`${!service.dostupno ? 'opacity-60' : ''}`}>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-xl font-semibold mb-2">
-                          {service.naziv}
-                        </h3>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            <span className="font-medium">{service.ocjena}</span>
-                          </div>
-                          <span className="text-muted-foreground text-sm">
-                            ({service.broj_recenzija} recenzija)
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            {service.adresa}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-semibold text-primary mb-1">
-                          {service.cijena}
-                        </div>
-                        {service.dostupno ? (
-                          <Badge className="bg-green-100 text-green-800">Dostupno</Badge>
-                        ) : (
-                          <Badge variant="secondary">Zauzeto</Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {service.usluge?.map((serviceType: string) => (
-                        <Badge key={serviceType} variant="outline">
-                          {serviceType}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      <Button variant="outline" asChild>
-                        <a 
-                          href={service.website_url || '#'}
-                          target="_blank"
-                          rel="nofollow noopener"
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Pogledaj detalje
-                        </a>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-
+        <div className="max-w-2xl">
           {/* Upcoming Funerals */}
           <div>
             <h2 className="text-2xl font-display font-semibold mb-6">Nadolazeći sprovodi</h2>
