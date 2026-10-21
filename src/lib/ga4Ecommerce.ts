@@ -27,7 +27,15 @@ const once = (key: string, send: () => void) => {
   send();
 };
 
-/** A memorial draft was created (first step of the funnel). */
+/** First real action in the memorial form: a person search or the manual entry for a new person. */
+export const trackGa4PersonSearch = (method: 'search' | 'manual') =>
+  once(`ga4_person_search_${method}`, () => push({ event: 'memorial_person_search', method }));
+
+/** The person was chosen from the obituaries or saved as a new person; the wizard opens. */
+export const trackGa4PersonSelected = (personSource: 'existing' | 'new') =>
+  once('ga4_person_selected', () => push({ event: 'memorial_person_selected', person_source: personSource }));
+
+/** A memorial draft was created. */
 export const trackGa4MemorialStarted = (memorialId: string) =>
   once(`ga4_memorial_started_${memorialId}`, () => push({ event: 'memorial_started', memorial_id: memorialId }));
 

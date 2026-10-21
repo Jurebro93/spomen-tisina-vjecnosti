@@ -1,5 +1,5 @@
-// Mirrors memorial-creation events to Meta Conversions API: StartMemorial = person chosen and form opened,
-// Lead = memorial draft created.
+// Mirrors memorial-creation events to Meta Conversions API: StartMemorial = first person search or manual entry,
+// PersonSelected = existing obituary chosen or new person saved, Lead = memorial draft created.
 // Signed-in owner only, production site only, and only with the visitor's marketing consent.
 // Payment events are not accepted here: InitiateCheckout is sent by create-memorial-payment
 // and Purchase by the Stripe-verified delivery pipeline.
@@ -28,15 +28,25 @@ Deno.serve(async (req) => {
   const metaUser = async () =>
     buildUserData({ email: user.email, fullName, externalId: user.id, ...clientFromRequest(req), ...cleanBrowserIds(b) });
 
-  if (b.event_name === "StartMemorial") {
-    const startId = cleanEventId(b.event_id, "start_");
-    if (startId !== `start_${user.id}`) return json({ ok: false, error: "bad event" }, 400);
+  // Custom funnel events: one per account, event_id = <prefix><user id> so the browser pixel copy de-duplicates.
+  const funnelEvents: Record<string, { prefix: string; param: string; values: string[] }> = {
+    StartMemorial: { prefix: "start_", param: "start_method", values: ["search", "manual"] },
+    PersonSelected: { prefix: "person_", param: "person_source", values: ["existing", "new"] },
+  };
+  const funnel = typeof b.event_name === "string" ? funnelEvents[b.event_name] : undefined;
+  if (funnel) {
+    const eventId = cleanEventId(b.event_id, funnel.prefix);
+    if (eventId !== `${funnel.prefix}${user.id}`) return json({ ok: false, error: "bad event" }, 400);
+    const value = b[funnel.param];
     const r = await sendMetaEvent({
-      eventName: "StartMemorial",
-      eventId: startId,
+      eventName: b.event_name as string,
+      eventId,
       sourceUrl,
       userData: await metaUser(),
-      customData: { content_name: "Digitalni memorijal" },
+      customData: {
+        content_name: "Digitalni memorijal",
+        ...(typeof value === "string" && funnel.values.includes(value) ? { [funnel.param]: value } : {}),
+      },
     });
     return json({ ok: r.ok, meta_status: r.status });
   }

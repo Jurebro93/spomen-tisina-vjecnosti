@@ -7,6 +7,7 @@ import { getBlogTouch } from '@/lib/blogTracking';
 import { landingParams, landingReferrer } from '@/lib/landing';
 
 export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_saved' | 'checkout_started' | 'checkout_returned'
+  | 'person_search' | 'person_manual' | 'guest_account'
   | 'consent_accepted' | 'consent_rejected' | 'consent_custom'
   | 'wizard_1' | 'wizard_2' | 'wizard_3' | 'wizard_4' | 'wizard_5' | 'wizard_6' | 'wizard_7';
 
