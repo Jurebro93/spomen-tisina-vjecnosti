@@ -469,10 +469,14 @@ const CITY_INTROS = {
 
 // ---------- page builders: each returns { title, description, canonical, body, jsonld[], noindex } ----------
 
+const scheduleItem = (f) =>
+  `<li>${hrDate(f.datum_sprovoda)}${f.vrijeme_sprovoda ? ' u ' + hhmm(f.vrijeme_sprovoda) : ''} – ${esc(f.ime)} ${esc(f.prezime)}${f.godina ? ` (${esc(f.godina)})` : ''}${f.groblje ? ', ' + esc(f.groblje) : ''}</li>`;
+
 async function umrliCity(param) {
   let city = await cityName(param);
   const path = `/umrli/${param}`;
-  const [obits, cems, months] = await Promise.all([
+  const today = todayZagreb();
+  const [obits, cems, months, scheduled] = await Promise.all([
     sb(
       `obituaries?select=ime,prezime,datum_rodenja,datum_smrti,datum_ukopa,vrijeme_ukopa,mjesto_smrti,groblje,slug&${cityOr(city, [
         'mjesto_smrti', 'mjesto_rodenja', 'groblje', 'mjesna_zajednica',
@@ -480,6 +484,9 @@ async function umrliCity(param) {
     ),
     fetchCemeteries(),
     cityMonths(city).catch(() => []),
+    // Schedules from the city's cemetery company (sync-gradovi-sprovodi), as on the
+    // client page: cities with few obituaries (Rijeka, Jastrebarsko...) still show funerals.
+    sb(`sprovodi?select=ime,prezime,godina,groblje,datum_sprovoda,vrijeme_sprovoda&grad=imatch.${encodeURIComponent(`^${cityPattern(city)}$`)}&datum_sprovoda=gte.${shiftDays(today, -7)}&order=datum_sprovoda.desc,vrijeme_sprovoda.desc&limit=40`).catch(() => []),
   ]);
   const list = dedupe(obits).slice(0, 60);
   const cityCems = cemeteriesInCity(cems, city);
@@ -495,7 +502,8 @@ async function umrliCity(param) {
     monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     const mondayKey = monday.toISOString().slice(0, 10);
     const thisMonth = list.filter((o) => (o.datum_smrti || '').startsWith(monthKey)).length;
-    const thisWeek = list.filter((o) => (o.datum_ukopa || '') >= mondayKey).length;
+    const thisWeek = list.filter((o) => (o.datum_ukopa || '') >= mondayKey).length
+      + scheduled.filter((f) => (f.datum_sprovoda || '') >= mondayKey && f.datum_sprovoda <= shiftDays(mondayKey, 6)).length;
     title = testCityTitle(param, city);
     description = testCityDescription(city, thisMonth, thisWeek, now);
   }
@@ -506,12 +514,13 @@ async function umrliCity(param) {
 ${CITY_INTROS[param] ? `<p>${esc(CITY_INTROS[param].text)} <a href="${CITY_INTROS[param].href}">${esc(CITY_INTROS[param].label)}</a></p>` : ''}
 <h2>${esc(test ? `Osmrtnice ${city} – danas i jučer` : `Najnovije osmrtnice – ${city}`)}</h2>
 ${list.length ? `<ul>${list.map(obituaryItem).join('')}</ul>` : '<p>Trenutno nema objavljenih osmrtnica za ovaj grad.</p>'}
+${scheduled.length ? `<h2>Sprovodi i ukopi – ${esc(city)}</h2><ul>${scheduled.map(scheduleItem).join('')}</ul>` : ''}
 <p><a href="/sprovodi/${esc(param)}">Raspored sprovoda ${esc(city)}</a> · <a href="/groblja/${esc(param)}">Groblja ${esc(city)}</a></p>
 ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cemeteryItem).join('')}</ul>` : ''}
 ${months.length ? `<h2>Arhiva osmrtnica – ${esc(city)}</h2>${monthLinks(`/umrli/${esc(param)}`, months)}` : ''}
 <p><a href="/digitalni-memorijal">Digitalni memorijal</a>: trajna spomen-stranica s pričom, fotografijama i sjećanjima obitelji.</p>`);
   return {
-    title, description, canonical: SITE + path, body, noindex: list.length === 0, forceHead: test,
+    title, description, canonical: SITE + path, body, noindex: list.length === 0 && scheduled.length === 0, forceHead: test,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli'], [city, path]])],
   };
 }
