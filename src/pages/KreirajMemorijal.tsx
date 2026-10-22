@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Calendar, Check, Eye, Globe, Link2, Loader2, Lock, MapPin, Plus, Search, Trash2, UserPlus } from 'lucide-react';
+import { Calendar, Check, Eye, Globe, Link2, Loader2, Lock, MapPin, Plus, Trash2, UserPlus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -44,13 +44,23 @@ const VISIBILITY_OPTIONS: Array<{ value: MemorialVisibility; icon: React.Element
   { value: 'private', icon: Lock, title: 'Privatno', text: 'Samo pozvani članovi obitelji mogu vidjeti memorijal.' },
 ];
 
-const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) => void; onCancel: () => void }) => {
+/** "Ivan Horvat" -> ime Ivan, prezime Horvat (the last word is the surname). */
+const splitName = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { ime: parts[0] ?? '', prezime: '' };
+  return { ime: parts.slice(0, -1).join(' '), prezime: parts[parts.length - 1] };
+};
+
+const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
+  initialName: string; onCreated: (d: Deceased) => void; onCancel: () => void;
+}) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    ime: '', prezime: '', datum_rodenja: '', datum_smrti: '',
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [form, setForm] = useState(() => ({
+    ...splitName(initialName), datum_rodenja: '', datum_smrti: '',
     mjesto_rodenja: '', mjesto_smrti: '', groblje: '', profesija: '',
-  });
+  }));
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -109,11 +119,8 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
   return (
     <form onSubmit={submit} className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl mb-2">Unesite podatke o osobi</h2>
-        <p className="text-muted-foreground">
-          Osoba nije u našoj bazi osmrtnica, pa ćete osnovne podatke unijeti sami. Memorijal će biti u potpunosti
-          funkcionalan, samo neće imati poveznicu na osmrtnicu.
-        </p>
+        <h2 className="font-serif text-2xl mb-2">Osnovni podaci o osobi</h2>
+        <p className="text-muted-foreground">Trebaju nam samo ime i datumi. Sve ostalo možete dodati i kasnije.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -132,28 +139,36 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
           <Label htmlFor="m-smrti">Datum smrti *</Label>
           <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} required min={form.datum_rodenja || undefined} max={today} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
-          <Input id="m-mjesto-r" value={form.mjesto_rodenja} onChange={set('mjesto_rodenja')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-mjesto-s">Mjesto smrti</Label>
-          <Input id="m-mjesto-s" value={form.mjesto_smrti} onChange={set('mjesto_smrti')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-groblje">Groblje</Label>
-          <Input id="m-groblje" value={form.groblje} onChange={set('groblje')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-profesija">Profesija</Label>
-          <Input id="m-profesija" value={form.profesija} onChange={set('profesija')} maxLength={80} />
-        </div>
       </div>
+      {moreOpen ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
+            <Input id="m-mjesto-r" value={form.mjesto_rodenja} onChange={set('mjesto_rodenja')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-mjesto-s">Mjesto smrti</Label>
+            <Input id="m-mjesto-s" value={form.mjesto_smrti} onChange={set('mjesto_smrti')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-groblje">Groblje</Label>
+            <Input id="m-groblje" value={form.groblje} onChange={set('groblje')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-profesija">Profesija</Label>
+            <Input id="m-profesija" value={form.profesija} onChange={set('profesija')} maxLength={80} />
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setMoreOpen(true)} className="text-sm text-accent underline underline-offset-4">
+          + Mjesto rođenja, mjesto smrti, groblje, profesija (neobavezno)
+        </button>
+      )}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim() || !form.datum_rodenja || !form.datum_smrti}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag na pretragu</Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag</Button>
       </div>
     </form>
   );
@@ -192,6 +207,29 @@ const OwnDrafts = ({ drafts, onResume, busyId }: { drafts: OwnDraft[]; onResume:
   </div>
 );
 
+/** Obituaries matching a typed name: with two or more words both the first name and the surname must match. */
+const findObituaries = async (q: string) => {
+  const parts = q.split(/\s+/).filter(Boolean).map((p) => p.replace(/[,()%]/g, ''));
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  const filter = parts.length > 1
+    ? `and(ime.ilike.%${first}%,prezime.ilike.%${last}%),and(ime.ilike.%${last}%,prezime.ilike.%${first}%)`
+    : `ime.ilike.%${first}%,prezime.ilike.%${first}%`;
+  const { data } = await supabase
+    .from('obituaries')
+    .select(DECEASED_FIELDS)
+    .eq('active', true)
+    .or(filter)
+    .order('datum_smrti', { ascending: false, nullsFirst: false })
+    .limit(6);
+  return (data as Deceased[]) ?? [];
+};
+
+/**
+ * One question for everyone: the name. Matching obituaries are offered to save typing, and the
+ * visitor never has to decide up front whether an obituary exists; with no match the person's
+ * details are entered right away, name already filled in.
+ */
 const DeceasedSearch = ({ onSelect, onStart }: {
   onSelect: (d: Deceased, source: PersonSource) => void;
   onStart: (method: 'search' | 'manual') => void;
@@ -202,87 +240,65 @@ const DeceasedSearch = ({ onSelect, onStart }: {
   const [searched, setSearched] = useState(false);
   const [manual, setManual] = useState(false);
 
+  const enterManually = () => { onStart('manual'); setManual(true); };
+
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = term.trim();
     if (q.length < 3 || searching) return;
     onStart('search');
     setSearching(true);
-    const parts = q.split(/\s+/);
-    const filters = [`ime.ilike.%${q}%`, `prezime.ilike.%${q}%`];
-    if (parts.length > 1) {
-      filters.push(`ime.ilike.%${parts[0]}%`, `prezime.ilike.%${parts[parts.length - 1]}%`);
-    }
-    const { data } = await supabase
-      .from('obituaries')
-      .select(DECEASED_FIELDS)
-      .eq('active', true)
-      .or(filters.join(','))
-      .limit(20);
-    setResults((data as Deceased[]) ?? []);
-    setSearched(true);
+    const found = await findObituaries(q);
     setSearching(false);
+    if (!found.length) { enterManually(); return; }
+    setResults(found);
+    setSearched(true);
   };
 
-  if (manual) return <ManualDeceasedForm onCreated={(d) => onSelect(d, 'new')} onCancel={() => setManual(false)} />;
+  if (manual) {
+    return <ManualDeceasedForm initialName={term} onCreated={(d) => onSelect(d, 'new')}
+      onCancel={() => { setManual(false); setSearched(false); setResults([]); }} />;
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl mb-2">Postoji li osmrtnica ove osobe na našoj stranici?</h2>
-        <p className="text-muted-foreground">Pretražite našu bazu osmrtnica kako ne bismo ponovno unosili podatke koje već imamo.</p>
+        <h2 className="font-serif text-2xl mb-2">Za koga izrađujete memorijal?</h2>
+        <p className="text-muted-foreground">Upišite ime i prezime. Ako osoba već ima osmrtnicu kod nas, preuzet ćemo njezine podatke.</p>
       </div>
       <form onSubmit={search} className="flex flex-col sm:flex-row gap-3">
-        <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Ime i prezime" aria-label="Ime i prezime"
-          maxLength={100} />
+        <Input value={term} onChange={(e) => { setTerm(e.target.value); setSearched(false); }} placeholder="npr. Ivan Horvat"
+          aria-label="Ime i prezime" maxLength={100} autoComplete="off" />
         <Button type="submit" disabled={searching || term.trim().length < 3}>
-          {searching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-          Pretraži
+          {searching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
       </form>
 
-      {searched && !results.length && (
-        <Card className="border-border">
-          <CardContent className="p-6 space-y-3">
-            <p className="font-medium">Ne mogu pronaći osobu</p>
-            <p className="text-sm text-muted-foreground">
-              Nema problema – memorijal možete kreirati i bez postojeće osmrtnice. Podatke o osobi unijet ćete sami,
-              a memorijal neće imati poveznicu na osmrtnicu.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button type="button" onClick={() => { onStart('manual'); setManual(true); }}>
-                <UserPlus className="h-4 w-4 mr-2" />Unesi podatke ručno
-              </Button>
-              <Button asChild variant="outline"><Link to="/objavi-osmrtnicu">Objavi osmrtnicu</Link></Button>
-            </div>
-          </CardContent>
-        </Card>
+      {searched && results.length > 0 && (
+        <div className="space-y-3">
+          <p className="font-medium">Je li to netko od ovih osoba?</p>
+          {results.map((d) => (
+            <Card key={d.id} className="border-border">
+              <CardContent className="p-4 flex items-center gap-4">
+                <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{fullName(d)}</p>
+                  <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
+                  {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
+                </div>
+                <Button type="button" onClick={() => onSelect(d, 'existing')}>Da, to je ta osoba</Button>
+              </CardContent>
+            </Card>
+          ))}
+          <Button type="button" variant="outline" className="w-full whitespace-normal h-auto py-3" onClick={enterManually}>
+            <UserPlus className="h-4 w-4 mr-2 shrink-0" />Nije među njima, nastavi s imenom „{term.trim()}”
+          </Button>
+        </div>
       )}
 
-      <div className="space-y-3">
-        {results.map((d) => (
-          <Card key={d.id} className="border-border">
-            <CardContent className="p-4 flex items-center gap-4">
-              <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{fullName(d)}</p>
-                <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
-                {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
-              </div>
-              <Button type="button" onClick={() => onSelect(d, 'existing')}>Odaberi</Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="border-t border-border pt-6">
-        <p className="text-sm text-muted-foreground mb-3">
-          Osoba nije u našoj bazi osmrtnica? Memorijal možete kreirati i bez osmrtnice – podatke unosite sami.
-        </p>
-        <Button type="button" variant="outline" onClick={() => { onStart('manual'); setManual(true); }}>
-          <UserPlus className="h-4 w-4 mr-2" />Kreiraj memorijal bez osmrtnice
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Izrada traje oko 10 minuta i sve se usput sprema. Plaćate tek na kraju ({formatEur(MEMORIAL_PRICE_EUR)}), kad vidite gotov memorijal.
+      </p>
     </div>
   );
 };
