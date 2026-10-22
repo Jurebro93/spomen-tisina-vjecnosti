@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import AuthTopBar from '@/components/AuthTopBar';
 import { useSignOut } from '@/hooks/useSignOut';
 import { citySlug } from '@/lib/cityMatch';
+import { GUIDES } from '@/lib/ebook';
 
 
 interface NavDropdownItem {
@@ -17,7 +18,7 @@ interface NavDropdownItem {
   description: string;
 }
 
-const NavDropdown = ({ label, to, items }: { label: string; to: string; items: NavDropdownItem[] }) => {
+const NavDropdown = ({ label, to, items, align = 'left' }: { label: string; to: string; items: NavDropdownItem[]; align?: 'left' | 'right' }) => {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +80,7 @@ const NavDropdown = ({ label, to, items }: { label: string; to: string; items: N
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 pt-2">
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-50 pt-2`}>
           <div className="grid w-52 gap-1 rounded-md border border-border bg-primary-foreground p-2 shadow-lg">
             {items.map((item) => (
               <Link
@@ -108,6 +109,7 @@ const Header = () => {
   const [isUmrliOpen, setIsUmrliOpen] = useState(false);
   const [isProvodiOpen, setIsProvodiOpen] = useState(false);
   const [isGrobljaOpen, setIsGrobljaOpen] = useState(false);
+  const [isVodiciOpen, setIsVodiciOpen] = useState(false);
   const [searchCity, setSearchCity] = useState('');
   const [searchName, setSearchName] = useState('');
 
@@ -204,6 +206,13 @@ const Header = () => {
                 {item.name}
               </Link>
             ))}
+
+            <NavDropdown
+              label="Vodiči"
+              align="right"
+              to={GUIDES[0].landing}
+              items={GUIDES.map((g) => ({ to: g.landing, title: g.title, description: `Besplatni vodič · ${g.tagline}` }))}
+            />
           </nav>
 
           {/* Mobile menu button */}
@@ -400,6 +409,34 @@ const Header = () => {
                   {item.name}
                 </Link>
               ))}
+
+              {/* Vodiči dropdown for mobile */}
+              <div>
+                <button
+                  onClick={() => setIsVodiciOpen(!isVodiciOpen)}
+                  className="flex items-center justify-between w-full text-sm font-medium text-primary-foreground mb-2"
+                >
+                  Vodiči
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform ${isVodiciOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {isVodiciOpen && (
+                  <div className="pl-4 space-y-2">
+                    {GUIDES.map((g) => (
+                      <Link
+                        key={g.id}
+                        to={g.landing}
+                        className="block text-sm text-primary-foreground/80 hover:text-memorial-gold transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {g.title}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
 
             </nav>
           </div>

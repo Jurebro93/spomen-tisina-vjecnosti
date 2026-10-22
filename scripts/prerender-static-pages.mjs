@@ -33,6 +33,7 @@ const PAGES = [
   '/memorijalni-vrt',
   '/informacije',
   '/besplatni-vodic',
+  '/besplatni-vodic/obiteljska-mirovina',
   '/cesto-postavljena-pitanja',
   '/uvjeti-koristenja',
   '/politika-privatnosti',
