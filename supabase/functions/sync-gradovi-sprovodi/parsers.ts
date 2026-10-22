@@ -105,7 +105,8 @@ export function parseKarlovac(html: string, fromDate: string): ScheduleRow[] {
   let date: string | null = null
   for (const match of html.matchAll(/<p[^>]*>([\s\S]*?)<\/p>/gi)) {
     const text = stripTags(match[1])
-    const header = text.match(/^[A-ZČĆŽŠĐ]+,\s*(\d{1,2}\.\d{1,2}\.\d{4})\.?\s*GOD\.?$/i)
+    // "GOD." is sometimes left out: "ČETVRTAK, 22.10.2026."
+    const header = text.match(/^[A-ZČĆŽŠĐ]+,\s*(\d{1,2}\.\d{1,2}\.\d{4})\.?\s*(GOD\.?)?$/i)
     if (header) {
       date = parseNumericDate(header[1])
       continue
