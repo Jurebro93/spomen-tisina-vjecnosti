@@ -15,6 +15,9 @@ export const TEST_CITIES = new Set([
   'vinkovci', 'vir', 'vitez', 'vrpolje', 'zmijavci',
   // Test 2: large cities that already had their own title
   'dubrovnik', 'osijek', 'pula', 'rijeka', 'sisak', 'split',
+  // Moved out of the control group on 2026-10-22: 37,966 impressions at
+  // position 4.4 with 0.8 % CTR. Leave Zadar out of the test comparison.
+  'zadar',
 ]);
 
 // Titles written for the main queries of a city; others use the template.
@@ -22,6 +25,8 @@ const TITLE_OVERRIDES: Record<string, string> = {
   osijek: 'Umrli Osijek danas – osmrtnice, ukopi i sprovodi',
   dubrovnik: 'Umrli Dubrovnik danas – osmrtnice, Boninovo i sprovodi',
   metkovic: 'Umrli Metković i okolna mjesta – osmrtnice danas',
+  // Top query is "umrli u zadru"; "okolica" covers "umrli zadarska županija".
+  zadar: 'Umrli Zadar danas – osmrtnice i sprovodi u Zadru i okolici',
 };
 
 export const isTestCity = (slug?: string): boolean => !!slug && TEST_CITIES.has(slug);
@@ -50,3 +55,13 @@ export const testCityDescription = (city: string, obituaries: number, funerals: 
 };
 
 export const testCityH1 = (city: string): string => `Umrli ${city} – osmrtnice danas`;
+
+// One line under the H1 for cities whose main query names a cemetery:
+// "boninovo umrli" belongs to /umrli/dubrovnik, the cemetery page links here.
+export const CITY_INTROS: Record<string, { text: string; href: string; label: string }> = {
+  dubrovnik: {
+    text: 'Umrli i raspored sprovoda na Boninovu i ostalim dubrovačkim grobljima, osvježeno svaki dan.',
+    href: '/groblje/gradsko-boninovo',
+    label: 'Groblje Boninovo – adresa i radno vrijeme',
+  },
+};

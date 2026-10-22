@@ -13,6 +13,7 @@ export interface ObituaryMetaInput {
   datum_ukopa?: string | null;
   vrijeme_ukopa?: string | null;
   groblje?: string | null;
+  meta_title?: string | null;
   meta_description?: string | null;
 }
 
@@ -35,6 +36,15 @@ export const obituaryPlace = (place?: string | null): string | null => {
   const p = (place || '').trim();
   return p && !COUNTRIES.has(fold(p)) ? p : null;
 };
+
+/** "IVAN ZAHIROVIĆ" -> "Ivan Zahirović"; names already in mixed case stay as written. */
+export const nameCase = (name: string): string => {
+  const n = name.replace(/\s+/g, ' ').trim();
+  if (n !== n.toUpperCase()) return n;
+  return n.toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+};
+
+const fullName = (o: ObituaryMetaInput) => nameCase(`${o.ime} ${o.prezime}`);
 
 const year = (iso?: string | null) => (iso && /^\d{4}/.test(iso) ? iso.slice(0, 4) : '');
 
@@ -64,7 +74,7 @@ export const obituaryDescription = (o: ObituaryMetaInput): string => {
   const died = year(o.datum_smrti);
   const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
   const place = obituaryPlace(o.mjesto_smrti);
-  const head = `Osmrtnica: ${`${o.ime} ${o.prezime}`.trim()}${years}${place ? `, ${place}` : ''}.`;
+  const head = `Osmrtnica: ${fullName(o)}${years}${place ? `, ${place}` : ''}.`;
 
   const date = o.datum_ukopa ? funeralDate(String(o.datum_ukopa)) : '';
   const time = funeralTime(o);
@@ -84,4 +94,27 @@ export const obituaryDescription = (o: ObituaryMetaInput): string => {
     }
   }
   return head.length <= MAX ? head : `${head.slice(0, MAX - 1).replace(/\s+\S*$/, '')}…`;
+};
+
+// 16,827 stored titles came from the old import: "IME PREZIME - Osmrtnica".
+const OLD_IMPORT_TITLE = / - Osmrtnica$/;
+const TITLE_MAX = 60;
+
+/**
+ * "Ivan Zahirović (1945. – 2026.) – osmrtnica i sprovod". The old default
+ * ("IVAN ZAHIROVIĆ - Osmrtnica | Osmrtnica.com.hr") shouted the name, said
+ * "Osmrtnica" twice and had no years. The place is left out: mjesto_smrti is
+ * often inflected or cut ("Baškoj Vodi", "i Pavla u Širitovcima").
+ */
+export const obituaryTitle = (o: ObituaryMetaInput): string => {
+  const own = o.meta_title?.trim();
+  if (own && !OLD_IMPORT_TITLE.test(own) && own.length <= 70) return own;
+  const born = year(o.datum_rodenja);
+  const died = year(o.datum_smrti);
+  const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
+  const name = fullName(o);
+  for (const text of [`${name}${years} – osmrtnica i sprovod`, `${name}${years} – osmrtnica`, `${name} – osmrtnica`]) {
+    if (text.length <= TITLE_MAX) return text;
+  }
+  return name;
 };

@@ -24,7 +24,7 @@ import NewsletterSignup from '@/components/NewsletterSignup';
 import CityObituaryAlert from '@/components/CityObituaryAlert';
 import BlogMemorialQuiz, { type QuizTracker } from '@/components/blog/BlogMemorialQuiz';
 import { useCityName } from '@/hooks/useCityName';
-import { isTestCity, testCityTitle, testCityDescription, testCityH1 } from '@/lib/seoCityTest';
+import { isTestCity, testCityTitle, testCityDescription, testCityH1, CITY_INTROS } from '@/lib/seoCityTest';
 import { ageLabel } from '@/lib/hr';
 
 const MAIN_CITIES = ['Zagreb', 'Split', 'Rijeka', 'Osijek', 'Zadar', 'Dubrovnik', 'Pula', 'Karlovac'];
@@ -435,6 +435,14 @@ const Umrli = () => {
               : 'Dostojanstveno sjećanje na naše voljene koji su nas napustili.'}{' '}
             Ovdje možete pronaći aktualne osmrtnice i informacije o sprovodima.
           </p>
+          {city && CITY_INTROS[city] && (
+            <p className="text-muted-foreground text-sm sm:text-base max-w-2xl mx-auto px-2 mt-3">
+              {CITY_INTROS[city].text}{' '}
+              <Link to={CITY_INTROS[city].href} className="font-medium text-memorial-gold hover:underline">
+                {CITY_INTROS[city].label}
+              </Link>
+            </p>
+          )}
         </div>
 
 

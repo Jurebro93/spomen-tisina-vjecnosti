@@ -195,7 +195,7 @@ const obituaryDescription = (o) => {
   const died = year(o.datum_smrti);
   const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
   const place = obituaryPlace(o.mjesto_smrti);
-  const head = `Osmrtnica: ${`${o.ime} ${o.prezime}`.trim()}${years}${place ? `, ${place}` : ''}.`;
+  const head = `Osmrtnica: ${nameCase(`${o.ime} ${o.prezime}`)}${years}${place ? `, ${place}` : ''}.`;
   const [y, m, d] = String(o.datum_ukopa || '').slice(0, 10).split('-').map(Number);
   const date = o.datum_ukopa && y && m && d ? `${d}. ${m}. ${y}.` : '';
   let time = (o.vrijeme_ukopa || String(o.datum_ukopa || '').replace(' ', 'T').slice(11, 16) || '').slice(0, 5);
@@ -211,6 +211,27 @@ const obituaryDescription = (o) => {
     }
   }
   return head.length <= 155 ? head : `${head.slice(0, 154).replace(/\s+\S*$/, '')}…`;
+};
+
+// Same as obituaryTitle / nameCase in src/lib/obituaryMeta.ts; keep them in sync.
+function nameCase(name) {
+  const n = String(name || '').replace(/\s+/g, ' ').trim();
+  if (n !== n.toUpperCase()) return n;
+  return n.toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+}
+const OLD_IMPORT_TITLE = / - Osmrtnica$/;
+const obituaryTitle = (o) => {
+  const own = o.meta_title?.trim();
+  if (own && !OLD_IMPORT_TITLE.test(own) && own.length <= 70) return own;
+  const year = (iso) => (iso && /^\d{4}/.test(iso) ? String(iso).slice(0, 4) : '');
+  const born = year(o.datum_rodenja);
+  const died = year(o.datum_smrti);
+  const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
+  const name = nameCase(`${o.ime} ${o.prezime}`);
+  for (const text of [`${name}${years} – osmrtnica i sprovod`, `${name}${years} – osmrtnica`, `${name} – osmrtnica`]) {
+    if (text.length <= 60) return text;
+  }
+  return name;
 };
 
 // ---------- month archives: same as src/lib/obituaryArchive.ts ----------
@@ -397,6 +418,9 @@ const TEST_CITIES = new Set([
   'vinkovci', 'vir', 'vitez', 'vrpolje', 'zmijavci',
   // Test 2: large cities that already had their own title
   'dubrovnik', 'osijek', 'pula', 'rijeka', 'sisak', 'split',
+  // Moved out of the control group on 2026-10-22: 37,966 impressions at
+  // position 4.4 with 0.8 % CTR. Leave Zadar out of the test comparison.
+  'zadar',
 ]);
 
 // Titles written for the main queries of a city; others use the template.
@@ -404,6 +428,8 @@ const TITLE_OVERRIDES = {
   osijek: 'Umrli Osijek danas – osmrtnice, ukopi i sprovodi',
   dubrovnik: 'Umrli Dubrovnik danas – osmrtnice, Boninovo i sprovodi',
   metkovic: 'Umrli Metković i okolna mjesta – osmrtnice danas',
+  // Top query is "umrli u zadru"; "okolica" covers "umrli zadarska županija".
+  zadar: 'Umrli Zadar danas – osmrtnice i sprovodi u Zadru i okolici',
 };
 
 const isTestCity = (slug) => !!slug && TEST_CITIES.has(slug);
@@ -432,6 +458,14 @@ const testCityDescription = (city, obituaries, funerals, today = new Date()) => 
 };
 
 const testCityH1 = (city) => `Umrli ${city} – osmrtnice danas`;
+
+const CITY_INTROS = {
+  dubrovnik: {
+    text: 'Umrli i raspored sprovoda na Boninovu i ostalim dubrovačkim grobljima, osvježeno svaki dan.',
+    href: '/groblje/gradsko-boninovo',
+    label: 'Groblje Boninovo – adresa i radno vrijeme',
+  },
+};
 
 // ---------- page builders: each returns { title, description, canonical, body, jsonld[], noindex } ----------
 
@@ -469,6 +503,7 @@ async function umrliCity(param) {
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/umrli">Umrli</a> / ${esc(city)}</nav>
 <h1>${esc(test ? testCityH1(city) : `Umrli ${city}: osmrtnice`)}</h1>
 <p>Najnovije osmrtnice i obavijesti o smrti za ${esc(city)} i okolicu, s datumom i mjestom sprovoda.</p>
+${CITY_INTROS[param] ? `<p>${esc(CITY_INTROS[param].text)} <a href="${CITY_INTROS[param].href}">${esc(CITY_INTROS[param].label)}</a></p>` : ''}
 <h2>${esc(test ? `Osmrtnice ${city} – danas i jučer` : `Najnovije osmrtnice – ${city}`)}</h2>
 ${list.length ? `<ul>${list.map(obituaryItem).join('')}</ul>` : '<p>Trenutno nema objavljenih osmrtnica za ovaj grad.</p>'}
 <p><a href="/sprovodi/${esc(param)}">Raspored sprovoda ${esc(city)}</a> · <a href="/groblja/${esc(param)}">Groblja ${esc(city)}</a></p>
@@ -548,16 +583,28 @@ async function grobljaCity(param) {
   };
 }
 
+// Same as CEMETERY_HEADS in src/lib/cemeteries.ts; keep them in sync.
+const CEMETERY_HEADS = {
+  'gradsko-boninovo': {
+    title: 'Groblje Boninovo Dubrovnik – adresa, radno vrijeme, kontakt',
+    description:
+      'Groblje Boninovo u Dubrovniku: adresa, radno vrijeme i kontakt uprave te povijest groblja. Popis umrlih i raspored sprovoda je na stranici Umrli Dubrovnik.',
+  },
+};
+
 async function grobljeSlug(slug) {
   const c = (await fetchCemeteries()).find((x) => x.slug === slug);
   if (!c) return null;
   const path = `/groblje/${slug}`;
-  const title = `${c.displayNaziv}${c.grad ? ` - ${c.grad}` : ''}`.slice(0, 60);
-  const description = (c.opis || '').slice(0, 155);
+  const title = CEMETERY_HEADS[slug]?.title || `${c.displayNaziv}${c.grad ? ` - ${c.grad}` : ''}`.slice(0, 60);
+  const opis = (c.opis || '').replace(/\s+/g, ' ').trim();
+  const description = CEMETERY_HEADS[slug]?.description || (opis.length <= 155 ? opis : `${opis.slice(0, 154).replace(/\s+\S*$/, '')}…`);
+  const cityPath = c.grad ? fold(c.grad).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '';
   const paragraphs = (c.opis || '').split(/\n+/).map((p) => p.trim()).filter(Boolean);
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/groblja">Groblja</a>${c.grad ? ` / <a href="/groblja/${esc(fold(c.grad).replace(/[^a-z0-9]+/g, '-'))}">${esc(c.grad)}</a>` : ''} / ${esc(c.displayNaziv)}</nav>
 <h1>${esc(c.displayNaziv)}${c.grad ? ` – ${esc(c.grad)}` : ''}</h1>
+${cityPath ? `<p>Tražite tko je preminuo ili kada je sprovod? <a href="/umrli/${esc(cityPath)}">Umrli ${esc(c.grad)} – osmrtnice i raspored sprovoda</a></p>` : ''}
 <ul>${[c.adresa && `Adresa: ${esc(c.adresa)}`, c.telefon && `Telefon: ${esc(c.telefon)}`, c.radnoVrijeme && `Radno vrijeme: ${esc(c.radnoVrijeme)}`].filter(Boolean).map((x) => `<li>${x}</li>`).join('')}</ul>
 ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}`);
   return {
@@ -700,7 +747,7 @@ ${o.biografija ? `<h2>O pokojniku</h2><p>${esc(stripTags(o.biografija))}</p>` : 
 <p><a href="/zapali-svijecu?ime=${encodeURIComponent(o.ime)}&amp;prezime=${encodeURIComponent(o.prezime)}">Zapali virtualnu svijeću</a> · <a href="/digitalni-memorijal">Napravi digitalni memorijal</a></p>
 ${related}`);
   return {
-    title: o.meta_title || `${name} - Osmrtnica | Osmrtnica.com.hr`, description, canonical: SITE + path, body, noindex: false, image: o.fotografija_url,
+    title: obituaryTitle(o), description, canonical: SITE + path, body, noindex: false, image: o.fotografija_url,
     jsonld: [{
       '@context': 'https://schema.org', '@type': 'Person', name,
       ...(o.datum_rodenja ? { birthDate: o.datum_rodenja } : {}),
