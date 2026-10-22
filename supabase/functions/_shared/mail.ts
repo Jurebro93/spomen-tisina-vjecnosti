@@ -18,7 +18,7 @@ export type SendMailOptions = {
 
 export const getMailFrom = (name?: string) => {
   const email = Deno.env.get("SMTP_FROM") ?? Deno.env.get("SMTP_USER") ?? "info@osmrtnica.com.hr";
-  const fromName = name ?? Deno.env.get("SMTP_FROM_NAME") ?? "Osmrtnica";
+  const fromName = name ?? Deno.env.get("SMTP_FROM_NAME") ?? "Osmrtnica.com.hr";
   return `${fromName} <${email}>`;
 };
 
