@@ -16,6 +16,7 @@ import { SEOHelmet } from '@/hooks/useSEO';
 import { Helmet } from 'react-helmet-async';
 import { formatLifespan, formatObituaryDate, formatObituaryLocation, calculateObituaryAge } from '@/lib/utils';
 import CemeteriesSection from '@/components/CemeteriesSection';
+import ArchiveMonths from '@/components/ArchiveMonths';
 import { fetchCemeteriesByCity, type Cemetery } from '@/lib/cemeteries';
 import { breadcrumbJsonLd } from '@/lib/seo';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
@@ -639,6 +640,8 @@ const Umrli = () => {
 
         {/* Cemeteries Section - dynamic from groblja_i_opisi, filtered by city */}
         <CemeteriesSection cemeteries={cemeteries} cityName={cityName} />
+
+        <ArchiveMonths city={city} cityName={city ? cityName : undefined} />
 
         {/* Cemeteries internal links (cities from main menu) */}
         <section className="mb-12">
