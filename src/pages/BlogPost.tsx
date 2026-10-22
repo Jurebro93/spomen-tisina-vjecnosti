@@ -19,6 +19,8 @@ import BlogSalesSection from '@/components/blog/BlogSalesSection';
 import BlogMemorialQuiz from '@/components/blog/BlogMemorialQuiz';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
+import EbookSignup from '@/components/EbookSignup';
+import { BLOG_GUIDES, GUIDE_LINK_HTML, type GuideId } from '@/lib/ebook';
 
 interface BlogPost {
   id: string;
@@ -49,6 +51,14 @@ const withContextLink = (html: string, enabled: boolean) => {
   let c = 0;
   const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + link : m));
   return c >= 3 ? out : html + link;
+};
+
+/** Adds a link to the post's free guide after the 6th paragraph (or at the end), if the article doesn't link it yet. */
+const withGuideLink = (html: string, guide: GuideId | undefined) => {
+  if (!guide || /href="[^"]*besplatni-vodic/.test(html)) return html;
+  let c = 0;
+  const out = html.replace(/<\/p>/g, (m) => (++c === 6 ? m + GUIDE_LINK_HTML[guide] : m));
+  return c >= 6 ? out : html + GUIDE_LINK_HTML[guide];
 };
 
 /** Splits article HTML right after the nth paragraph, so a widget can sit inside the text. */
@@ -149,6 +159,8 @@ const BlogPost = () => {
       </div>
     );
   }
+
+  const guide: GuideId | undefined = blogPost.slug ? BLOG_GUIDES[blogPost.slug] : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -314,8 +326,8 @@ const BlogPost = () => {
                 }} />
                 {(blogPost.interactive_type === 'quiz' && blogPost.cta_enabled !== false && blogPost.slug
                   // Quiz blogs: the quiz replaces the in-text link and sits after the 3rd paragraph.
-                  ? splitAfterParagraph(blogPost.content || '', 3)
-                  : [withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), '']
+                  ? splitAfterParagraph(withGuideLink(blogPost.content || '', guide), 3)
+                  : [withGuideLink(withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), guide), '']
                 ).map((html, i) => (
                   <React.Fragment key={i}>
                     {i === 1 && <BlogMemorialQuiz slug={blogPost.slug!} heading={blogPost.interactive_items?.[0]} />}
@@ -338,7 +350,10 @@ const BlogPost = () => {
 
           {blogPost.slug && <BlogSalesSection blog={{ ...blogPost, slug: blogPost.slug }} />}
 
-          <NewsletterSignup variant="blog" placement="blog_post" className="mb-12" />
+          {/* Posts with a matching guide offer it instead of the plain newsletter box (it subscribes too). */}
+          {guide
+            ? <EbookSignup variant="blog" guide={guide} placement="blog_post" className="mb-12" />
+            : <NewsletterSignup variant="blog" placement="blog_post" className="mb-12" />}
 
           {/* Related Articles */}
           <section className="mb-12">

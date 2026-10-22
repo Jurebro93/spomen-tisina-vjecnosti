@@ -27,6 +27,7 @@ const Sprovodi = lazyPage(() => import("./pages/Sprovodi"));
 const MemorijalniVrt = lazyPage(() => import("./pages/MemorijalniVrt"));
 const Informacije = lazyPage(() => import("./pages/Informacije"));
 const BesplatniVodic = lazyPage(() => import("./pages/BesplatniVodic"));
+const VodicObiteljskaMirovina = lazyPage(() => import("./pages/VodicObiteljskaMirovina"));
 const Blog = lazyPage(() => import("./pages/Blog"));
 const BlogPost = lazyPage(() => import("./pages/BlogPost"));
 const ObituaryPage = lazyPage(() => import("./pages/ObituaryPage"));
@@ -117,6 +118,7 @@ export const routes = [
   { path: "/moj-racun", element: <MojRacun />, preload: MojRacun.preload },
   { path: "/informacije", element: <Informacije />, preload: Informacije.preload },
   { path: "/besplatni-vodic", element: <BesplatniVodic />, preload: BesplatniVodic.preload },
+  { path: "/besplatni-vodic/obiteljska-mirovina", element: <VodicObiteljskaMirovina />, preload: VodicObiteljskaMirovina.preload },
   { path: "/blog", element: <Blog />, preload: Blog.preload },
   { path: "/blog/:slug", element: <BlogPost />, preload: BlogPost.preload },
   { path: "/virtualne-svijece", element: <VirtualneSvijece />, preload: VirtualneSvijece.preload },
