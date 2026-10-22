@@ -30,5 +30,10 @@
   "/prijava-sadrzaja": {
     "title": "Prijava sadržaja | Osmrtnica.com.hr",
     "description": "Prijavite osmrtnicu ili drugi sadržaj na Osmrtnica.com.hr koji je netočan, neovlašten ili protivan pravilima stranice."
+  },
+  "/besplatni-vodic/obiteljska-mirovina": {
+    "title": "Besplatni vodič: Obiteljska mirovina korak po korak | Osmrtnica.com.hr",
+    "description": "Tko ima pravo na obiteljsku mirovinu, koliko iznosi, kada se isplati model od 27 % i kako predati zahtjev HZMO-u na vrijeme. Besplatni PDF od 14 stranica.",
+    "image": "/vodic/obiteljska-mirovina/og.jpg"
   }
 }
