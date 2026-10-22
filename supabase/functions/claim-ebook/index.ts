@@ -4,6 +4,7 @@
 // the download link.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
+import { emailButton, emailLayout, emailParagraph, SITE } from "../_shared/emailLayout.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -13,14 +14,14 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
-const SITE = "https://osmrtnica.com.hr";
 const DISCOUNT = 30;
 
 type GuideId = "kad-izgubite-voljenu-osobu" | "obiteljska-mirovina";
-const GUIDES: Record<GuideId, { title: string; pdf: string; pages: string; intro: string; memorialNote: string }> = {
+const GUIDES: Record<GuideId, { title: string; pdf: string; cover: string; pages: string; intro: string; memorialNote: string }> = {
   "kad-izgubite-voljenu-osobu": {
     title: "Kad izgubite voljenu osobu",
     pdf: "/vodic/kad-izgubite-voljenu-osobu.pdf",
+    cover: "/vodic/naslovnica.jpg",
     pages: "24 stranice",
     intro: "Vodič je kronološki: krenite od prvih 24 sata i idite dalje tek kad budete spremni. Kontrolne liste na kraju možete ispisati i podijeliti obitelji.",
     memorialNote: "Na zadnjoj stranici vodiča spominjemo digitalni memorijal.",
@@ -28,6 +29,7 @@ const GUIDES: Record<GuideId, { title: string; pdf: string; pages: string; intro
   "obiteljska-mirovina": {
     title: "Obiteljska mirovina korak po korak",
     pdf: "/vodic/obiteljska-mirovina/obiteljska-mirovina-korak-po-korak.pdf",
+    cover: "/vodic/obiteljska-mirovina/naslovnica.jpg",
     pages: "14 stranica",
     intro: "Ako ste udovica ili udovac s vlastitom mirovinom, počnite od poglavlja 5. Najvažnije je zahtjev HZMO-u predati u roku od šest mjeseci od smrti, a kontrolni popis dokumenata na kraju možete ispisati.",
     memorialNote: "U vodiču spominjemo i digitalni memorijal.",
@@ -43,17 +45,26 @@ const makeCode = () => {
 
 const emailHtml = (guide: GuideId, code: string | null) => {
   const g = GUIDES[guide];
-  return `
-<div style="font-family:Georgia,serif;max-width:520px;margin:auto;padding:24px;color:#1a1a1a">
-  <h1 style="font-size:22px;margin:0 0 12px">Vaš vodič „${g.title}“</h1>
-  <p>Hvala vam. Vodič možete preuzeti ovdje, a poveznica ostaje u ovom e-mailu ako vam zatreba kasnije ili ga želite proslijediti obitelji:</p>
-  <p><a href="${SITE}${g.pdf}" style="display:inline-block;background:#c9a24a;color:#111;padding:12px 20px;text-decoration:none;font-weight:bold">Preuzmite vodič (PDF, ${g.pages})</a></p>
-  <p>${g.intro}</p>
-  ${code ? `<p style="margin-top:24px">${g.memorialNote} Ako ga jednom poželite izraditi, ovo je vaš kod za ${DISCOUNT}% popusta (vrijedi za jednu kupnju):</p>
-  <p style="font-size:22px;font-weight:bold;letter-spacing:2px;background:#f6f1e3;border:1px solid #c9a24a;padding:12px;text-align:center">${code}</p>
-  <p>Upišite ga u polje „Promo kod“ pri plaćanju na <a href="${SITE}/digitalni-memorijal/">osmrtnica.com.hr/digitalni-memorijal</a>.</p>` : ""}
-  <p style="font-size:12px;color:#666;margin-top:24px">Primili ste ovaj e-mail jer ste na osmrtnica.com.hr zatražili vodič. Povremeno ćemo vam poslati još praktičnih savjeta; odjaviti se možete odgovorom na ovaj e-mail. <a href="${SITE}/politika-privatnosti/">Politika privatnosti</a></p>
-</div>`;
+  const body = [
+    emailParagraph("Hvala vam. Vodič možete preuzeti klikom na gumb. Poveznica ostaje u ovom e-mailu ako vam zatreba kasnije ili ga želite proslijediti obitelji."),
+    emailButton(`${SITE}${g.pdf}`, `Preuzmite vodič (PDF, ${g.pages})`),
+    emailParagraph(g.intro),
+    code ? `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px;background:#f8f3e7;border:1px solid #c9a24a;border-radius:6px">
+  <tr><td style="padding:22px 20px;text-align:center">
+    <p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.5;color:#2b2b2b">${g.memorialNote} Ako ga jednom poželite izraditi, ovo je vaš kod za <strong>${DISCOUNT} % popusta</strong> (vrijedi za jednu kupnju):</p>
+    <p style="margin:0 0 10px;font-family:'Courier New',Courier,monospace;font-size:26px;font-weight:bold;letter-spacing:3px;color:#111111">${code}</p>
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#555555">Upišite ga u polje „Promo kod“ pri plaćanju na <a href="${SITE}/digitalni-memorijal/" style="color:#8a6a1f">osmrtnica.com.hr/digitalni-memorijal</a>.</p>
+  </td></tr>
+</table>` : "",
+  ].join("");
+  return emailLayout({
+    preheader: code ? `Poveznica za preuzimanje i vaš kod za ${DISCOUNT} % popusta.` : "Poveznica za preuzimanje vodiča.",
+    title: `Vaš vodič „${g.title}“`,
+    image: { src: `${SITE}${g.cover}`, alt: `Naslovnica vodiča „${g.title}“`, width: 220 },
+    body,
+    reason: "Primili ste ovaj e-mail jer ste na osmrtnica.com.hr zatražili vodič. Povremeno ćemo vam poslati još praktičnih savjeta; odjaviti se možete odgovorom na ovaj e-mail.",
+  });
 };
 
 Deno.serve(async (req) => {
