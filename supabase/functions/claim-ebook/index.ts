@@ -1,4 +1,4 @@
-// Free guides ("Kad izgubite voljenu osobu", "Obiteljska mirovina korak po korak"): stores the
+// Free guides (see GUIDES below): stores the
 // e-mail (ebook_signups + newsletter_users), issues the one-time 30% memorial code the guides
 // promise (once per address, shared with the discount popup via discount_signups) and e-mails
 // the download link.
@@ -16,7 +16,7 @@ const json = (body: unknown, status = 200) =>
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}$/;
 const DISCOUNT = 30;
 
-type GuideId = "kad-izgubite-voljenu-osobu" | "obiteljska-mirovina";
+type GuideId = "kad-izgubite-voljenu-osobu" | "obiteljska-mirovina" | "smrt-u-inozemstvu" | "digitalna-ostavstina";
 const GUIDES: Record<GuideId, { title: string; pdf: string; cover: string; pages: string; intro: string; memorialNote: string }> = {
   "kad-izgubite-voljenu-osobu": {
     title: "Kad izgubite voljenu osobu",
@@ -32,6 +32,22 @@ const GUIDES: Record<GuideId, { title: string; pdf: string; cover: string; pages
     cover: "/vodic/obiteljska-mirovina/naslovnica.jpg",
     pages: "14 stranica",
     intro: "Ako ste udovica ili udovac s vlastitom mirovinom, počnite od poglavlja 5. Najvažnije je zahtjev HZMO-u predati u roku od šest mjeseci od smrti, a kontrolni popis dokumenata na kraju možete ispisati.",
+    memorialNote: "U vodiču spominjemo i digitalni memorijal.",
+  },
+  "smrt-u-inozemstvu": {
+    title: "Smrt u inozemstvu",
+    pdf: "/vodic/smrt-u-inozemstvu/smrt-u-inozemstvu.pdf",
+    cover: "/vodic/smrt-u-inozemstvu/naslovnica.jpg",
+    pages: "18 stranica",
+    intro: "Ako se to upravo dogodilo, počnite od poglavlja 1, Prva tri sata. Kontrolni popis dokumenata i tablicu za kontakte na kraju možete ispisati i podijeliti s obitelji u Hrvatskoj.",
+    memorialNote: "U vodiču spominjemo i digitalni memorijal, mjesto gdje se rodbina iz svih država okuplja na jednom linku.",
+  },
+  "digitalna-ostavstina": {
+    title: "Digitalna ostavština",
+    pdf: "/vodic/digitalna-ostavstina/digitalna-ostavstina.pdf",
+    cover: "/vodic/digitalna-ostavstina/naslovnica.jpg",
+    pages: "16 stranica",
+    intro: "Prije nego što išta ugasite, pročitajte poglavlja 1 i 2: mobitel pokojnika i čuvanje fotografija i poruka. Obrazac za vlastitu digitalnu ostavštinu nalazi se na kraju.",
     memorialNote: "U vodiču spominjemo i digitalni memorijal.",
   },
 };
@@ -80,7 +96,7 @@ Deno.serve(async (req) => {
   const placement = typeof body.placement === "string" ? body.placement.replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "unknown" : "unknown";
   const landingUrl = typeof body.landingUrl === "string" ? body.landingUrl.slice(0, 500) : null;
   // Older clients don't send a guide; they only know the first one.
-  const guide: GuideId = body.guide === "obiteljska-mirovina" ? "obiteljska-mirovina" : "kad-izgubite-voljenu-osobu";
+  const guide: GuideId = typeof body.guide === "string" && Object.hasOwn(GUIDES, body.guide) ? body.guide as GuideId : "kad-izgubite-voljenu-osobu";
   const pdf = GUIDES[guide].pdf;
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
