@@ -139,3 +139,27 @@ export const fetchCemeteryBySlug = async (slug: string): Promise<Cemetery | null
   const all = await fetchCemeteries();
   return all.find((c) => c.slug === slug) || null;
 };
+
+// A cemetery page answers where the cemetery is and when it is open; who died
+// and when the funerals are belongs to /umrli/{grad}. "boninovo umrli" was
+// split between /groblje/gradsko-boninovo and /umrli/dubrovnik, so Boninovo
+// gets a head that leaves "umrli" to the city page.
+// netlify/edge-functions/seo-content.js has a copy of this; keep them in sync.
+const CEMETERY_HEADS: Record<string, { title: string; description: string }> = {
+  'gradsko-boninovo': {
+    title: 'Groblje Boninovo Dubrovnik – adresa, radno vrijeme, kontakt',
+    description:
+      'Groblje Boninovo u Dubrovniku: adresa, radno vrijeme i kontakt uprave te povijest groblja. Popis umrlih i raspored sprovoda je na stranici Umrli Dubrovnik.',
+  },
+};
+
+export const cemeteryTitle = (c: Cemetery): string =>
+  (c.slug && CEMETERY_HEADS[c.slug]?.title) || `${c.displayNaziv}${c.grad ? ` - ${c.grad}` : ''}`.slice(0, 60);
+
+/** Hand-written head, else the description cut at a word instead of mid-word. */
+export const cemeteryDescription = (c: Cemetery): string => {
+  const own = c.slug && CEMETERY_HEADS[c.slug]?.description;
+  if (own) return own;
+  const opis = (c.opis || '').replace(/\s+/g, ' ').trim();
+  return opis.length <= 155 ? opis : `${opis.slice(0, 154).replace(/\s+\S*$/, '')}…`;
+};

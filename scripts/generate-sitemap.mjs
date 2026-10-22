@@ -117,6 +117,15 @@ async function build() {
       add(`/umrli/${slug}`, { changefreq: 'daily', priority: '0.7' });
       add(`/sprovodi/${slug}`, { changefreq: 'daily', priority: '0.6' });
     });
+  // Cities we optimise titles for (src/lib/seoCityTest.ts) stay listed while
+  // they have any obituary: /umrli/jastrebarsko (2 obituaries) ranked in
+  // Google but was missing from the sitemap.
+  const testFile = fs.readFileSync(path.join(__dirname, '..', 'src', 'lib', 'seoCityTest.ts'), 'utf8');
+  const testList = testFile.match(/TEST_CITIES = new Set\(\[([\s\S]*?)\]\)/)?.[1] ?? '';
+  [...testList.matchAll(/'([a-z0-9-]+)'/g)]
+    .map((m) => m[1])
+    .filter((slug) => (cityCounts.get(slug) ?? 0) >= 1)
+    .forEach((slug) => add(`/umrli/${slug}`, { changefreq: 'daily', priority: '0.7' }));
 
   // Public, published memorials
   const memorials = await fetchAll('memorials', 'slug, updated_at, status, visibility');

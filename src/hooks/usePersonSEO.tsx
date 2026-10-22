@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { DEFAULT_OG_IMAGE, breadcrumbJsonLd } from '@/lib/seo';
-import { obituaryDescription, obituaryPlace } from '@/lib/obituaryMeta';
+import { obituaryDescription, obituaryPlace, obituaryTitle } from '@/lib/obituaryMeta';
 
 interface PersonSEOProps {
   ime: string;
@@ -29,8 +29,7 @@ const citySlug = (value: string) =>
     .replace(/^-|-$/g, '');
 
 export const PersonSEO = ({ ime, prezime, datum_rodenja, datum_smrti, mjesto_smrti, datum_ukopa, vrijeme_ukopa, groblje, slug, meta_title, meta_description, fotografija_url }: PersonSEOProps) => {
-  // Use meta data from database if available, otherwise generate default
-  const title = meta_title || `${ime} ${prezime} - Osmrtnica | Osmrtnica.com.hr`;
+  const title = obituaryTitle({ ime, prezime, datum_rodenja, datum_smrti, meta_title });
   const description = obituaryDescription({ ime, prezime, datum_rodenja, datum_smrti, mjesto_smrti, datum_ukopa, vrijeme_ukopa, groblje, meta_description });
 
   const place = obituaryPlace(mjesto_smrti);
