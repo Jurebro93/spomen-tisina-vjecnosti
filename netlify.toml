@@ -8,3 +8,10 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Page chunks have a content hash in their name (vite.config.ts), so a changed
+# file always gets a new URL. Unhashed entry files (assets/index.js, vendor.js)
+# keep Netlify's default revalidation.
+[[headers]]
+  for = "/assets/c/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
