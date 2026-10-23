@@ -35,5 +35,15 @@
     "title": "Besplatni vodič: Obiteljska mirovina korak po korak | Osmrtnica.com.hr",
     "description": "Tko ima pravo na obiteljsku mirovinu, koliko iznosi, kada se isplati model od 27 % i kako predati zahtjev HZMO-u na vrijeme. Besplatni PDF od 14 stranica.",
     "image": "/vodic/obiteljska-mirovina/og.jpg"
+  },
+  "/besplatni-vodic/smrt-u-inozemstvu": {
+    "title": "Besplatni vodič: Smrt u inozemstvu | Osmrtnica.com.hr",
+    "description": "Što napraviti kad bližnji umre u Njemačkoj, Austriji, Švicarskoj ili Irskoj: prijava smrti, sprovodnica, prijevoz tijela ili urne, mirovine i ostavina. Besplatni PDF.",
+    "image": "/vodic/smrt-u-inozemstvu/og.jpg"
+  },
+  "/besplatni-vodic/digitalna-ostavstina": {
+    "title": "Besplatni vodič: Digitalna ostavština | Osmrtnica.com.hr",
+    "description": "Kako memorijalizirati ili ugasiti Facebook, Instagram i Google račune preminule osobe, sačuvati fotografije i poruke te otkazati pretplate i mobitel. Besplatni PDF.",
+    "image": "/vodic/digitalna-ostavstina/og.jpg"
   }
 }
