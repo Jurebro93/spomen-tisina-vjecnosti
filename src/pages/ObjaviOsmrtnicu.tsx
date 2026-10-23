@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -287,9 +287,10 @@ const ObjaviOsmrtnicu = () => {
         <div className="max-w-2xl mx-auto">
           <Card className="border-border shadow-memorial">
             <CardHeader className="text-center p-4 sm:p-6">
-              <CardTitle className="text-xl sm:text-2xl font-semibold text-foreground">
+              {/* The page's only heading; as CardTitle (h3) the page had no H1. */}
+              <h1 className="text-xl sm:text-2xl font-semibold leading-none tracking-tight text-foreground">
                 Objavi osmrtnicu
-              </CardTitle>
+              </h1>
               <CardDescription className="text-muted-foreground text-sm sm:text-base">
                 Besplatna objava — nakon slanja ide na odobrenje administratora.
               </CardDescription>

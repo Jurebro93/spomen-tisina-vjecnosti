@@ -3,7 +3,9 @@
 // robots and the links that decide which page owns a query.
 //   node scripts/check-seo-pages.mjs        (exit code 1 when a check fails)
 // Added 2026-10-22 with the Zadar title, Jastrebarsko sitemap, Boninovo and
-// obituary title changes.
+// obituary title changes. Since 2026-10-23 also checks that every page type
+// is served prerendered (own title, H1 and text in the HTML) and that missing
+// and old URLs answer 404 / 301 instead of a 200 copy of the homepage.
 
 const SITE = 'https://osmrtnica.com.hr';
 const SUPABASE_URL = 'https://umpvnepxsqfkxjpclkxc.supabase.co';
@@ -43,7 +45,57 @@ function indexable(label, path, p) {
   check(`${label}: nema noindex`, !/noindex/i.test(p.robots || '') && !/noindex/i.test(p.xRobots || ''), p.robots || p.xRobots || '');
 }
 
+const GENERIC_TITLE = 'Osmrtnica.com.hr - Dostojanstveno opraštanje';
+const sbGet = async (q) =>
+  (await fetch(`${SUPABASE_URL}/rest/v1/${q}`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } })).json();
+
+// Prerendered: the HTML itself (before any JavaScript) has the page's own
+// title, an H1 and enough text, as Googlebot's first pass and Bing/AI bots see it.
+function prerendered(label, p, minWords) {
+  const root = p.html.match(/<div id="root">([\s\S]*)<\/div>\s*(<script|<\/body)/)?.[1] || '';
+  const words = root.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+  check(`${label}: prerender (vlastiti title)`, p.title && p.title !== GENERIC_TITLE, p.title);
+  check(`${label}: prerender (H1 u HTML-u)`, /<h1[\s>]/.test(root));
+  check(`${label}: prerender (tekst u HTML-u)`, words >= minWords, `${words} riječi`);
+  check(`${label}: nema HTML kodova u titleu`, !/&amp;#|&#\d+;/.test(p.title || ''), p.title);
+}
+
+async function pageTypes() {
+  const [obit] = await sbGet('obituaries?select=slug&active=eq.true&slug=not.is.null&order=created_at.desc&limit=1');
+  const [blog] = await sbGet('blogs?select=slug&slug=not.is.null&order=created_at.desc&limit=1');
+  const [mem] = await sbGet('memorials?select=slug&status=eq.published&visibility=eq.public&slug=not.is.null&order=updated_at.desc&limit=1');
+  const pages = [
+    ['Naslovnica', '/', 200], ['Umrli (hub)', '/umrli', 200], ['Sprovodi (hub)', '/sprovodi', 200],
+    ['Groblja (hub)', '/groblja', 200], ['Gradovi', '/gradovi', 200], ['Blog (hub)', '/blog', 200],
+    ['Umrli grad', '/umrli/zagreb', 200], ['Sprovodi grad', '/sprovodi/zagreb', 200], ['Groblja grad', '/groblja/zagreb', 200],
+    ['Groblje', '/groblje/mirogoj', 100], ['Arhiva mjeseca', '/umrli/zagreb/2025/10', 100],
+    ['Digitalni memorijal', '/digitalni-memorijal', 200], ['Objavi osmrtnicu', '/objavi-osmrtnicu', 100],
+    ['Česta pitanja', '/cesto-postavljena-pitanja', 200], ['Kontakt', '/kontakt', 100],
+    obit && ['Najnovija osmrtnica', `/${obit.slug}`, 60],
+    blog && ['Najnoviji blog', `/blog/${blog.slug}`, 150],
+    mem && ['Memorijal', `/memorijal/${mem.slug}`, 60],
+  ].filter(Boolean);
+  for (const [label, path, minWords] of pages) {
+    const p = await get(path);
+    indexable(label, path, p);
+    prerendered(label, p, minWords);
+  }
+  // An obituary written with &#8211; in the database must not show the code.
+  const [dash] = await sbGet('obituaries?select=slug&active=eq.true&slug=like.*-8211-*&limit=1');
+  if (dash) prerendered(`Osmrtnica s crticom /${dash.slug}`, await get(`/${dash.slug}`), 60);
+
+  // Missing pages are a real 404, old URLs a 301, not a 200 copy of the homepage.
+  const missing = await get('/ova-osmrtnica-ne-postoji-123', 'manual');
+  check('Nepostojeća osmrtnica: status 404', missing.status === 404, String(missing.status));
+  const legacy = await get('/umrli-rijeka', 'manual');
+  check('Stari URL /umrli-rijeka: 301 na /umrli/rijeka', legacy.status === 301 && /\/umrli\/rijeka$/.test(legacy.location || ''), `${legacy.status} ${legacy.location}`);
+  const mems = await get('/memorijali', 'manual');
+  check('/memorijali: 301 na /digitalni-memorijal', mems.status === 301 && /\/digitalni-memorijal$/.test(mems.location || ''), `${mems.status} ${mems.location}`);
+}
+
 async function run() {
+  await pageTypes();
+
   // 1. Zadar: new title, fresh description with today's date.
   const zadar = await get('/umrli/zadar');
   indexable('Zadar', '/umrli/zadar', zadar);
