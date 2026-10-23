@@ -14,11 +14,11 @@ type Mode = 'create' | 'login';
 /**
  * A guest who started a memorial without registering sets an e-mail and password before checkout.
  * The guest session becomes a real account (or moves into the existing one), so the draft stays
- * theirs and they can log in later to edit the memorial.
+ * theirs and they can log in later to edit the memorial. The e-mail left for the draft is filled in.
  */
-const GuestAccountStep = () => {
+const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
   const [mode, setMode] = useState<Mode>('create');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');

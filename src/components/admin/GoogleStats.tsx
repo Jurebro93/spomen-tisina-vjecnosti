@@ -32,13 +32,19 @@ const DEVICE_HR: Record<string, string> = { mobile: 'Mobitel', desktop: 'Računa
 const chan = (v: string) => CHANNEL_HR[v] ?? v;
 const dev = (v: string) => DEVICE_HR[v] ?? v;
 
-const WIZARD = [
+// Since 23.10.2026 the wizard has 4 steps (flow_*); the 7 old steps (wizard_*) show only for periods that have them.
+const WIZARD_ALL = [
   ['start_create', 'Otvorena izrada'],
   ['person_search', 'Pretraga osobe'], ['person_manual', 'Ručni unos nove osobe'],
-  ['wizard_1', '1. Osoba (odabrana ili unesena)'], ['wizard_2', '2. Vaš odnos'], ['wizard_3', '3. Biografija'], ['wizard_4', '4. Životni put'],
-  ['wizard_5', '5. Fotografije'], ['wizard_6', '6. Privatnost'], ['wizard_7', '7. Pregled'],
+  ['flow_osoba', '1. Osoba i odnos'], ['flow_email', '2. E-mail (samo gosti)'], ['draft_email', '– od toga upisalo e-mail'],
+  ['draft_email_skipped', '– od toga preskočilo e-mail'], ['flow_prica', '3. Priča i fotografije'], ['flow_pregled', '4. Pregled'],
+  ['wizard_1', 'Stari postupak: 1. Osoba'], ['wizard_2', 'Stari postupak: 2. Vaš odnos'], ['wizard_3', 'Stari postupak: 3. Biografija'],
+  ['wizard_4', 'Stari postupak: 4. Životni put'], ['wizard_5', 'Stari postupak: 5. Fotografije'], ['wizard_6', 'Stari postupak: 6. Privatnost'],
+  ['wizard_7', 'Stari postupak: 7. Pregled'],
   ['checkout_started', 'Klik na plaćanje'], ['checkout', 'Otvoreno plaćanje'], ['paid', 'Plaćeno ili aktivirano'],
 ] as const;
+const HIDE_WHEN_EMPTY = new Set<string>(['wizard_1', 'wizard_2', 'wizard_3', 'wizard_4', 'wizard_5', 'wizard_6', 'wizard_7',
+  'flow_osoba', 'flow_email', 'draft_email', 'draft_email_skipped', 'flow_prica', 'flow_pregled']);
 
 const Bars = ({ rows }: { rows: { label: string; value: number }[] }) => {
   const max = Math.max(...rows.map((r) => r.value), 1);
@@ -128,6 +134,7 @@ export default function GoogleStats() {
   const wizardTotal = (step: string, device?: string) =>
     (wizard ?? []).filter((r) => r.step === step && (!device || r.device === device) && (!campaign || r.campaign === campaign))
       .reduce((a, r) => a + r.n, 0);
+  const WIZARD = WIZARD_ALL.filter(([k]) => !HIDE_WHEN_EMPTY.has(k) || wizardTotal(k) > 0);
   const campaigns = [...new Set((wizard ?? []).map((r) => r.campaign).filter((c): c is string => Boolean(c)))].sort();
   const wizardDevices = [...new Set((wizard ?? []).map((r) => r.device))].filter((d) => wizardTotal('start_create', d) > 0);
 
