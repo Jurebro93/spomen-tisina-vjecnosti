@@ -106,6 +106,9 @@ export const BLOG_GUIDES: Record<string, GuideId> = {
   'grobnica-vrste-cijene': 'kad-izgubite-voljenu-osobu',
   'kako-napisati-osmrtnicu': 'kad-izgubite-voljenu-osobu',
   'pisanje-iskrenog-oprostaja-kako-pocastiti-voljenu-osobu-u-spomenu': 'kad-izgubite-voljenu-osobu',
+  'nasljedivanje-mirovine-od-supruga': 'obiteljska-mirovina',
+  'iskrena-sucut-tekstovi-poruke': 'kad-izgubite-voljenu-osobu',
+  'ugovor-o-dozivotnom-uzdrzavanju': 'kad-izgubite-voljenu-osobu',
 };
 
 /** One sentence linking a blog post to its guide's landing page. */
