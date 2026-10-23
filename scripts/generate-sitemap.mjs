@@ -34,6 +34,11 @@ const STATIC_PAGES = [
   { path: '/objavi-osmrtnicu', changefreq: 'monthly', priority: '0.8' },
   { path: '/kako-objaviti-osmrtnicu', changefreq: 'monthly', priority: '0.6' },
   { path: '/blog', changefreq: 'daily', priority: '0.8' },
+  // Hubs rendered by netlify/edge-functions/seo-content.js. /sprovodi was last
+  // crawled on 9.10 while it still had noindex; listing it gets it recrawled.
+  { path: '/sprovodi', changefreq: 'daily', priority: '0.7' },
+  { path: '/groblja', changefreq: 'weekly', priority: '0.6' },
+  { path: '/gradovi', changefreq: 'weekly', priority: '0.6' },
   { path: '/virtualne-svijece', changefreq: 'daily', priority: '0.7' },
   { path: '/zapali-svijecu', changefreq: 'monthly', priority: '0.7' },
   { path: '/memorijalni-vrt', changefreq: 'weekly', priority: '0.7' },
@@ -44,6 +49,10 @@ const STATIC_PAGES = [
   { path: '/uvjeti-koristenja', changefreq: 'yearly', priority: '0.3' },
   { path: '/politika-privatnosti', changefreq: 'yearly', priority: '0.3' },
   { path: '/kolacici', changefreq: 'yearly', priority: '0.3' },
+  { path: '/kontakt', changefreq: 'yearly', priority: '0.3' },
+  { path: '/raskid-i-povrat', changefreq: 'yearly', priority: '0.3' },
+  { path: '/prigovori', changefreq: 'yearly', priority: '0.3' },
+  { path: '/pravila-objavljivanja', changefreq: 'yearly', priority: '0.3' },
 ];
 
 // Paginate past the 1000-row PostgREST limit.

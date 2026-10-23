@@ -27,7 +27,8 @@ const APP_PAGES = new Set([
   'obituary-success', 'pretraga', 'kako-objaviti-osmrtnicu', 'cesto-postavljena-pitanja',
   'uvjeti-koristenja', 'politika-privatnosti', 'kolacici', 'kontakt', 'raskid-i-povrat', 'prigovori',
   'pravila-objavljivanja', 'prijava-sadrzaja', 'homepage-2', 'homepage-3', 'admin', 'auth',
-  'sitemap_index.xml', 'osmrtnica', 'memorijal', 'memorijal-primjer',
+  'sitemap_index.xml', 'osmrtnica', 'memorijal', 'memorijal-primjer', 'besplatni-vodic', 'vodic', 'search',
+  'success', '404',
 ]);
 
 const MONTHS = ['siječnja', 'veljače', 'ožujka', 'travnja', 'svibnja', 'lipnja', 'srpnja', 'kolovoza', 'rujna', 'listopada', 'studenoga', 'prosinca'];
@@ -39,12 +40,39 @@ const esc = (v) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-// Some imported text is stored HTML-escaped (Gradsko groblje &quot;VLAKOVO&quot;), sometimes twice.
-const ENTITIES = { amp: '&', quot: '"', apos: "'", '#39': "'", '#039': "'", nbsp: ' ' };
+// Imported text is often stored HTML-escaped (Gradsko groblje &quot;VLAKOVO&quot;,
+// "MUHAMED &#8211; Bego"), sometimes twice. Same decoder as src/lib/htmlEntities.ts,
+// which the app applies to every Supabase response; sb() applies this one. Never
+// decodes < or >, so stored text cannot turn into markup.
+const ENTITIES = {
+  amp: '&', quot: '"', apos: "'", nbsp: '\u00A0', ndash: '–', mdash: '—', hellip: '…', lsquo: '‘', rsquo: '’',
+  sbquo: '‚', ldquo: '“', rdquo: '”', bdquo: '„', laquo: '«', raquo: '»', bull: '•', middot: '·', deg: '°',
+  euro: '€', copy: '©', reg: '®', trade: '™', times: '×', eacute: 'é', scaron: 'š', Scaron: 'Š', ccaron: 'č',
+  zcaron: 'ž', Zcaron: 'Ž', shy: '', ensp: ' ', emsp: ' ', thinsp: ' ', zwj: '', zwnj: '',
+};
+const ENTITY_RE = /&(#[xX]?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]{1,31});/g;
+const decodeOnce = (v) =>
+  v.replace(ENTITY_RE, (match, body) => {
+    if (body[0] !== '#') return ENTITIES[body] ?? match;
+    const hex = body[1] === 'x' || body[1] === 'X';
+    const code = parseInt(hex ? body.slice(2) : body.slice(1), hex ? 16 : 10);
+    if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff || code === 60 || code === 62) return match;
+    return String.fromCodePoint(code);
+  });
 const decode = (v) => {
   let out = String(v ?? '');
-  for (let i = 0; i < 3 && /&(amp|quot|apos|#0?39|nbsp);/.test(out); i += 1) out = out.replace(/&(amp|quot|apos|#0?39|nbsp);/g, (_, e) => ENTITIES[e]);
+  for (let i = 0; i < 3 && out.includes('&'); i += 1) {
+    const next = decodeOnce(out);
+    if (next === out) break;
+    out = next;
+  }
   return out;
+};
+const decodeDeep = (v) => {
+  if (typeof v === 'string') return decode(v);
+  if (Array.isArray(v)) return v.map(decodeDeep);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, decodeDeep(x)]));
+  return v;
 };
 
 const stripTags = (html) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -106,7 +134,7 @@ async function sb(path) {
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`supabase ${res.status}`);
-    return await res.json();
+    return decodeDeep(await res.json());
   } finally {
     clearTimeout(timer);
   }
@@ -119,7 +147,10 @@ const cityPattern = (city) =>
   fold(city)
     .split('')
     .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
-    .join('');
+    .join('')
+    // "Slivno - Ravno", "Sv. Sustipan, Jesenice": any run of spaces, hyphens,
+    // commas or dots between words, else /umrli/slivno-ravno found nothing.
+    .replace(/(\[- \])+/g, '[-,. ]+');
 // Same list as CITY_ALIASES in src/lib/cityMatch.ts; keep them in sync.
 const CITY_ALIASES = {
   split: ['lovrinac'],
@@ -1007,9 +1038,23 @@ function route(pathname) {
   }
   if (parts.length === 4 && parts[0] === 'umrli') return () => umrliArchive(parts[1], parts[2], parts[3]);
   if (parts.length === 1 && !APP_PAGES.has(parts[0]) && !parts[0].includes('.')) {
-    return () => obituarySlug(decodeURIComponent(parts[0]));
+    const build = () => obituarySlug(decodeURIComponent(parts[0]));
+    build.obituary = true;
+    return build;
   }
   return null;
+}
+
+// Old flat URLs (/umrli-rijeka, /groblja-split/) that src/components/LegacySlugRoute.tsx
+// redirects in the browser. Crawlers got a 200 copy of the homepage shell, so
+// redirect them here with a 301 instead.
+const LEGACY_PREFIXES = [['groblja-', '/groblja'], ['groblje-', '/groblje'], ['umrli-', '/umrli'], ['sprovodi-', '/sprovodi'], ['sprovod-', '/sprovodi']];
+function legacyTarget(pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length !== 1) return null;
+  const slug = parts[0].toLowerCase();
+  const hit = LEGACY_PREFIXES.find(([prefix]) => slug.startsWith(prefix) && slug.length > prefix.length);
+  return hit ? `${hit[1]}/${slug.slice(hit[0].length)}` : null;
 }
 
 const setTag = (html, re, tag) => (re.test(html) ? html.replace(re, tag) : html.replace('</head>', `    ${tag}\n  </head>`));
@@ -1046,6 +1091,8 @@ function withHead(html, d, t, desc) {
 export default async (request, context) => {
   if (request.method !== 'GET') return context.next();
   const url = new URL(request.url);
+  const legacy = legacyTarget(url.pathname);
+  if (legacy) return Response.redirect(new URL(legacy + url.search, url), 301);
   const build = route(url.pathname);
   if (!build) return context.next();
 
@@ -1060,7 +1107,19 @@ export default async (request, context) => {
     console.error('seo-content', url.pathname, String(e));
     return res;
   }
-  if (!data) return res;
+  if (!data) {
+    // An obituary slug that does not exist answered 200 with the homepage
+    // shell (a soft 404 for Google). Only the SPA fallback is turned into a
+    // 404: pages with their own index.html in public/ are left alone.
+    if (!build.obituary) return res;
+    const html = await res.text();
+    if (!html.includes(GENERIC_TITLE)) return new Response(html, { status: 200, headers: res.headers });
+    const headers = new Headers(res.headers);
+    headers.delete('content-length');
+    headers.delete('etag');
+    const notFound = html.replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
+    return new Response(notFound, { status: 404, headers });
+  }
 
   const html = inject(await res.text(), data);
   const headers = new Headers(res.headers);
