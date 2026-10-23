@@ -106,7 +106,7 @@ export function EbookForm({ placement, guide = EBOOK.id, buttonLabel = 'Pošalji
       {state === 'error' && <p role="alert" className="text-sm text-destructive">Slanje trenutačno nije uspjelo. Molimo pokušajte ponovno.</p>}
       <p className="text-xs leading-snug text-muted-foreground">
         Vodič je besplatan. Uz njega ćemo vam povremeno poslati praktične savjete; odjaviti se možete u svakom trenutku, a adresu ne dijelimo s trećima.{' '}
-        <Link to="/politika-privatnosti/" className="underline hover:text-foreground">Politika privatnosti</Link>
+        <Link to="/politika-privatnosti" className="underline hover:text-foreground">Politika privatnosti</Link>
       </p>
     </form>
   );

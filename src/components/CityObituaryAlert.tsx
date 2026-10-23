@@ -101,7 +101,7 @@ export default function CityObituaryAlert({ city, cityName, className = '' }: Pr
             {state === 'error' && <p role="alert" className="text-sm text-red-300">Prijava trenutačno nije uspjela. Molimo pokušajte ponovno.</p>}
             <p className="text-xs text-background/60 leading-snug">
               Adresu ne dijelimo s trećima.{' '}
-              <Link to="/politika-privatnosti/" className="underline hover:text-background">Politika privatnosti</Link>
+              <Link to="/politika-privatnosti" className="underline hover:text-background">Politika privatnosti</Link>
             </p>
           </form>
         )}
