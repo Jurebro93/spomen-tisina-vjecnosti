@@ -128,7 +128,7 @@ export default function NewsletterSignup({ variant = 'blog', placement, classNam
             {state === 'error' && <p role="alert" className="text-sm text-destructive">Prijava trenutačno nije uspjela. Molimo pokušajte ponovno.</p>}
             <p className="text-xs text-muted-foreground leading-snug">
               Prijavom pristajete na primanje e-mailova s portala osmrtnica.com.hr. Adresu ne dijelimo s trećima, a odjaviti se možete u svakom trenutku.{' '}
-              <Link to="/politika-privatnosti/" className="underline hover:text-foreground">Politika privatnosti</Link>
+              <Link to="/politika-privatnosti" className="underline hover:text-foreground">Politika privatnosti</Link>
             </p>
           </form>
         </div>
