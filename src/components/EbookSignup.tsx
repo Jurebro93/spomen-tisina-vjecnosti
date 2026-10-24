@@ -24,6 +24,16 @@ const COPY: Record<GuideId, { heading: string; blurb: string; long: string }> = 
     blurb: 'Uvjeti, iznosi, rokovi i dokumenti za zahtjev HZMO-u na jednom mjestu.',
     long: 'Tko ima pravo, kako se računa iznos, kada se isplati model od 27 % i kako predati zahtjev na vrijeme. Provjereno prema Zakonu o mirovinskom osiguranju i HZMO-u, s kontrolnim popisom dokumenata.',
   },
+  'smrt-u-inozemstvu': {
+    heading: 'Bližnji je umro u inozemstvu: što sada',
+    blurb: 'Prijava smrti vani, prijevoz tijela ili urne kući, mirovine i ostavina.',
+    long: 'Što napraviti kad bližnji umre u Njemačkoj, Austriji, Švicarskoj ili Irskoj: prijava smrti, sprovodnica, prijevoz tijela ili urne, troškovi, mirovine i ostavina preko granice, s kontrolnim popisom dokumenata.',
+  },
+  'digitalna-ostavstina': {
+    heading: 'Digitalna ostavština: profili, fotografije i pretplate',
+    blurb: 'Facebook, Instagram, Google i Apple računi preminule osobe, mobitel i pretplate.',
+    long: 'Kako sačuvati fotografije i poruke, memorijalizirati ili ugasiti Facebook, Instagram i Google račune, doći do iClouda te otkazati pretplate i mobitel. Uz obrazac za vlastitu digitalnu ostavštinu.',
+  },
 };
 
 interface Props {
@@ -96,7 +106,7 @@ export function EbookForm({ placement, guide = EBOOK.id, buttonLabel = 'Pošalji
       {state === 'error' && <p role="alert" className="text-sm text-destructive">Slanje trenutačno nije uspjelo. Molimo pokušajte ponovno.</p>}
       <p className="text-xs leading-snug text-muted-foreground">
         Vodič je besplatan. Uz njega ćemo vam povremeno poslati praktične savjete; odjaviti se možete u svakom trenutku, a adresu ne dijelimo s trećima.{' '}
-        <Link to="/politika-privatnosti/" className="underline hover:text-foreground">Politika privatnosti</Link>
+        <Link to="/politika-privatnosti" className="underline hover:text-foreground">Politika privatnosti</Link>
       </p>
     </form>
   );
@@ -115,7 +125,15 @@ const Cover = ({ guide, className }: { guide: GuideId; className: string }) => (
   </Link>
 );
 
-/** Homepage: both guides side by side, each with its own form. */
+/** Suffix of the homepage placement per guide. The first two keep their original values so earlier signups stay comparable. */
+const HOME_PLACEMENT: Record<GuideId, string> = {
+  'kad-izgubite-voljenu-osobu': '',
+  'obiteljska-mirovina': '_mirovina',
+  'smrt-u-inozemstvu': '_inozemstvo',
+  'digitalna-ostavstina': '_digitalna',
+};
+
+/** Homepage: all guides in a grid, each with its own form. */
 function HomeGuides({ placement, className }: { placement: string; className: string }) {
   return (
     <section aria-labelledby={`ebook-${placement}`} className={className}>
@@ -139,8 +157,7 @@ function HomeGuides({ placement, className }: { placement: string; className: st
                 Pogledajte sadržaj vodiča
               </Link>
               <div className="mt-4">
-                {/* Keeps "homepage" for the first guide so its signups stay comparable with earlier ones. */}
-                <EbookForm placement={g.id === EBOOK.id ? placement : `${placement}_mirovina`} guide={g.id} />
+                                <EbookForm placement={HOME_PLACEMENT[g.id] ? `${placement}${HOME_PLACEMENT[g.id]}` : placement} guide={g.id} />
               </div>
             </div>
           </article>

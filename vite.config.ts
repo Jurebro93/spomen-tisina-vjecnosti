@@ -25,8 +25,9 @@ export default defineConfig(({ mode }) => ({
         entryFileNames: 'assets/[name].js',
         // Shared chunks keep fixed names (the SEO templates in public/ preload
         // them); page chunks get a hash so a new deploy never mixes old and new code.
+        // Hashed chunks live in assets/c/, which netlify.toml caches for a year.
         chunkFileNames: (chunk) =>
-          ['vendor', 'router', 'ui'].includes(chunk.name) ? 'assets/[name].js' : 'assets/[name]-[hash].js',
+          ['vendor', 'router', 'ui'].includes(chunk.name) ? 'assets/[name].js' : 'assets/c/[name]-[hash].js',
         assetFileNames: 'assets/[name].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],

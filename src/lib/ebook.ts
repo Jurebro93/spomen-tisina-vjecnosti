@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { landingParams } from '@/lib/landing';
 
-export type GuideId = 'kad-izgubite-voljenu-osobu' | 'obiteljska-mirovina';
+export type GuideId = 'kad-izgubite-voljenu-osobu' | 'obiteljska-mirovina' | 'smrt-u-inozemstvu' | 'digitalna-ostavstina';
 
 export interface Guide {
   id: GuideId;
@@ -37,6 +37,26 @@ export const EBOOKS: Record<GuideId, Guide> = {
     landing: '/besplatni-vodic/obiteljska-mirovina',
     pages: 14,
     pagesLabel: '14 stranica',
+  },
+  'smrt-u-inozemstvu': {
+    id: 'smrt-u-inozemstvu',
+    title: 'Smrt u inozemstvu',
+    tagline: 'Prijava smrti vani, prijevoz kući, mirovine i ostavina',
+    pdf: '/vodic/smrt-u-inozemstvu/smrt-u-inozemstvu.pdf',
+    cover: '/vodic/smrt-u-inozemstvu/naslovnica.jpg',
+    landing: '/besplatni-vodic/smrt-u-inozemstvu',
+    pages: 18,
+    pagesLabel: '18 stranica',
+  },
+  'digitalna-ostavstina': {
+    id: 'digitalna-ostavstina',
+    title: 'Digitalna ostavština',
+    tagline: 'Profili, fotografije, mobitel i pretplate preminule osobe',
+    pdf: '/vodic/digitalna-ostavstina/digitalna-ostavstina.pdf',
+    cover: '/vodic/digitalna-ostavstina/naslovnica.jpg',
+    landing: '/besplatni-vodic/digitalna-ostavstina',
+    pages: 16,
+    pagesLabel: '16 stranica',
   },
 };
 
@@ -86,10 +106,15 @@ export const BLOG_GUIDES: Record<string, GuideId> = {
   'grobnica-vrste-cijene': 'kad-izgubite-voljenu-osobu',
   'kako-napisati-osmrtnicu': 'kad-izgubite-voljenu-osobu',
   'pisanje-iskrenog-oprostaja-kako-pocastiti-voljenu-osobu-u-spomenu': 'kad-izgubite-voljenu-osobu',
+  'nasljedivanje-mirovine-od-supruga': 'obiteljska-mirovina',
+  'iskrena-sucut-tekstovi-poruke': 'kad-izgubite-voljenu-osobu',
+  'ugovor-o-dozivotnom-uzdrzavanju': 'kad-izgubite-voljenu-osobu',
 };
 
 /** One sentence linking a blog post to its guide's landing page. */
 export const GUIDE_LINK_HTML: Record<GuideId, string> = {
   'kad-izgubite-voljenu-osobu': '<p><em>Sve korake nakon smrti bliske osobe, od sprovoda i smrtnog lista do ostavine, složili smo u <a href="/besplatni-vodic" data-cta="guide_link">besplatni vodič „Kad izgubite voljenu osobu”</a>.</em></p>',
   'obiteljska-mirovina': '<p><em>Tko ima pravo na obiteljsku mirovinu, koliko iznosi i kako predati zahtjev na vrijeme, objasnili smo u <a href="/besplatni-vodic/obiteljska-mirovina" data-cta="guide_link">besplatnom vodiču „Obiteljska mirovina korak po korak”</a>.</em></p>',
+  'smrt-u-inozemstvu': '<p><em>Što napraviti kad bližnji umre u inozemstvu, od prijave smrti do prijevoza kući, objasnili smo u <a href="/besplatni-vodic/smrt-u-inozemstvu" data-cta="guide_link">besplatnom vodiču „Smrt u inozemstvu”</a>.</em></p>',
+  'digitalna-ostavstina': '<p><em>Kako sačuvati fotografije i poruke te memorijalizirati ili ugasiti profile preminule osobe, objasnili smo u <a href="/besplatni-vodic/digitalna-ostavstina" data-cta="guide_link">besplatnom vodiču „Digitalna ostavština”</a>.</em></p>',
 };

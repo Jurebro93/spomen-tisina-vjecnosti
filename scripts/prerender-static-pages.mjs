@@ -34,6 +34,8 @@ const PAGES = [
   '/informacije',
   '/besplatni-vodic',
   '/besplatni-vodic/obiteljska-mirovina',
+  '/besplatni-vodic/smrt-u-inozemstvu',
+  '/besplatni-vodic/digitalna-ostavstina',
   '/cesto-postavljena-pitanja',
   '/uvjeti-koristenja',
   '/politika-privatnosti',

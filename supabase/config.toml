@@ -95,3 +95,6 @@ verify_jwt = true
 
 [functions.save-draft-email]
 verify_jwt = true
+
+[functions.indexnow-ping]
+verify_jwt = false
