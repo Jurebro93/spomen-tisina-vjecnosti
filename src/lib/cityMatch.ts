@@ -14,7 +14,10 @@ export const cityPattern = (city: string): string =>
     .replace(/[čćžšđ]/g, (ch) => FOLD[ch])
     .split('')
     .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
-    .join('');
+    .join('')
+    // "Slivno - Ravno", "Sv. Sustipan, Jesenice": any run of spaces, hyphens,
+    // commas or dots between words, else /umrli/slivno-ravno found nothing.
+    .replace(/(\[- \])+/g, '[-,. ]+');
 
 // The import often names only the cemetery or the inflected city ("Lovrinac",
 // "u Zadru", "Drenova"), so the city's name alone missed most of its

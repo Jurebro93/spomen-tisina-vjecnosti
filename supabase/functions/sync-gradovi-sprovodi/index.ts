@@ -3,6 +3,7 @@ import {
   boninovoGroblje,
   parseCakovec,
   parseDubrovnikRss,
+  parseJastrebarsko,
   parseKarlovac,
   parseKoprivnica,
   parsePozega,
@@ -97,6 +98,13 @@ const SOURCES: Source[] = [
     grad: 'Požega',
     keepMissing: true,
     load: async (fromDate) => parsePozega(await getText('https://komunalac-pozega.hr/osmrtnice'), fromDate),
+  },
+  {
+    izvor: 'groblja-jastrebarsko',
+    grad: 'Jastrebarsko',
+    // Only the coming funerals are listed; today's drop off once they are over.
+    keepMissing: true,
+    load: async (fromDate) => parseJastrebarsko(await getText('https://www.groblja-jastrebarsko.hr/usluge/raspored_ukopa/'), fromDate),
   },
   {
     izvor: 'kd-kozala-rijeka',

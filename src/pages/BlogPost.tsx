@@ -17,8 +17,12 @@ import { breadcrumbJsonLd } from '@/lib/seo';
 import { formatBlogDate } from '@/lib/utils';
 import BlogSalesSection from '@/components/blog/BlogSalesSection';
 import BlogMemorialQuiz from '@/components/blog/BlogMemorialQuiz';
+import BlogInlineWidget, { WIDGET_RE } from '@/components/blog/BlogInlineWidget';
+import ImageLightbox from '@/components/blog/ImageLightbox';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
+import EbookSignup from '@/components/EbookSignup';
+import { BLOG_GUIDES, GUIDE_LINK_HTML, type GuideId } from '@/lib/ebook';
 
 interface BlogPost {
   id: string;
@@ -44,11 +48,19 @@ interface BlogPost {
 
 /** Adds one natural in-text link to the memorial page after the 3rd paragraph, if the article has none. */
 const withContextLink = (html: string, enabled: boolean) => {
-  if (!enabled || /href="[^"]*digitalni-memorijal/.test(html)) return html;
+  if (!enabled || /href="[^"]*digitalni-memorijal|<!--widget:memorial/.test(html)) return html;
   const link = '<p><em>Uspomene na voljenu osobu možete trajno sačuvati na jednom mjestu – u <a href="/digitalni-memorijal" data-cta="context_link">digitalnom memorijalu</a> s fotografijama, životnom pričom i porukama bližnjih.</em></p>';
   let c = 0;
   const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + link : m));
   return c >= 3 ? out : html + link;
+};
+
+/** Adds a link to the post's free guide after the 6th paragraph (or at the end), if the article doesn't link it yet. */
+const withGuideLink = (html: string, guide: GuideId | undefined) => {
+  if (!guide || /href="[^"]*besplatni-vodic|<!--widget:guide/.test(html)) return html;
+  let c = 0;
+  const out = html.replace(/<\/p>/g, (m) => (++c === 6 ? m + GUIDE_LINK_HTML[guide] : m));
+  return c >= 6 ? out : html + GUIDE_LINK_HTML[guide];
 };
 
 /** Splits article HTML right after the nth paragraph, so a widget can sit inside the text. */
@@ -63,6 +75,7 @@ const BlogPost = () => {
   const [blogPost, setBlogPost] = useState<BlogPost | null>(null);
   const [relatedPosts, setRelatedPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     const fetchBlogPost = async () => {
@@ -110,7 +123,12 @@ const BlogPost = () => {
   }, [blogPost?.slug]);
 
   const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const a = (e.target as HTMLElement).closest('a');
+    const target = e.target as HTMLElement;
+    if (target instanceof HTMLImageElement && target.closest('figure') && !target.closest('a')) {
+      setZoomed({ src: target.currentSrc || target.src, alt: target.alt });
+      return;
+    }
+    const a = target.closest('a');
     if (!a || !blogPost?.slug) return;
     const href = a.getAttribute('href') || '';
     if (/digitalni-memorijal|kreiraj-memorijal/.test(href)) {
@@ -149,6 +167,8 @@ const BlogPost = () => {
       </div>
     );
   }
+
+  const guide: GuideId | undefined = blogPost.slug ? BLOG_GUIDES[blogPost.slug] : undefined;
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,7 +295,7 @@ const BlogPost = () => {
 
             {/* Article Content */}
             <Card className="shadow-lg border-t-4 border-t-memorial-gold">
-              <CardContent className="p-8 md:p-12">
+              <CardContent className="p-5 sm:p-8 md:p-12">
                 <style dangerouslySetInnerHTML={{
                   __html: `
                     .prose h2 {
@@ -297,7 +317,15 @@ const BlogPost = () => {
                     .prose li { margin-bottom: 0.4rem; }
                     .prose figure { margin: 2.5rem 0 !important; }
                     .prose figure img { width: 100%; height: auto; border-radius: 0.75rem; margin: 0 !important; }
-                    .prose figure img[src*="/infografike/"] { max-width: 520px; margin: 0 auto !important; display: block; }
+                    .prose figure { position: relative; }
+                    .prose figure img { cursor: zoom-in; }
+                    .prose figure img[src*="/infografike/"] { max-width: 680px; margin: 0 auto !important; display: block; box-shadow: 0 1px 3px rgb(0 0 0 / 0.12); }
+                    .prose figure:has(img)::after { content: "⤢ Povećaj"; position: absolute; top: 0.6rem; right: 0.6rem; pointer-events: none; font-size: 0.7rem; font-weight: 600; line-height: 1; padding: 0.3rem 0.55rem; border-radius: 999px; background: rgb(0 0 0 / 0.6); color: #fff; }
+                    .prose figure:has(img[src*="/infografike/"])::after { right: max(0.6rem, calc((100% - 680px) / 2 + 0.6rem)); }
+                    @media (max-width: 640px) {
+                      .prose figure:has(img[src*="/infografike/"]) { margin-left: -1rem !important; margin-right: -1rem !important; }
+                      .prose figure img[src*="/infografike/"] { border-radius: 0.5rem; }
+                    }
                     .prose figcaption { margin-top: 0.75rem; font-size: 0.9rem; text-align: center; opacity: 0.7; }
                     .prose blockquote { border-left: 4px solid hsl(var(--accent)); background: hsl(var(--muted)); padding: 1.25rem 1.5rem; border-radius: 0.5rem; font-style: normal; margin: 1.5rem 0 2rem; }
                     .prose blockquote p { margin-bottom: 0.75rem !important; }
@@ -314,31 +342,44 @@ const BlogPost = () => {
                 }} />
                 {(blogPost.interactive_type === 'quiz' && blogPost.cta_enabled !== false && blogPost.slug
                   // Quiz blogs: the quiz replaces the in-text link and sits after the 3rd paragraph.
-                  ? splitAfterParagraph(blogPost.content || '', 3)
-                  : [withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), '']
+                  ? splitAfterParagraph(withGuideLink(blogPost.content || '', guide), 3)
+                  : [withGuideLink(withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), guide), '']
                 ).map((html, i) => (
                   <React.Fragment key={i}>
                     {i === 1 && <BlogMemorialQuiz slug={blogPost.slug!} heading={blogPost.interactive_items?.[0]} />}
-                    {html && (
-                      <div
-                        className="prose prose-lg prose-gray dark:prose-invert max-w-none"
-                        onClick={handleContentClick}
-                        dangerouslySetInnerHTML={{ __html: html }}
-                        style={{
-                          fontSize: '1.125rem',
-                          lineHeight: '1.8',
-                        }}
-                      />
-                    )}
+                    {/* <!--widget:…--> comments in the content become inline cards; the text between stays prose. */}
+                    {html.split(WIDGET_RE).reduce<React.ReactNode[]>((out, part, j, parts) => {
+                      if (j % 3 === 0) {
+                        if (part.trim()) out.push(
+                          <div
+                            key={j}
+                            className="prose prose-lg prose-gray dark:prose-invert max-w-none"
+                            onClick={handleContentClick}
+                            dangerouslySetInnerHTML={{ __html: part }}
+                            style={{
+                              fontSize: '1.125rem',
+                              lineHeight: '1.8',
+                            }}
+                          />
+                        );
+                      } else if (j % 3 === 1) {
+                        out.push(<BlogInlineWidget key={j} slug={blogPost.slug!} kind={part} args={parts[j + 1].split('|').slice(1)} guide={guide} />);
+                      }
+                      return out;
+                    }, [])}
                   </React.Fragment>
                 ))}
+                {zoomed && <ImageLightbox src={zoomed.src} alt={zoomed.alt} onClose={() => setZoomed(null)} />}
               </CardContent>
             </Card>
           </article>
 
           {blogPost.slug && <BlogSalesSection blog={{ ...blogPost, slug: blogPost.slug }} />}
 
-          <NewsletterSignup variant="blog" placement="blog_post" className="mb-12" />
+          {/* Posts with a matching guide offer it instead of the plain newsletter box (it subscribes too). */}
+          {guide
+            ? <EbookSignup variant="blog" guide={guide} placement="blog_post" className="mb-12" />
+            : <NewsletterSignup variant="blog" placement="blog_post" className="mb-12" />}
 
           {/* Related Articles */}
           <section className="mb-12">

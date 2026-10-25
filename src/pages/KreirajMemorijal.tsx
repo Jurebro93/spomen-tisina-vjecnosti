@@ -11,15 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Calendar, Check, Eye, Globe, Link2, Loader2, Lock, MapPin, Plus, Search, Trash2, UserPlus } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import { Calendar, Check, Eye, Globe, Link2, Loader2, Lock, MapPin, UserPlus } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import RichTextEditor from '@/components/memorial/RichTextEditor';
 import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUploader';
 import MemorialContent from '@/components/memorial/MemorialContent';
 import GuestAccountStep from '@/components/memorial/GuestAccountStep';
-import DraftEmailCard from '@/components/memorial/DraftEmailCard';
+import DraftEmailCard, { DraftEmailStep, readDraftEmailAddress, readDraftEmailState, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -32,11 +31,12 @@ import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
-import { validLifeEventYear } from '@/lib/lifeEventYear';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
-const STEPS = ['Osoba', 'Vaš odnos', 'Biografija', 'Životni put', 'Fotografije', 'Privatnost', 'Pregled'];
+// Step 1 (e-mail for the draft) is shown to guests only; signed-in visitors go from 0 straight to 2.
+const STEPS = ['Osoba i odnos', 'E-mail', 'Priča i fotografije', 'Pregled'];
+const STEP_FUNNEL: FunnelStep[] = ['flow_osoba', 'flow_email', 'flow_prica', 'flow_pregled'];
 
 const VISIBILITY_OPTIONS: Array<{ value: MemorialVisibility; icon: React.ElementType; title: string; text: string }> = [
   { value: 'public', icon: Globe, title: 'Javno', text: 'Svatko može pronaći i posjetiti memorijal.' },
@@ -44,13 +44,23 @@ const VISIBILITY_OPTIONS: Array<{ value: MemorialVisibility; icon: React.Element
   { value: 'private', icon: Lock, title: 'Privatno', text: 'Samo pozvani članovi obitelji mogu vidjeti memorijal.' },
 ];
 
-const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) => void; onCancel: () => void }) => {
+/** "Ivan Horvat" -> ime Ivan, prezime Horvat (the last word is the surname). */
+const splitName = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return { ime: parts[0] ?? '', prezime: '' };
+  return { ime: parts.slice(0, -1).join(' '), prezime: parts[parts.length - 1] };
+};
+
+const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
+  initialName: string; onCreated: (d: Deceased) => void; onCancel: () => void;
+}) => {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    ime: '', prezime: '', datum_rodenja: '', datum_smrti: '',
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [form, setForm] = useState(() => ({
+    ...splitName(initialName), datum_rodenja: '', datum_smrti: '',
     mjesto_rodenja: '', mjesto_smrti: '', groblje: '', profesija: '',
-  });
+  }));
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -109,11 +119,8 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
   return (
     <form onSubmit={submit} className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl mb-2">Unesite podatke o osobi</h2>
-        <p className="text-muted-foreground">
-          Osoba nije u našoj bazi osmrtnica, pa ćete osnovne podatke unijeti sami. Memorijal će biti u potpunosti
-          funkcionalan, samo neće imati poveznicu na osmrtnicu.
-        </p>
+        <h2 className="font-serif text-2xl mb-2">Osnovni podaci o osobi</h2>
+        <p className="text-muted-foreground">Trebaju nam samo ime i datumi. Sve ostalo možete dodati i kasnije.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -132,28 +139,36 @@ const ManualDeceasedForm = ({ onCreated, onCancel }: { onCreated: (d: Deceased) 
           <Label htmlFor="m-smrti">Datum smrti *</Label>
           <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} required min={form.datum_rodenja || undefined} max={today} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
-          <Input id="m-mjesto-r" value={form.mjesto_rodenja} onChange={set('mjesto_rodenja')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-mjesto-s">Mjesto smrti</Label>
-          <Input id="m-mjesto-s" value={form.mjesto_smrti} onChange={set('mjesto_smrti')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-groblje">Groblje</Label>
-          <Input id="m-groblje" value={form.groblje} onChange={set('groblje')} maxLength={80} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="m-profesija">Profesija</Label>
-          <Input id="m-profesija" value={form.profesija} onChange={set('profesija')} maxLength={80} />
-        </div>
       </div>
+      {moreOpen ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="m-mjesto-r">Mjesto rođenja</Label>
+            <Input id="m-mjesto-r" value={form.mjesto_rodenja} onChange={set('mjesto_rodenja')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-mjesto-s">Mjesto smrti</Label>
+            <Input id="m-mjesto-s" value={form.mjesto_smrti} onChange={set('mjesto_smrti')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-groblje">Groblje</Label>
+            <Input id="m-groblje" value={form.groblje} onChange={set('groblje')} maxLength={80} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="m-profesija">Profesija</Label>
+            <Input id="m-profesija" value={form.profesija} onChange={set('profesija')} maxLength={80} />
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setMoreOpen(true)} className="text-sm text-accent underline underline-offset-4">
+          + Mjesto rođenja, mjesto smrti, groblje, profesija (neobavezno)
+        </button>
+      )}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim() || !form.datum_rodenja || !form.datum_smrti}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag na pretragu</Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag</Button>
       </div>
     </form>
   );
@@ -192,6 +207,29 @@ const OwnDrafts = ({ drafts, onResume, busyId }: { drafts: OwnDraft[]; onResume:
   </div>
 );
 
+/** Obituaries matching a typed name: with two or more words both the first name and the surname must match. */
+const findObituaries = async (q: string) => {
+  const parts = q.split(/\s+/).filter(Boolean).map((p) => p.replace(/[,()%]/g, ''));
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  const filter = parts.length > 1
+    ? `and(ime.ilike.%${first}%,prezime.ilike.%${last}%),and(ime.ilike.%${last}%,prezime.ilike.%${first}%)`
+    : `ime.ilike.%${first}%,prezime.ilike.%${first}%`;
+  const { data } = await supabase
+    .from('obituaries')
+    .select(DECEASED_FIELDS)
+    .eq('active', true)
+    .or(filter)
+    .order('datum_smrti', { ascending: false, nullsFirst: false })
+    .limit(6);
+  return (data as Deceased[]) ?? [];
+};
+
+/**
+ * One question for everyone: the name. Matching obituaries are offered to save typing, and the
+ * visitor never has to decide up front whether an obituary exists; with no match the person's
+ * details are entered right away, name already filled in.
+ */
 const DeceasedSearch = ({ onSelect, onStart }: {
   onSelect: (d: Deceased, source: PersonSource) => void;
   onStart: (method: 'search' | 'manual') => void;
@@ -202,87 +240,65 @@ const DeceasedSearch = ({ onSelect, onStart }: {
   const [searched, setSearched] = useState(false);
   const [manual, setManual] = useState(false);
 
+  const enterManually = () => { onStart('manual'); setManual(true); };
+
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = term.trim();
     if (q.length < 3 || searching) return;
     onStart('search');
     setSearching(true);
-    const parts = q.split(/\s+/);
-    const filters = [`ime.ilike.%${q}%`, `prezime.ilike.%${q}%`];
-    if (parts.length > 1) {
-      filters.push(`ime.ilike.%${parts[0]}%`, `prezime.ilike.%${parts[parts.length - 1]}%`);
-    }
-    const { data } = await supabase
-      .from('obituaries')
-      .select(DECEASED_FIELDS)
-      .eq('active', true)
-      .or(filters.join(','))
-      .limit(20);
-    setResults((data as Deceased[]) ?? []);
-    setSearched(true);
+    const found = await findObituaries(q);
     setSearching(false);
+    if (!found.length) { enterManually(); return; }
+    setResults(found);
+    setSearched(true);
   };
 
-  if (manual) return <ManualDeceasedForm onCreated={(d) => onSelect(d, 'new')} onCancel={() => setManual(false)} />;
+  if (manual) {
+    return <ManualDeceasedForm initialName={term} onCreated={(d) => onSelect(d, 'new')}
+      onCancel={() => { setManual(false); setSearched(false); setResults([]); }} />;
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-serif text-2xl mb-2">Postoji li osmrtnica ove osobe na našoj stranici?</h2>
-        <p className="text-muted-foreground">Pretražite našu bazu osmrtnica kako ne bismo ponovno unosili podatke koje već imamo.</p>
+        <h2 className="font-serif text-2xl mb-2">Za koga izrađujete memorijal?</h2>
+        <p className="text-muted-foreground">Upišite ime i prezime. Ako osoba već ima osmrtnicu kod nas, preuzet ćemo njezine podatke.</p>
       </div>
       <form onSubmit={search} className="flex flex-col sm:flex-row gap-3">
-        <Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Ime i prezime" aria-label="Ime i prezime"
-          maxLength={100} />
+        <Input value={term} onChange={(e) => { setTerm(e.target.value); setSearched(false); }} placeholder="npr. Ivan Horvat"
+          aria-label="Ime i prezime" maxLength={100} autoComplete="off" />
         <Button type="submit" disabled={searching || term.trim().length < 3}>
-          {searching ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-          Pretraži
+          {searching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
       </form>
 
-      {searched && !results.length && (
-        <Card className="border-border">
-          <CardContent className="p-6 space-y-3">
-            <p className="font-medium">Ne mogu pronaći osobu</p>
-            <p className="text-sm text-muted-foreground">
-              Nema problema – memorijal možete kreirati i bez postojeće osmrtnice. Podatke o osobi unijet ćete sami,
-              a memorijal neće imati poveznicu na osmrtnicu.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button type="button" onClick={() => { onStart('manual'); setManual(true); }}>
-                <UserPlus className="h-4 w-4 mr-2" />Unesi podatke ručno
-              </Button>
-              <Button asChild variant="outline"><Link to="/objavi-osmrtnicu">Objavi osmrtnicu</Link></Button>
-            </div>
-          </CardContent>
-        </Card>
+      {searched && results.length > 0 && (
+        <div className="space-y-3">
+          <p className="font-medium">Je li to netko od ovih osoba?</p>
+          {results.map((d) => (
+            <Card key={d.id} className="border-border">
+              <CardContent className="p-4 flex items-center gap-4">
+                <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{fullName(d)}</p>
+                  <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
+                  {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
+                </div>
+                <Button type="button" onClick={() => onSelect(d, 'existing')}>Da, to je ta osoba</Button>
+              </CardContent>
+            </Card>
+          ))}
+          <Button type="button" variant="outline" className="w-full whitespace-normal h-auto py-3" onClick={enterManually}>
+            <UserPlus className="h-4 w-4 mr-2 shrink-0" />Nije među njima, nastavi s imenom „{term.trim()}”
+          </Button>
+        </div>
       )}
 
-      <div className="space-y-3">
-        {results.map((d) => (
-          <Card key={d.id} className="border-border">
-            <CardContent className="p-4 flex items-center gap-4">
-              <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{fullName(d)}</p>
-                <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
-                {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
-              </div>
-              <Button type="button" onClick={() => onSelect(d, 'existing')}>Odaberi</Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="border-t border-border pt-6">
-        <p className="text-sm text-muted-foreground mb-3">
-          Osoba nije u našoj bazi osmrtnica? Memorijal možete kreirati i bez osmrtnice – podatke unosite sami.
-        </p>
-        <Button type="button" variant="outline" onClick={() => { onStart('manual'); setManual(true); }}>
-          <UserPlus className="h-4 w-4 mr-2" />Kreiraj memorijal bez osmrtnice
-        </Button>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Izrada traje oko 10 minuta i sve se usput sprema. Plaćate tek na kraju ({formatEur(MEMORIAL_PRICE_EUR)}), kad vidite gotov memorijal.
+      </p>
     </div>
   );
 };
@@ -350,7 +366,7 @@ const KreirajMemorijal = () => {
   useEffect(() => { void trackFunnel('start_create'); trackStartFromBlog(); }, []);
   // Wizard drop-off: one count per step reached in this tab (shown in Admin → Statistika → Google i ponašanje).
   useEffect(() => {
-    if (deceased) void trackFunnel(`wizard_${step + 1}` as FunnelStep);
+    if (deceased) void trackFunnel(STEP_FUNNEL[step]);
   }, [deceased, step]);
 
   // Content chosen in a blog widget (dedication / song) is offered as a starting suggestion.
@@ -469,6 +485,8 @@ const KreirajMemorijal = () => {
         if (await resumeDraft(resumeParam)) return;
         if (!resumeKey) { setResumeNotice(RESUME_NOTICES.elsewhere); return; }
         const claim = await claimDraft(resumeParam, resumeKey);
+        // Opened from the e-mailed link, so the e-mail for this draft is already known.
+        if (claim === 'ok') writeDraftEmailState(resumeParam, 'sent');
         if (claim === 'ok' && await resumeDraft(resumeParam)) return;
         setResumeNotice(claim === 'has_account' ? RESUME_NOTICES.account : claim === 'not_draft' ? RESUME_NOTICES.done : RESUME_NOTICES.elsewhere);
       } catch {
@@ -549,9 +567,9 @@ const KreirajMemorijal = () => {
     setBusy(true);
     try {
       const rel = relationship === 'drugo' ? customRelationship.trim() : relationship;
-      await ensureDraft(rel || null);
-
-      setStep(2);
+      const draft = await ensureDraft(rel || null);
+      // Guests are asked for an e-mail once per draft, right after the first step.
+      setStep(isGuest && draft && !readDraftEmailState(draft.id) ? 1 : 2);
     } catch (error) {
       if (error instanceof DuplicateMemorialError) {
         const ownDraftId = deceased ? await findOwnDraftId(deceased.id) : null;
@@ -582,39 +600,6 @@ const KreirajMemorijal = () => {
       setStep(nextStep);
     } catch {
       toast({ title: 'Nije spremljeno', description: 'Promjene nije bilo moguće spremiti. Pokušajte ponovno.', variant: 'destructive' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const saveLifeEvents = async () => {
-    if (!memorial || busy) return;
-    const rows = lifeEvents
-      .map((e, i) => ({ ...e, title: e.title.trim(), sort_order: i }))
-      .filter((e) => e.title);
-    if (rows.some((e) => !validLifeEventYear(e.event_year))) {
-      toast({ title: 'Unesite godinu za svaki događaj.', variant: 'destructive' });
-      return;
-    }
-    setBusy(true);
-    try {
-      const { error: deleteError } = await supabase.from('memorial_life_events').delete().eq('memorial_id', memorial.id);
-      if (deleteError) throw deleteError;
-      if (rows.length) {
-        const { error } = await supabase.from('memorial_life_events').insert(
-          rows.map((e) => ({
-            memorial_id: memorial.id,
-            title: e.title,
-            event_year: e.event_year,
-            description: e.description.trim() || null,
-            sort_order: e.sort_order,
-          }))
-        );
-        if (error) throw error;
-      }
-      setStep(4);
-    } catch {
-      toast({ title: 'Nije spremljeno', description: 'Događaje nije bilo moguće spremiti. Pokušajte ponovno.', variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -770,13 +755,14 @@ const KreirajMemorijal = () => {
   }
 
   const cover = media.find((m) => m.is_cover) ?? media[0] ?? null;
+  const shownSteps = STEPS.map((label, index) => ({ label, index })).filter(({ index }) => index !== 1 || isGuest);
 
   return shell(
     <div className="space-y-8">
       <ol className="flex flex-wrap gap-2 text-xs" aria-label="Koraci izrade">
-        {STEPS.map((label, index) => (
+        {shownSteps.map(({ label, index }, position) => (
           <li key={label} className={`px-3 py-1 rounded-full border ${index === step ? 'bg-primary text-primary-foreground border-primary' : index < step ? 'border-accent text-accent' : 'border-border text-muted-foreground'}`}>
-            {index + 1}. {label}
+            {position + 1}. {label}
           </li>
         ))}
       </ol>
@@ -785,90 +771,84 @@ const KreirajMemorijal = () => {
         <div className="space-y-6">
           <h1 className="font-serif text-2xl md:text-3xl">Kreirajte digitalni memorijal za {fullName(deceased)}</h1>
           <Card className="border-border">
-            <CardContent className="p-6 flex flex-col sm:flex-row gap-6">
+            <CardContent className="p-5 flex gap-5">
               <img src={deceased.fotografija_url || defaultObituaryPhoto} alt={`Fotografija: ${fullName(deceased)}`}
-                className="w-32 h-40 object-cover rounded-md" />
-              <div className="space-y-2 text-sm">
+                className="w-20 h-24 sm:w-24 sm:h-32 object-cover rounded-md shrink-0" />
+              <div className="space-y-1.5 text-sm min-w-0">
                 <p className="font-serif text-xl text-foreground">{fullName(deceased)}</p>
-                {deceased.datum_rodenja && (
-                  <p className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Rođena/rođen {formatCroatianDate(deceased.datum_rodenja)}</p>
-                )}
-                {deceased.datum_smrti && (
-                  <p className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4" /> Preminula/preminuo {formatCroatianDate(deceased.datum_smrti)}</p>
+                {(deceased.datum_rodenja || deceased.datum_smrti) && (
+                  <p className="flex items-center gap-2 text-muted-foreground"><Calendar className="h-4 w-4 shrink-0" /> {lifeYears(deceased.datum_rodenja, deceased.datum_smrti)}</p>
                 )}
                 {(deceased.mjesto_smrti || deceased.mjesto_rodenja) && (
-                  <p className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> {deceased.mjesto_smrti || deceased.mjesto_rodenja}</p>
+                  <p className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4 shrink-0" /> {deceased.mjesto_smrti || deceased.mjesto_rodenja}</p>
                 )}
                 {deceased.groblje && <p className="text-muted-foreground">Groblje: {deceased.groblje}</p>}
+                {deceased.slug && deceased.active === true && (
+                  <a href={`/${deceased.slug}`} className="inline-block text-xs text-muted-foreground underline underline-offset-4">Prijavi netočan podatak</a>
+                )}
               </div>
             </CardContent>
           </Card>
-          <p className="text-sm text-muted-foreground">
-            {deceased.active === true
-              ? 'Osnovne podatke preuzeli smo iz postojeće osmrtnice.'
-              : 'Podatke ste unijeli sami – memorijal neće imati poveznicu na osmrtnicu.'}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button onClick={() => setStep(1)}>Nastavi</Button>
-            {deceased.slug && deceased.active === true && (
-              <Button asChild variant="ghost">
-                <a href={`/${deceased.slug}`}>Prijavi netočan podatak</a>
-              </Button>
+
+          <div className="space-y-3">
+            <h2 className="font-serif text-xl">U kakvom ste odnosu s pokojnikom?</h2>
+            <RadioGroup value={relationship} onValueChange={setRelationship} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {RELATIONSHIPS.map((option) => (
+                <Label key={option} htmlFor={`rel-${option}`}
+                  className="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer hover:bg-secondary font-normal">
+                  <RadioGroupItem id={`rel-${option}`} value={option} />
+                  {option}
+                </Label>
+              ))}
+            </RadioGroup>
+            {relationship === 'drugo' && (
+              <div className="space-y-2">
+                <Label htmlFor="rel-custom">Upišite svoj odnos s pokojnikom</Label>
+                <Input
+                  id="rel-custom"
+                  maxLength={60}
+                  placeholder="npr. kum, susjed, kolega s posla…"
+                  value={customRelationship}
+                  onChange={(e) => setCustomRelationship(e.target.value)}
+                />
+              </div>
             )}
           </div>
+          <Button onClick={goNextFromRelationship} disabled={!relationship || (relationship === 'drugo' && !customRelationship.trim()) || busy}>
+            {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
+          </Button>
         </div>
       )}
 
-      {step === 1 && (
-        <div className="space-y-6">
-          <h1 className="font-serif text-2xl md:text-3xl">U kakvom ste odnosu s pokojnikom?</h1>
-          <RadioGroup value={relationship} onValueChange={setRelationship} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {RELATIONSHIPS.map((option) => (
-              <Label key={option} htmlFor={`rel-${option}`}
-                className="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer hover:bg-secondary font-normal">
-                <RadioGroupItem id={`rel-${option}`} value={option} />
-                {option}
-              </Label>
-            ))}
-          </RadioGroup>
-          {relationship === 'drugo' && (
-            <div className="space-y-2">
-              <Label htmlFor="rel-custom">Upišite svoj odnos s pokojnikom</Label>
-              <Input
-                id="rel-custom"
-                maxLength={60}
-                placeholder="npr. kum, susjed, kolega s posla…"
-                value={customRelationship}
-                onChange={(e) => setCustomRelationship(e.target.value)}
-              />
-            </div>
-          )}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(0)}>Natrag</Button>
-            <Button onClick={goNextFromRelationship} disabled={!relationship || (relationship === 'drugo' && !customRelationship.trim()) || busy}>
-              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
-            </Button>
+      {step === 1 && memorial && user && (
+        <DraftEmailStep memorialId={memorial.id} userId={user.id} onDone={() => setStep(2)} />
+      )}
 
+      {step === 2 && memorial && (
+        <div className="space-y-6">
+          <div>
+            <h1 className="font-serif text-2xl md:text-3xl mb-2">Priča i fotografije</h1>
+            <p className="text-sm text-muted-foreground">
+              Sve na ovoj stranici možete preskočiti i dopuniti kasnije, i nakon objave. Važne događaje iz života (životni put) dodajete u uređivanju memorijala.
+            </p>
           </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div className="space-y-6">
-          <h1 className="font-serif text-2xl md:text-3xl">Biografija</h1>
+          {isGuest && user && <DraftEmailCard memorialId={memorial.id} userId={user.id} />}
           <div className="space-y-2">
             <Label htmlFor="quote">Kratki citat</Label>
             <Input id="quote" value={quote} maxLength={160} placeholder="Zauvijek u našim srcima."
               onChange={(e) => setQuote(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Biografija</Label>
+            <Label>Životna priča</Label>
             <RichTextEditor value={lifeStory} onChange={setLifeStory}
-              placeholder="Opišite život, karakter i najdraže uspomene…" />
-            <p className="text-xs text-muted-foreground">Ovaj korak možete preskočiti i dopuniti kasnije.</p>
+              placeholder="Nekoliko rečenica je dovoljno: kakva je osoba bila, što je voljela, po čemu je pamtite…" />
+          </div>
+          <div className="space-y-2">
+            <Label>Fotografije</Label>
+            <PhotoUploader memorialId={memorial.id} media={media} onChange={setMedia} />
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(1)}>Natrag</Button>
+            <Button variant="outline" onClick={() => setStep(0)}>Natrag</Button>
             <Button onClick={() => saveDraftFields(3)} disabled={busy}>
               {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
             </Button>
@@ -877,85 +857,6 @@ const KreirajMemorijal = () => {
       )}
 
       {step === 3 && memorial && (
-        <div className="space-y-6">
-          <h1 className="font-serif text-2xl md:text-3xl">Životni put</h1>
-          <p className="text-sm text-muted-foreground">
-            Dodajte važne trenutke — rođenje, školovanje, brak, djecu, karijeru. Ovaj korak možete preskočiti i dopuniti kasnije.
-          </p>
-          {lifeEvents.map((row, index) => (
-            <div key={index} className="rounded-lg border border-border p-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor={`ev-title-${index}`}>Naslov</Label>
-                  <Input id={`ev-title-${index}`} value={row.title} maxLength={140} placeholder="npr. Rođenje, Vjenčanje…"
-                    onChange={(e) => setLifeEvents((prev) => prev.map((x, i) => (i === index ? { ...x, title: e.target.value } : x)))} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor={`ev-year-${index}`}>Godina</Label>
-                  <Input id={`ev-year-${index}`} type="number" value={row.event_year ?? ''}
-                    onChange={(e) => setLifeEvents((prev) => prev.map((x, i) => (i === index ? { ...x, event_year: e.target.value ? Number(e.target.value) : null } : x)))} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`ev-desc-${index}`}>Opis</Label>
-                <Textarea id={`ev-desc-${index}`} rows={3} maxLength={800} value={row.description}
-                  onChange={(e) => setLifeEvents((prev) => prev.map((x, i) => (i === index ? { ...x, description: e.target.value } : x)))} />
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setLifeEvents((prev) => prev.filter((_, i) => i !== index))}>
-                <Trash2 className="h-4 w-4 mr-2" />Ukloni
-              </Button>
-            </div>
-          ))}
-          <Button variant="outline" onClick={() => setLifeEvents((prev) => [...prev, { title: '', event_year: null, description: '' }])}>
-            <Plus className="h-4 w-4 mr-2" />Dodaj događaj
-          </Button>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(2)}>Natrag</Button>
-            <Button onClick={saveLifeEvents} disabled={busy}>
-              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === 4 && memorial && (
-        <div className="space-y-6">
-          <h1 className="font-serif text-2xl md:text-3xl">Fotografije</h1>
-          <PhotoUploader memorialId={memorial.id} media={media} onChange={setMedia} />
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(3)}>Natrag</Button>
-            <Button onClick={() => setStep(5)}>Nastavi</Button>
-          </div>
-        </div>
-      )}
-
-      {step === 5 && (
-        <div className="space-y-6">
-          <h1 className="font-serif text-2xl md:text-3xl">Privatnost</h1>
-          <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as MemorialVisibility)} className="space-y-3">
-            {VISIBILITY_OPTIONS.map(({ value, icon: Icon, title, text }) => (
-              <Label key={value} htmlFor={`vis-${value}`}
-                className="flex items-start gap-3 rounded-md border border-border p-4 cursor-pointer hover:bg-secondary font-normal">
-                <RadioGroupItem id={`vis-${value}`} value={value} className="mt-1" />
-                <span>
-                  <span className="flex items-center gap-2 font-medium"><Icon className="h-4 w-4 text-accent" />{title}</span>
-                  <span className="block text-sm text-muted-foreground mt-1">{text}</span>
-                </span>
-              </Label>
-            ))}
-          </RadioGroup>
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(4)}>Natrag</Button>
-            <Button onClick={() => saveDraftFields(6)} disabled={busy}>
-              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {isGuest && user && memorial && step >= 2 && step <= 5 && <DraftEmailCard memorialId={memorial.id} userId={user.id} />}
-
-      {step === 6 && memorial && (
         <div className="space-y-6">
           <h1 className="font-serif text-2xl md:text-3xl flex items-center gap-2"><Eye className="h-5 w-5 text-accent" />Pregled memorijala</h1>
           <div className="rounded-lg border border-border overflow-hidden">
@@ -979,6 +880,22 @@ const KreirajMemorijal = () => {
               preview
             />
           </div>
+          <div className="space-y-3">
+            <h2 className="font-serif text-xl">Tko može vidjeti memorijal?</h2>
+            <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as MemorialVisibility)} className="space-y-2">
+              {VISIBILITY_OPTIONS.map(({ value, icon: Icon, title, text }) => (
+                <Label key={value} htmlFor={`vis-${value}`}
+                  className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer hover:bg-secondary font-normal">
+                  <RadioGroupItem id={`vis-${value}`} value={value} className="mt-1" />
+                  <span>
+                    <span className="flex items-center gap-2 font-medium"><Icon className="h-4 w-4 text-accent" />{title}</span>
+                    <span className="block text-sm text-muted-foreground mt-0.5">{text}</span>
+                  </span>
+                </Label>
+              ))}
+            </RadioGroup>
+            <p className="text-xs text-muted-foreground">Ovo možete promijeniti i kasnije.</p>
+          </div>
           <MemorialValueSummary />
           <PromoCodeField
             productType="memorial"
@@ -988,14 +905,14 @@ const KreirajMemorijal = () => {
             onApplied={setPromo}
           />
           <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
-          {isGuest && <GuestAccountStep />}
+          {isGuest && <GuestAccountStep initialEmail={readDraftEmailAddress(memorial.id)} />}
           <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="gold" onClick={handlePublish} disabled={busy || isGuest || !consent.termsAccepted}>
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
               {payButtonLabel(promo)}
             </Button>
             <Button variant="outline" onClick={handleSaveDraft} disabled={busy}>Spremi kao skicu</Button>
-            <Button variant="ghost" onClick={() => setStep(5)}>Natrag</Button>
+            <Button variant="ghost" onClick={() => setStep(2)}>Natrag</Button>
           </div>
           <p className="text-sm text-muted-foreground">
             Sigurno plaćanje karticom putem Stripea. Memorijal se objavljuje nakon potvrde uspješne naplate, prema odabranom početku usluge.

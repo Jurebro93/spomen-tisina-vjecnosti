@@ -7,7 +7,7 @@ import MemorialCtaSection from '@/components/MemorialCtaSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Phone, Mail, Clock, CalendarDays, ArrowRight } from 'lucide-react';
 import CemeteriesSection from '@/components/CemeteriesSection';
-import { fetchCemeteries, type Cemetery } from '@/lib/cemeteries';
+import { fetchCemeteries, cemeteryTitle, cemeteryDescription, type Cemetery } from '@/lib/cemeteries';
 import CemeteryFuneralSchedule from '@/components/CemeteryFuneralSchedule';
 import { breadcrumbJsonLd } from '@/lib/seo';
 
@@ -104,8 +104,8 @@ const GrobljePage = () => {
   const scheduleKey = Object.keys(scheduleKeys).find((key) => normalizedName.includes(key));
 
 
-  const title = `${cemetery.displayNaziv}${cemetery.grad ? ` - ${cemetery.grad}` : ''}`;
-  const description = (cemetery.opis || '').slice(0, 155);
+  const title = cemeteryTitle(cemetery);
+  const description = cemeteryDescription(cemetery);
 
   // Split description into readable blocks: respect existing line breaks,
   // then chunk long blocks into paragraphs of ~3 sentences.
@@ -187,7 +187,15 @@ const GrobljePage = () => {
           {cemetery.displayNaziv}
         </h1>
         {cemetery.grad && (
-          <p className="text-muted-foreground mb-6 sm:mb-8">Groblje u gradu {cemetery.grad}</p>
+          <p className="text-muted-foreground mb-4">Groblje u gradu {cemetery.grad}</p>
+        )}
+        {cityPath && (
+          <p className="mb-6 sm:mb-8 text-sm sm:text-base">
+            Tražite tko je preminuo ili kada je sprovod?{' '}
+            <Link to={`/umrli/${cityPath}`} className="font-medium text-memorial-gold hover:underline">
+              Umrli {cemetery.grad} – osmrtnice i raspored sprovoda
+            </Link>
+          </p>
         )}
 
         {scheduleKey && (

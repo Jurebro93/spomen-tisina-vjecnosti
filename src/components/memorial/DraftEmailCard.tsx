@@ -6,22 +6,106 @@ import { Input } from '@/components/ui/input';
 import { saveDraftEmail } from '@/lib/memorialActions';
 import { trackFunnel } from '@/lib/funnel';
 
-const storageKey = (memorialId: string) => `osm_draft_email_${memorialId}`;
+type DraftEmailState = 'sent' | 'skipped' | 'dismissed';
 
-const readState = (memorialId: string) => {
-  try { return localStorage.getItem(storageKey(memorialId)); } catch { return null; }
+const storageKey = (memorialId: string) => `osm_draft_email_${memorialId}`;
+const addressKey = (memorialId: string) => `osm_draft_email_addr_${memorialId}`;
+
+export const readDraftEmailState = (memorialId: string) => {
+  try { return localStorage.getItem(storageKey(memorialId)) as DraftEmailState | null; } catch { return null; }
 };
 
-const writeState = (memorialId: string, value: 'sent' | 'dismissed') => {
+export const writeDraftEmailState = (memorialId: string, value: DraftEmailState) => {
   try { localStorage.setItem(storageKey(memorialId), value); } catch { /* storage blocked */ }
 };
 
+/** The e-mail a guest left for this draft, offered again when they create the account before paying. */
+export const readDraftEmailAddress = (memorialId: string) => {
+  try { return localStorage.getItem(addressKey(memorialId)) ?? ''; } catch { return ''; }
+};
+
+const writeDraftEmailAddress = (memorialId: string, email: string) => {
+  try { localStorage.setItem(addressKey(memorialId), email); } catch { /* storage blocked */ }
+};
+
+const validEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+/** Sends the draft link; returns an error message for the visitor, or '' when the e-mail is saved. */
+const submitDraftEmail = async (memorialId: string, userId: string, rawEmail: string) => {
+  const email = rawEmail.trim();
+  if (!validEmail(email)) return 'Upišite ispravnu e-mail adresu.';
+  const result = await saveDraftEmail(memorialId, email);
+  if (result === 'ok') {
+    writeDraftEmailState(memorialId, 'sent');
+    writeDraftEmailAddress(memorialId, email);
+    void trackFunnel('draft_email', { userId, memorialId });
+    return '';
+  }
+  if (result === 'too_soon') return 'Poveznica je upravo poslana. Provjerite poštu, a novu možete zatražiti za nekoliko minuta.';
+  if (result === 'invalid_email') return 'Upišite ispravnu e-mail adresu.';
+  return 'Poveznicu nije bilo moguće poslati. Pokušajte ponovno.';
+};
+
 /**
- * Optional for guests: an e-mail with a link back to the draft, so it is not lost when the browser
- * closes and the hourly reminder can reach them. Hidden once sent or dismissed for this draft.
+ * Wizard step right after the person and relationship (guests only): an e-mail with a link back to
+ * the draft, so nothing is lost when the browser closes and the reminders can reach them. Skippable.
+ */
+export const DraftEmailStep = ({ memorialId, userId, onDone }: { memorialId: string; userId: string; onDone: () => void }) => {
+  const [email, setEmail] = useState(() => readDraftEmailAddress(memorialId));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setError('');
+    setBusy(true);
+    const message = await submitDraftEmail(memorialId, userId, email);
+    setBusy(false);
+    if (message) setError(message);
+    else onDone();
+  };
+
+  const skip = () => {
+    writeDraftEmailState(memorialId, 'skipped');
+    void trackFunnel('draft_email_skipped', { userId, memorialId });
+    onDone();
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-6">
+      <div>
+        <h1 className="font-serif text-2xl md:text-3xl mb-2">Gdje da spremimo vaš memorijal?</h1>
+        <p className="text-muted-foreground">
+          Upišite e-mail i poslat ćemo vam poveznicu, pa memorijal možete nastaviti kad god želite, i na mobitelu i na računalu.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vas@email.hr"
+          aria-label="E-mail adresa" maxLength={255} autoComplete="email" autoFocus />
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <p className="text-xs text-muted-foreground">
+          Ne tražimo lozinku. Ako memorijal ne dovršite, poslat ćemo vam najviše dva kratka podsjetnika.
+        </p>
+      </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Button type="submit" disabled={busy || !email.trim()}>
+          {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
+        </Button>
+        <button type="button" onClick={skip} disabled={busy} className="text-sm text-muted-foreground underline underline-offset-4">
+          Nastavi bez e-maila
+        </button>
+      </div>
+    </form>
+  );
+};
+
+/**
+ * Second chance for guests who skipped the e-mail step (or opened the draft without it): a link back to
+ * the draft by e-mail. Hidden once sent or dismissed for this draft.
  */
 const DraftEmailCard = ({ memorialId, userId }: { memorialId: string; userId: string }) => {
-  const [state, setState] = useState<string | null>(() => readState(memorialId));
+  const [state, setState] = useState<DraftEmailState | null>(() => readDraftEmailState(memorialId));
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -39,22 +123,11 @@ const DraftEmailCard = ({ memorialId, userId }: { memorialId: string; userId: st
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const cleanEmail = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) { setError('Upišite ispravnu e-mail adresu.'); return; }
     setBusy(true);
-    const result = await saveDraftEmail(memorialId, cleanEmail);
+    const message = await submitDraftEmail(memorialId, userId, email);
     setBusy(false);
-    if (result === 'ok') {
-      writeState(memorialId, 'sent');
-      setState('sent');
-      void trackFunnel('draft_email', { userId, memorialId });
-    } else if (result === 'too_soon') {
-      setError('Poveznica je upravo poslana. Provjerite poštu, a novu možete zatražiti za nekoliko minuta.');
-    } else if (result === 'invalid_email') {
-      setError('Upišite ispravnu e-mail adresu.');
-    } else {
-      setError('Poveznicu nije bilo moguće poslati. Pokušajte ponovno.');
-    }
+    if (message) setError(message);
+    else setState('sent');
   };
 
   return (
@@ -70,7 +143,7 @@ const DraftEmailCard = ({ memorialId, userId }: { memorialId: string; userId: st
           <Button type="submit" variant="outline" disabled={busy || !email.trim()}>
             {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Pošalji poveznicu
           </Button>
-          <Button type="button" variant="ghost" onClick={() => { writeState(memorialId, 'dismissed'); setState('dismissed'); }}>
+          <Button type="button" variant="ghost" onClick={() => { writeDraftEmailState(memorialId, 'dismissed'); setState('dismissed'); }}>
             Ne sada
           </Button>
         </form>

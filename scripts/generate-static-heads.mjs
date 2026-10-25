@@ -26,7 +26,7 @@ const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g
 const setTag = (html, re, tag) => (re.test(html) ? html.replace(re, tag) : html.replace('</head>', `    ${tag}\n  </head>`));
 
 let count = 0;
-for (const [route, { title, description }] of Object.entries(heads)) {
+for (const [route, { title, description, image }] of Object.entries(heads)) {
   const t = esc(title);
   const d = esc(description);
   const url = SITE + route;
@@ -37,6 +37,10 @@ for (const [route, { title, description }] of Object.entries(heads)) {
   html = setTag(html, /<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`);
   html = setTag(html, /<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${t}" />`);
   html = setTag(html, /<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${d}" />`);
+  if (image) {
+    html = setTag(html, /<meta property="og:image"[^>]*>/, `<meta property="og:image" content="${SITE + image}" />`);
+    html = setTag(html, /<meta name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${SITE + image}" />`);
+  }
   const dir = path.join(DIST, route);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'index.html'), html);

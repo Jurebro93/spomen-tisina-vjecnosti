@@ -8,7 +8,8 @@
 //
 // Covered: the homepage, the hubs /umrli, /sprovodi, /groblja, /gradovi and
 // /blog, /umrli/:grad, /sprovodi/:grad, /groblja/:grad, /groblje/:slug,
-// /blog/:slug, /memorijal/:slug and obituary pages /:slug. Anything else, any
+// /blog/:slug, /memorijal/:slug, the month archives /umrli/:grad/:godina/:mjesec
+// and obituary pages /:slug. Anything else, any
 // non-200 response and any Supabase error fall through unchanged.
 
 const SUPABASE_URL = 'https://umpvnepxsqfkxjpclkxc.supabase.co';
@@ -26,7 +27,8 @@ const APP_PAGES = new Set([
   'obituary-success', 'pretraga', 'kako-objaviti-osmrtnicu', 'cesto-postavljena-pitanja',
   'uvjeti-koristenja', 'politika-privatnosti', 'kolacici', 'kontakt', 'raskid-i-povrat', 'prigovori',
   'pravila-objavljivanja', 'prijava-sadrzaja', 'homepage-2', 'homepage-3', 'admin', 'auth',
-  'sitemap_index.xml', 'osmrtnica', 'memorijal', 'memorijal-primjer',
+  'sitemap_index.xml', 'osmrtnica', 'memorijal', 'memorijal-primjer', 'besplatni-vodic', 'vodic', 'search',
+  'success', '404',
 ]);
 
 const MONTHS = ['siječnja', 'veljače', 'ožujka', 'travnja', 'svibnja', 'lipnja', 'srpnja', 'kolovoza', 'rujna', 'listopada', 'studenoga', 'prosinca'];
@@ -37,6 +39,41 @@ const esc = (v) =>
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+
+// Imported text is often stored HTML-escaped (Gradsko groblje &quot;VLAKOVO&quot;,
+// "MUHAMED &#8211; Bego"), sometimes twice. Same decoder as src/lib/htmlEntities.ts,
+// which the app applies to every Supabase response; sb() applies this one. Never
+// decodes < or >, so stored text cannot turn into markup.
+const ENTITIES = {
+  amp: '&', quot: '"', apos: "'", nbsp: '\u00A0', ndash: '–', mdash: '—', hellip: '…', lsquo: '‘', rsquo: '’',
+  sbquo: '‚', ldquo: '“', rdquo: '”', bdquo: '„', laquo: '«', raquo: '»', bull: '•', middot: '·', deg: '°',
+  euro: '€', copy: '©', reg: '®', trade: '™', times: '×', eacute: 'é', scaron: 'š', Scaron: 'Š', ccaron: 'č',
+  zcaron: 'ž', Zcaron: 'Ž', shy: '', ensp: ' ', emsp: ' ', thinsp: ' ', zwj: '', zwnj: '',
+};
+const ENTITY_RE = /&(#[xX]?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]{1,31});/g;
+const decodeOnce = (v) =>
+  v.replace(ENTITY_RE, (match, body) => {
+    if (body[0] !== '#') return ENTITIES[body] ?? match;
+    const hex = body[1] === 'x' || body[1] === 'X';
+    const code = parseInt(hex ? body.slice(2) : body.slice(1), hex ? 16 : 10);
+    if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff || code === 60 || code === 62) return match;
+    return String.fromCodePoint(code);
+  });
+const decode = (v) => {
+  let out = String(v ?? '');
+  for (let i = 0; i < 3 && out.includes('&'); i += 1) {
+    const next = decodeOnce(out);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+};
+const decodeDeep = (v) => {
+  if (typeof v === 'string') return decode(v);
+  if (Array.isArray(v)) return v.map(decodeDeep);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, decodeDeep(x)]));
+  return v;
+};
 
 const stripTags = (html) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
@@ -97,7 +134,7 @@ async function sb(path) {
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`supabase ${res.status}`);
-    return await res.json();
+    return decodeDeep(await res.json());
   } finally {
     clearTimeout(timer);
   }
@@ -110,7 +147,10 @@ const cityPattern = (city) =>
   fold(city)
     .split('')
     .map((ch) => CLASSES[ch] ?? (/[a-z0-9]/.test(ch) ? ch : '[- ]'))
-    .join('');
+    .join('')
+    // "Slivno - Ravno", "Sv. Sustipan, Jesenice": any run of spaces, hyphens,
+    // commas or dots between words, else /umrli/slivno-ravno found nothing.
+    .replace(/(\[- \])+/g, '[-,. ]+');
 // Same list as CITY_ALIASES in src/lib/cityMatch.ts; keep them in sync.
 const CITY_ALIASES = {
   split: ['lovrinac'],
@@ -138,6 +178,127 @@ const dedupe = (rows) => {
     return true;
   });
 };
+
+// Same as CITY_EXCLUDE / isOtherPlace in src/lib/cityMatch.ts; keep them in sync.
+const CITY_EXCLUDE = { varazdin: ['varaždinsk'], split: ['splitsk'], imotski: ['imotskim poljic', 'imotska poljic'] };
+const isOtherPlace = (place, city) => {
+  const excluded = CITY_EXCLUDE[fold(city).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')];
+  if (!excluded || !place) return false;
+  const exclude = new RegExp(excluded.map(cityPattern).join('|'), 'gi');
+  if (!new RegExp(exclude.source, 'i').test(place)) return false;
+  const slug = fold(city).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return !new RegExp([city, ...(CITY_ALIASES[slug] ?? [])].map(cityPattern).join('|'), 'i').test(place.replace(exclude, ' '));
+};
+
+// PostgREST returns at most 1000 rows per request.
+async function sbAll(path) {
+  const rows = [];
+  for (let offset = 0; ; offset += 1000) {
+    const page = await sb(`${path}&limit=1000&offset=${offset}`);
+    rows.push(...page);
+    if (page.length < 1000) return rows;
+  }
+}
+
+// ---------- obituary meta description: copy of src/lib/obituaryMeta.ts, keep them in sync ----------
+const COUNTRIES = new Set([
+  'bosna i hercegovina', 'bih', 'hrvatska', 'republika hrvatska', 'njemacka', 'austrija', 'srbija',
+  'slovenija', 'crna gora', 'svicarska', 'italija', 'francuska', 'sad', 'kanada', 'australija', 'svedska',
+]);
+const obituaryPlace = (place) => {
+  const p = String(place || '').trim();
+  return p && !COUNTRIES.has(fold(p)) ? p : null;
+};
+// Every stored description so far came from the old import: "Osmrtnica za Ime
+// Prezime" alone, or followed by the notice text cut off mid-word.
+const OLD_IMPORT = /^Osmrtnica za /;
+const DESC_TAILS = [
+  'Pročitajte osmrtnicu, zapalite virtualnu svijeću i ostavite sjećanje na pokojnika.',
+  'Zapalite virtualnu svijeću i ostavite sjećanje.',
+  'Zapalite svijeću.',
+  '',
+];
+const obituaryDescription = (o) => {
+  const own = o.meta_description?.trim();
+  if (own && !OLD_IMPORT.test(own) && own.length >= 110 && own.length <= 160) return own;
+  const year = (iso) => (iso && /^\d{4}/.test(iso) ? String(iso).slice(0, 4) : '');
+  const born = year(o.datum_rodenja);
+  const died = year(o.datum_smrti);
+  const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
+  const place = obituaryPlace(o.mjesto_smrti);
+  const head = `Osmrtnica: ${nameCase(`${o.ime} ${o.prezime}`)}${years}${place ? `, ${place}` : ''}.`;
+  const [y, m, d] = String(o.datum_ukopa || '').slice(0, 10).split('-').map(Number);
+  const date = o.datum_ukopa && y && m && d ? `${d}. ${m}. ${y}.` : '';
+  let time = (o.vrijeme_ukopa || String(o.datum_ukopa || '').replace(' ', 'T').slice(11, 16) || '').slice(0, 5);
+  if (time === '00:00') time = '';
+  const cemetery = decode(stripTags(o.groblje));
+  const funerals = date
+    ? [cemetery ? `Sprovod ${date}${time ? ` u ${time}` : ''}, ${cemetery}.` : '', `Sprovod ${date}${time ? ` u ${time}` : ''}.`, '']
+    : [cemetery ? `Ukop: ${cemetery}.` : '', ''];
+  for (const funeral of funerals) {
+    for (const tail of DESC_TAILS) {
+      const text = [head, funeral, tail].filter(Boolean).join(' ');
+      if (text.length <= 155) return text;
+    }
+  }
+  return head.length <= 155 ? head : `${head.slice(0, 154).replace(/\s+\S*$/, '')}…`;
+};
+
+// Same as obituaryTitle / nameCase in src/lib/obituaryMeta.ts; keep them in sync.
+function nameCase(name) {
+  const n = String(name || '').replace(/\s+/g, ' ').trim();
+  if (n !== n.toUpperCase()) return n;
+  return n.toLowerCase().replace(/(^|[\s\-'’])(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
+}
+const OLD_IMPORT_TITLE = / - Osmrtnica$/;
+const obituaryTitle = (o) => {
+  const own = o.meta_title?.trim();
+  if (own && !OLD_IMPORT_TITLE.test(own) && own.length <= 70) return own;
+  const year = (iso) => (iso && /^\d{4}/.test(iso) ? String(iso).slice(0, 4) : '');
+  const born = year(o.datum_rodenja);
+  const died = year(o.datum_smrti);
+  const years = born && died ? ` (${born}. – ${died}.)` : died ? ` († ${died}.)` : '';
+  const name = nameCase(`${o.ime} ${o.prezime}`);
+  for (const text of [`${name}${years} – osmrtnica i sprovod`, `${name}${years} – osmrtnica`, `${name} – osmrtnica`]) {
+    if (text.length <= 60) return text;
+  }
+  return name;
+};
+
+// ---------- month archives: same as src/lib/obituaryArchive.ts ----------
+const NATIONAL = 'arhiva';
+const FIRST_MONTH = '2022-01';
+const MONTH_NAMES = ['siječanj', 'veljača', 'ožujak', 'travanj', 'svibanj', 'lipanj', 'srpanj', 'kolovoz', 'rujan', 'listopad', 'studeni', 'prosinac'];
+const monthLabel = (ym) => `${MONTH_NAMES[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}.`;
+const nextMonth = (ym) => {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+};
+const prevMonth = (ym) => {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+};
+const currentMonth = () => todayZagreb().slice(0, 7);
+const allMonths = () => {
+  const months = [];
+  for (let ym = FIRST_MONTH; ym <= currentMonth(); ym = nextMonth(ym)) months.push(ym);
+  return months.reverse();
+};
+const monthLinks = (base, months) =>
+  `<ul>${months
+    .map(({ ym, count }) => `<li><a href="${base}/${ym.slice(0, 4)}/${ym.slice(5, 7)}">${monthLabel(ym)}</a>${count ? ` (${count})` : ''}</li>`)
+    .join('')}</ul>`;
+
+async function cityMonths(city) {
+  const rows = await sbAll(`obituaries?select=datum_smrti,mjesto_smrti&${cityOr(city, ['mjesto_smrti'])}&datum_smrti=not.is.null&order=datum_smrti.desc`);
+  const counts = new Map();
+  for (const r of rows) {
+    if (isOtherPlace(r.mjesto_smrti, city)) continue;
+    const ym = String(r.datum_smrti).slice(0, 7);
+    counts.set(ym, (counts.get(ym) || 0) + 1);
+  }
+  return [...counts].map(([ym, count]) => ({ ym, count })).sort((a, b) => b.ym.localeCompare(a.ym));
+}
 
 async function fetchCemeteries() {
   const rows = await sb('groblja_i_opisi?select=*&order=%22Naziv%20groblja%22.asc');
@@ -251,16 +412,31 @@ const SSR_STYLE = `<style>
 .ssr a{color:#000;text-decoration:underline;text-decoration-color:#d4a72c;text-underline-offset:3px}
 .ssr nav{font-size:.875rem;color:#666;margin-bottom:.5rem}
 .ssr img{max-width:100%;height:auto}
+.ssr footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #eee;font-size:.875rem}
 </style>`;
 
 const SSR_JS =
   '<script>(function(){var h=document.documentElement;h.classList.add("ssr-js");' +
   'setTimeout(function(){if(document.querySelector("[data-ssr]"))h.classList.remove("ssr-js")},8000)})()</script>';
 
+// The app's menu and footer, so pages link to the main sections before JavaScript runs.
+const SSR_NAV = [
+  ['/umrli', 'Umrli'], ['/sprovodi', 'Sprovodi'], ['/groblja', 'Groblja'], ['/gradovi', 'Gradovi'], ['/blog', 'Blog'],
+  ['/objavi-osmrtnicu', 'Objavi osmrtnicu'], ['/digitalni-memorijal', 'Digitalni memorijal'], ['/virtualne-svijece', 'Virtualne svijeće'],
+];
+const SSR_FOOTER = [
+  ['/umrli/zagreb', 'Umrli Zagreb'], ['/umrli/split', 'Umrli Split'], ['/umrli/rijeka', 'Umrli Rijeka'], ['/umrli/osijek', 'Umrli Osijek'],
+  ['/umrli/zadar', 'Umrli Zadar'],
+  ['/kako-objaviti-osmrtnicu', 'Kako objaviti osmrtnicu'], ['/cesto-postavljena-pitanja', 'Česta pitanja'], ['/informacije', 'Informacije'],
+  ['/kontakt', 'Kontakt'], ['/uvjeti-koristenja', 'Uvjeti korištenja'], ['/politika-privatnosti', 'Politika privatnosti'],
+];
+const navLinks = (items) => items.map(([href, label]) => `<a href="${href}">${label}</a>`).join(' · ');
+
 const page = (body) =>
   `${SSR_STYLE}${SSR_JS}<header class="ssr-head"><a href="/">Osmrtnica.com.hr</a></header>` +
   `<div class="ssr-wait" aria-hidden="true"><span></span></div>` +
-  `<main class="ssr" data-ssr="1">${body}</main>`;
+  `<main class="ssr" data-ssr="1"><nav aria-label="Glavni izbornik">${navLinks(SSR_NAV)}</nav>${body}` +
+  `<footer><p>${navLinks(SSR_FOOTER)}</p></footer></main>`;
 
 // ---------- title/H1/H2 test: copy of src/lib/seoCityTest.ts, keep them in sync ----------
 const TEST_CITIES = new Set([
@@ -273,6 +449,9 @@ const TEST_CITIES = new Set([
   'vinkovci', 'vir', 'vitez', 'vrpolje', 'zmijavci',
   // Test 2: large cities that already had their own title
   'dubrovnik', 'osijek', 'pula', 'rijeka', 'sisak', 'split',
+  // Moved out of the control group on 2026-10-22: 37,966 impressions at
+  // position 4.4 with 0.8 % CTR. Leave Zadar out of the test comparison.
+  'zadar',
 ]);
 
 // Titles written for the main queries of a city; others use the template.
@@ -280,6 +459,8 @@ const TITLE_OVERRIDES = {
   osijek: 'Umrli Osijek danas – osmrtnice, ukopi i sprovodi',
   dubrovnik: 'Umrli Dubrovnik danas – osmrtnice, Boninovo i sprovodi',
   metkovic: 'Umrli Metković i okolna mjesta – osmrtnice danas',
+  // Top query is "umrli u zadru"; "okolica" covers "umrli zadarska županija".
+  zadar: 'Umrli Zadar danas – osmrtnice i sprovodi u Zadru i okolici',
 };
 
 const isTestCity = (slug) => !!slug && TEST_CITIES.has(slug);
@@ -309,18 +490,34 @@ const testCityDescription = (city, obituaries, funerals, today = new Date()) => 
 
 const testCityH1 = (city) => `Umrli ${city} – osmrtnice danas`;
 
+const CITY_INTROS = {
+  dubrovnik: {
+    text: 'Umrli i raspored sprovoda na Boninovu i ostalim dubrovačkim grobljima, osvježeno svaki dan.',
+    href: '/groblje/gradsko-boninovo',
+    label: 'Groblje Boninovo – adresa i radno vrijeme',
+  },
+};
+
 // ---------- page builders: each returns { title, description, canonical, body, jsonld[], noindex } ----------
+
+const scheduleItem = (f) =>
+  `<li>${hrDate(f.datum_sprovoda)}${f.vrijeme_sprovoda ? ' u ' + hhmm(f.vrijeme_sprovoda) : ''} – ${esc(f.ime)} ${esc(f.prezime)}${f.godina ? ` (${esc(f.godina)})` : ''}${f.groblje ? ', ' + esc(f.groblje) : ''}</li>`;
 
 async function umrliCity(param) {
   let city = await cityName(param);
   const path = `/umrli/${param}`;
-  const [obits, cems] = await Promise.all([
+  const today = todayZagreb();
+  const [obits, cems, months, scheduled] = await Promise.all([
     sb(
       `obituaries?select=ime,prezime,datum_rodenja,datum_smrti,datum_ukopa,vrijeme_ukopa,mjesto_smrti,groblje,slug&${cityOr(city, [
         'mjesto_smrti', 'mjesto_rodenja', 'groblje', 'mjesna_zajednica',
       ])}&order=datum_ukopa.desc.nullslast&limit=80`,
     ),
     fetchCemeteries(),
+    cityMonths(city).catch(() => []),
+    // Schedules from the city's cemetery company (sync-gradovi-sprovodi), as on the
+    // client page: cities with few obituaries (Rijeka, Jastrebarsko...) still show funerals.
+    sb(`sprovodi?select=ime,prezime,godina,groblje,datum_sprovoda,vrijeme_sprovoda&grad=imatch.${encodeURIComponent(`^${cityPattern(city)}$`)}&datum_sprovoda=gte.${shiftDays(today, -7)}&order=datum_sprovoda.desc,vrijeme_sprovoda.desc&limit=40`).catch(() => []),
   ]);
   const list = dedupe(obits).slice(0, 60);
   const cityCems = cemeteriesInCity(cems, city);
@@ -336,7 +533,8 @@ async function umrliCity(param) {
     monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     const mondayKey = monday.toISOString().slice(0, 10);
     const thisMonth = list.filter((o) => (o.datum_smrti || '').startsWith(monthKey)).length;
-    const thisWeek = list.filter((o) => (o.datum_ukopa || '') >= mondayKey).length;
+    const thisWeek = list.filter((o) => (o.datum_ukopa || '') >= mondayKey).length
+      + scheduled.filter((f) => (f.datum_sprovoda || '') >= mondayKey && f.datum_sprovoda <= shiftDays(mondayKey, 6)).length;
     title = testCityTitle(param, city);
     description = testCityDescription(city, thisMonth, thisWeek, now);
   }
@@ -344,13 +542,16 @@ async function umrliCity(param) {
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/umrli">Umrli</a> / ${esc(city)}</nav>
 <h1>${esc(test ? testCityH1(city) : `Umrli ${city}: osmrtnice`)}</h1>
 <p>Najnovije osmrtnice i obavijesti o smrti za ${esc(city)} i okolicu, s datumom i mjestom sprovoda.</p>
+${CITY_INTROS[param] ? `<p>${esc(CITY_INTROS[param].text)} <a href="${CITY_INTROS[param].href}">${esc(CITY_INTROS[param].label)}</a></p>` : ''}
 <h2>${esc(test ? `Osmrtnice ${city} – danas i jučer` : `Najnovije osmrtnice – ${city}`)}</h2>
 ${list.length ? `<ul>${list.map(obituaryItem).join('')}</ul>` : '<p>Trenutno nema objavljenih osmrtnica za ovaj grad.</p>'}
+${scheduled.length ? `<h2>Sprovodi i ukopi – ${esc(city)}</h2><ul>${scheduled.map(scheduleItem).join('')}</ul>` : ''}
 <p><a href="/sprovodi/${esc(param)}">Raspored sprovoda ${esc(city)}</a> · <a href="/groblja/${esc(param)}">Groblja ${esc(city)}</a></p>
 ${cityCems.length ? `<h2>Groblja u gradu ${esc(city)}</h2><ul>${cityCems.map(cemeteryItem).join('')}</ul>` : ''}
+${months.length ? `<h2>Arhiva osmrtnica – ${esc(city)}</h2>${monthLinks(`/umrli/${esc(param)}`, months)}` : ''}
 <p><a href="/digitalni-memorijal">Digitalni memorijal</a>: trajna spomen-stranica s pričom, fotografijama i sjećanjima obitelji.</p>`);
   return {
-    title, description, canonical: SITE + path, body, noindex: list.length === 0, forceHead: test,
+    title, description, canonical: SITE + path, body, noindex: list.length === 0 && scheduled.length === 0, forceHead: test,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli'], [city, path]])],
   };
 }
@@ -422,16 +623,28 @@ async function grobljaCity(param) {
   };
 }
 
+// Same as CEMETERY_HEADS in src/lib/cemeteries.ts; keep them in sync.
+const CEMETERY_HEADS = {
+  'gradsko-boninovo': {
+    title: 'Groblje Boninovo Dubrovnik – adresa, radno vrijeme, kontakt',
+    description:
+      'Groblje Boninovo u Dubrovniku: adresa, radno vrijeme i kontakt uprave te povijest groblja. Popis umrlih i raspored sprovoda je na stranici Umrli Dubrovnik.',
+  },
+};
+
 async function grobljeSlug(slug) {
   const c = (await fetchCemeteries()).find((x) => x.slug === slug);
   if (!c) return null;
   const path = `/groblje/${slug}`;
-  const title = `${c.displayNaziv}${c.grad ? ` - ${c.grad}` : ''}`.slice(0, 60);
-  const description = (c.opis || '').slice(0, 155);
+  const title = CEMETERY_HEADS[slug]?.title || `${c.displayNaziv}${c.grad ? ` - ${c.grad}` : ''}`.slice(0, 60);
+  const opis = (c.opis || '').replace(/\s+/g, ' ').trim();
+  const description = CEMETERY_HEADS[slug]?.description || (opis.length <= 155 ? opis : `${opis.slice(0, 154).replace(/\s+\S*$/, '')}…`);
+  const cityPath = c.grad ? fold(c.grad).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : '';
   const paragraphs = (c.opis || '').split(/\n+/).map((p) => p.trim()).filter(Boolean);
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/groblja">Groblja</a>${c.grad ? ` / <a href="/groblja/${esc(fold(c.grad).replace(/[^a-z0-9]+/g, '-'))}">${esc(c.grad)}</a>` : ''} / ${esc(c.displayNaziv)}</nav>
 <h1>${esc(c.displayNaziv)}${c.grad ? ` – ${esc(c.grad)}` : ''}</h1>
+${cityPath ? `<p>Tražite tko je preminuo ili kada je sprovod? <a href="/umrli/${esc(cityPath)}">Umrli ${esc(c.grad)} – osmrtnice i raspored sprovoda</a></p>` : ''}
 <ul>${[c.adresa && `Adresa: ${esc(c.adresa)}`, c.telefon && `Telefon: ${esc(c.telefon)}`, c.radnoVrijeme && `Radno vrijeme: ${esc(c.radnoVrijeme)}`].filter(Boolean).map((x) => `<li>${x}</li>`).join('')}</ul>
 ${paragraphs.map((p) => `<p>${esc(p)}</p>`).join('')}`);
   return {
@@ -467,26 +680,103 @@ ${b.content || ''}
   };
 }
 
+// Links from an obituary to its city, funeral schedule, cemetery, month archive
+// and neighbouring obituaries, same as src/components/RelatedObituaries.tsx.
+// Without them most obituaries had no internal link at all (Ahrefs: 23,831
+// orphan pages). The "same period" list walks all obituaries in
+// (datum_smrti, id) order, so following it reaches every one of them.
+const RELATED_FIELDS = 'id,ime,prezime,slug,datum_rodenja,datum_smrti,mjesto_smrti';
+async function relatedLinks(o) {
+  const place = obituaryPlace(o.mjesto_smrti);
+  const date = o.datum_smrti ? String(o.datum_smrti).slice(0, 10) : null;
+  const slugged = 'slug=not.is.null';
+  const near = (filter, order, limit) => sb(`obituaries?select=${RELATED_FIELDS}&${filter}&${slugged}&order=${order}&limit=${limit}`).catch(() => []);
+  const [cb, ca, pb, pa, cems] = await Promise.all([
+    place && date ? near(`${cityOr(place, ['mjesto_smrti'])}&id=neq.${o.id}&datum_smrti=lte.${date}`, 'datum_smrti.desc', 4) : [],
+    place && date ? near(`${cityOr(place, ['mjesto_smrti'])}&datum_smrti=gt.${date}`, 'datum_smrti.asc', 3) : [],
+    date ? near(`or=(datum_smrti.lt.${date},and(datum_smrti.eq.${date},id.lt.${o.id}))`, 'datum_smrti.desc,id.desc', 3) : [],
+    date ? near(`or=(datum_smrti.gt.${date},and(datum_smrti.eq.${date},id.gt.${o.id}))`, 'datum_smrti.asc,id.asc', 3) : [],
+    o.groblje ? fetchCemeteries().catch(() => []) : [],
+  ]);
+  const sameCity = [...ca.reverse(), ...cb];
+  const cityIds = new Set(sameCity.map((r) => r.id));
+  const samePeriod = [...pa.reverse(), ...pb].filter((r) => !cityIds.has(r.id));
+  const key = o.groblje ? slugifyCemeteryName(o.groblje) : '';
+  const cemetery = key ? cems.find((c) => c.slug && slugifyCemeteryName(c.naziv) === key) : null;
+  const slug = place ? slugify(place) : null;
+  const item = (r) =>
+    `<li><a href="/${esc(r.slug)}">${esc(r.ime)} ${esc(r.prezime)}</a>${[
+      r.datum_rodenja && r.datum_smrti ? `${lifeDate(r.datum_rodenja)} – ${lifeDate(r.datum_smrti)}` : lifeDate(r.datum_smrti),
+      r.mjesto_smrti ? esc(String(r.mjesto_smrti).trim()) : '',
+    ].filter(Boolean).map((t) => ` · ${t}`).join('')}</li>`;
+  const links = [
+    slug && `<a href="/umrli/${esc(slug)}">Umrli ${esc(place)}</a>`,
+    slug && `<a href="/sprovodi/${esc(slug)}">Sprovodi ${esc(place)}</a>`,
+    cemetery && `<a href="/groblje/${esc(cemetery.slug)}">${esc(cemetery.displayNaziv)}</a>`,
+    date && `<a href="/umrli/${slug ? esc(slug) : NATIONAL}/${date.slice(0, 4)}/${date.slice(5, 7)}">Osmrtnice ${slug ? `${esc(place)}, ` : ''}${Number(date.slice(5, 7))}/${date.slice(0, 4)}</a>`,
+  ].filter(Boolean);
+  return [
+    sameCity.length ? `<h2>Ostale osmrtnice iz mjesta ${esc(place)}</h2><ul>${sameCity.map(item).join('')}</ul>` : '',
+    samePeriod.length ? `<h2>Osmrtnice iz istog razdoblja</h2><ul>${samePeriod.map(item).join('')}</ul>` : '',
+    links.length ? `<p>${links.join(' · ')}</p>` : '',
+  ].join('\n');
+}
+
+async function umrliArchive(param, godina, mjesec) {
+  if (!/^\d{4}$/.test(godina) || !/^(0[1-9]|1[0-2])$/.test(mjesec)) return null;
+  const national = param === NATIONAL;
+  const city = national ? null : await cityName(param);
+  const ym = `${godina}-${mjesec}`;
+  const base = `/umrli/${param}`;
+  const path = `${base}/${godina}/${mjesec}`;
+  const rows = (
+    await sbAll(
+      `obituaries?select=${RELATED_FIELDS}&datum_smrti=gte.${ym}-01&datum_smrti=lt.${nextMonth(ym)}-01&slug=not.is.null${
+        city ? `&${cityOr(city, ['mjesto_smrti'])}` : ''
+      }&order=datum_smrti.asc,id.asc`,
+    )
+  ).filter((r) => !city || !isOtherPlace(r.mjesto_smrti, city));
+  const label = monthLabel(ym);
+  const plain = label.replace(/\.$/, '');
+  const title = national ? `Osmrtnice – ${label} | Osmrtnica.com.hr` : `Umrli ${city} – ${label} | Osmrtnice`;
+  const description = national
+    ? `Sve osmrtnice objavljene za ${plain}: ime, godine života i mjesto. Zapalite virtualnu svijeću i ostavite sjećanje.`
+    : `Osmrtnice za ${city}, ${plain}: popis pokojnika s godinama života. Zapalite virtualnu svijeću i ostavite sjećanje.`;
+  const prev = prevMonth(ym);
+  const next = nextMonth(ym);
+  const monthUrl = (m) => `${base}/${m.slice(0, 4)}/${m.slice(5, 7)}`;
+  const item = (r) =>
+    `<li><a href="/${esc(r.slug)}">${esc(r.ime)} ${esc(r.prezime)}</a>${[
+      r.datum_rodenja && r.datum_smrti ? `${lifeDate(r.datum_rodenja)} – ${lifeDate(r.datum_smrti)}` : lifeDate(r.datum_smrti),
+      national && r.mjesto_smrti ? esc(String(r.mjesto_smrti).trim()) : '',
+    ].filter(Boolean).map((t) => ` · ${t}`).join('')}</li>`;
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/umrli">Umrli</a>${national ? '' : ` / <a href="${esc(base)}">${esc(city)}</a>`} / ${label}</nav>
+<h1>${esc(national ? `Osmrtnice – ${label}` : `Umrli ${city} – ${label}`)}</h1>
+<p>${plural(rows.length, 'osmrtnica', 'osmrtnice', 'osmrtnica')}, poredano po datumu smrti.</p>
+${rows.length ? `<ul>${rows.map(item).join('')}</ul>` : '<p>Za ovaj mjesec nema objavljenih osmrtnica.</p>'}
+<p>${prev >= FIRST_MONTH ? `<a href="${esc(monthUrl(prev))}">← ${monthLabel(prev)}</a> · ` : ''}<a href="${national ? '/umrli' : esc(base)}">${esc(national ? 'Sve osmrtnice' : `Umrli ${city}`)}</a>${
+    next <= currentMonth() ? ` · <a href="${esc(monthUrl(next))}">${monthLabel(next)} →</a>` : ''
+  }</p>`);
+  return {
+    title, description, canonical: SITE + path, body, noindex: rows.length === 0, forceHead: true,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli'], ...(national ? [] : [[city, base]]), [label, path]])],
+  };
+}
+
 async function obituarySlug(slug) {
-  const rows = await sb(`obituaries?select=ime,prezime,datum_rodenja,datum_smrti,datum_ukopa,vrijeme_ukopa,mjesto_rodenja,mjesto_smrti,biografija,fotografija_url,groblje,podnaslov,slug,meta_title,meta_description&slug=eq.${encodeURIComponent(slug)}&limit=1`);
+  const rows = await sb(`obituaries?select=id,ime,prezime,datum_rodenja,datum_smrti,datum_ukopa,vrijeme_ukopa,mjesto_rodenja,mjesto_smrti,biografija,fotografija_url,groblje,podnaslov,slug,meta_title,meta_description&slug=eq.${encodeURIComponent(slug)}&limit=1`);
   const o = rows[0];
   if (!o) return null;
   const name = `${o.ime} ${o.prezime}`;
   const path = `/${slug}`;
-  let description = o.meta_description;
-  if (!description) {
-    description = `Osmrtnica za ${name}`;
-    if (o.datum_smrti) description += `, preminuo ${lifeDate(o.datum_smrti)}`;
-    if (o.mjesto_smrti) description += ` u ${o.mjesto_smrti}`;
-    if (o.datum_ukopa) description += `. Sprovod ${hrDate(o.datum_ukopa)}${o.groblje ? ` na ${o.groblje}` : ''}`;
-    else if (o.groblje) description += `. Sprovod na ${o.groblje}`;
-    description += '. Zapali svijeću i ostavi sjećanje.';
-  }
+  const description = obituaryDescription(o);
+  const related = await relatedLinks(o);
   const a = age(o.datum_rodenja, o.datum_smrti);
   const facts = [
     o.datum_rodenja && `Rođen/a: ${lifeDate(o.datum_rodenja)}${o.mjesto_rodenja ? `, ${esc(o.mjesto_rodenja)}` : ''}`,
     o.datum_smrti && `Preminuo/la: ${lifeDate(o.datum_smrti)}${o.mjesto_smrti ? `, ${esc(o.mjesto_smrti)}` : ''}${a !== null ? ` (${godine(a)})` : ''}`,
-    (o.datum_ukopa || o.groblje) && `Sprovod: ${o.datum_ukopa ? hrDate(o.datum_ukopa) : ''}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? `, ${esc(o.groblje)}` : ''}`,
+    (o.datum_ukopa || o.groblje) && `Sprovod: ${o.datum_ukopa ? hrDate(o.datum_ukopa) : ''}${o.vrijeme_ukopa ? ' u ' + hhmm(o.vrijeme_ukopa) : ''}${o.groblje ? `, ${esc(decode(stripTags(o.groblje)))}` : ''}`,
   ].filter(Boolean);
   const body = page(`
 <nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/umrli">Osmrtnice</a> / ${esc(name)}</nav>
@@ -494,12 +784,14 @@ async function obituarySlug(slug) {
 ${o.podnaslov ? `<p>${esc(o.podnaslov)}</p>` : ''}
 <ul>${facts.map((f) => `<li>${f}</li>`).join('')}</ul>
 ${o.biografija ? `<h2>O pokojniku</h2><p>${esc(stripTags(o.biografija))}</p>` : ''}
-<p><a href="/zapali-svijecu?ime=${encodeURIComponent(o.ime)}&amp;prezime=${encodeURIComponent(o.prezime)}">Zapali virtualnu svijeću</a> · <a href="/digitalni-memorijal">Napravi digitalni memorijal</a></p>`);
+<p><a href="/zapali-svijecu?ime=${encodeURIComponent(o.ime)}&amp;prezime=${encodeURIComponent(o.prezime)}">Zapali virtualnu svijeću</a> · <a href="/digitalni-memorijal">Napravi digitalni memorijal</a></p>
+${related}`);
   return {
-    title: o.meta_title || `${name} - Osmrtnica | Osmrtnica.com.hr`, description, canonical: SITE + path, body, noindex: false, image: o.fotografija_url,
+    title: obituaryTitle(o), description, canonical: SITE + path, body, noindex: false, image: o.fotografija_url,
     jsonld: [{
       '@context': 'https://schema.org', '@type': 'Person', name,
       ...(o.datum_rodenja ? { birthDate: o.datum_rodenja } : {}),
+      ...(o.mjesto_rodenja ? { birthPlace: { '@type': 'Place', name: o.mjesto_rodenja } } : {}),
       ...(o.datum_smrti ? { deathDate: o.datum_smrti } : {}),
       ...(o.mjesto_smrti ? { deathPlace: { '@type': 'Place', name: o.mjesto_smrti } } : {}),
       ...(o.fotografija_url ? { image: o.fotografija_url } : {}),
@@ -576,7 +868,9 @@ async function umrliHub() {
 <ul>${dedupe(obits).slice(0, 60).map(obituaryItem).join('')}</ul>
 <h2>Umrli po gradovima</h2>
 ${cityLinks(cities, 'umrli')}
-<p><a href="/gradovi">Svi gradovi</a> · <a href="/sprovodi">Raspored sprovoda</a></p>`);
+<p><a href="/gradovi">Svi gradovi</a> · <a href="/sprovodi">Raspored sprovoda</a></p>
+<h2>Arhiva osmrtnica po mjesecima</h2>
+${monthLinks(`/umrli/${NATIONAL}`, allMonths().map((ym) => ({ ym })))}`);
   return {
     title: null, canonical: SITE + '/umrli', body, noindex: false,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Umrli', '/umrli']])],
@@ -742,10 +1036,25 @@ function route(pathname) {
     if (section === 'blog') return () => blogSlug(decodeURIComponent(param));
     if (section === 'memorijal') return () => memorijalSlug(decodeURIComponent(param));
   }
+  if (parts.length === 4 && parts[0] === 'umrli') return () => umrliArchive(parts[1], parts[2], parts[3]);
   if (parts.length === 1 && !APP_PAGES.has(parts[0]) && !parts[0].includes('.')) {
-    return () => obituarySlug(decodeURIComponent(parts[0]));
+    const build = () => obituarySlug(decodeURIComponent(parts[0]));
+    build.obituary = true;
+    return build;
   }
   return null;
+}
+
+// Old flat URLs (/umrli-rijeka, /groblja-split/) that src/components/LegacySlugRoute.tsx
+// redirects in the browser. Crawlers got a 200 copy of the homepage shell, so
+// redirect them here with a 301 instead.
+const LEGACY_PREFIXES = [['groblja-', '/groblja'], ['groblje-', '/groblje'], ['umrli-', '/umrli'], ['sprovodi-', '/sprovodi'], ['sprovod-', '/sprovodi']];
+function legacyTarget(pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts.length !== 1) return null;
+  const slug = parts[0].toLowerCase();
+  const hit = LEGACY_PREFIXES.find(([prefix]) => slug.startsWith(prefix) && slug.length > prefix.length);
+  return hit ? `${hit[1]}/${slug.slice(hit[0].length)}` : null;
 }
 
 const setTag = (html, re, tag) => (re.test(html) ? html.replace(re, tag) : html.replace('</head>', `    ${tag}\n  </head>`));
@@ -782,6 +1091,8 @@ function withHead(html, d, t, desc) {
 export default async (request, context) => {
   if (request.method !== 'GET') return context.next();
   const url = new URL(request.url);
+  const legacy = legacyTarget(url.pathname);
+  if (legacy) return Response.redirect(new URL(legacy + url.search, url), 301);
   const build = route(url.pathname);
   if (!build) return context.next();
 
@@ -796,7 +1107,19 @@ export default async (request, context) => {
     console.error('seo-content', url.pathname, String(e));
     return res;
   }
-  if (!data) return res;
+  if (!data) {
+    // An obituary slug that does not exist answered 200 with the homepage
+    // shell (a soft 404 for Google). Only the SPA fallback is turned into a
+    // 404: pages with their own index.html in public/ are left alone.
+    if (!build.obituary) return res;
+    const html = await res.text();
+    if (!html.includes(GENERIC_TITLE)) return new Response(html, { status: 200, headers: res.headers });
+    const headers = new Headers(res.headers);
+    headers.delete('content-length');
+    headers.delete('etag');
+    const notFound = html.replace('</head>', '    <meta name="robots" content="noindex" />\n  </head>');
+    return new Response(notFound, { status: 404, headers });
+  }
 
   const html = inject(await res.text(), data);
   const headers = new Headers(res.headers);

@@ -49,6 +49,13 @@ const MOVED = [
   // Old sitemap address still registered in Search Console; it rendered the SPA
   // (HTML, not XML), which GSC reports as a sitemap error.
   ['/sitemap_index.xml', '/sitemap.xml'],
+  // A one-letter "city" from the old site that matched every obituary with an
+  // "o" in its place: 41,674 impressions in 30 days for "umrli" and
+  // "osmrtnice" with the title "Umrli o". /umrli is the page for those queries.
+  ['/umrli/o', '/umrli'],
+  // "Poznati memorijali" in the menu; the app only redirected in the browser,
+  // so crawlers got the empty homepage shell with status 200.
+  ['/memorijali', '/digitalni-memorijal'],
 ];
 
 // Old bookmarks from when WordPress ran at the domain root. WordPress now

@@ -7,8 +7,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
+import { emailButton, emailLayout, emailNote, emailParagraph, escapeHtml, SITE } from "../_shared/emailLayout.ts";
 
-const SITE = "https://osmrtnica.com.hr";
 const RESEND_AFTER_MS = 10 * 60_000;
 
 const corsHeaders = {
@@ -26,8 +26,6 @@ const safeEqual = (a: string, b: string) => {
   return d === 0;
 };
 
-const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-
 const newToken = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -36,16 +34,16 @@ const newToken = () => {
 const draftLink = (memorialId: string, token: string) =>
   `${SITE}/kreiraj-memorijal?nastavi=${encodeURIComponent(memorialId)}&k=${encodeURIComponent(token)}`;
 
-const linkHtml = (name: string, link: string) => `
-<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1f1f1f;line-height:1.6">
-  <p>Poštovani,</p>
-  <p>ovo je poveznica na digitalni memorijal${name ? ` za <strong>${escapeHtml(name)}</strong>` : ""} koji ste započeli. Sve što ste upisali je spremljeno.</p>
-  <p style="margin:28px 0">
-    <a href="${link}" style="background:#1f1f1f;color:#d4af37;padding:12px 22px;text-decoration:none;font-weight:bold">Nastavite memorijal</a>
-  </p>
-  <p style="color:#666;font-size:13px">Poveznica otvara vaš nacrt na bilo kojem uređaju. Ne prosljeđujte je drugima. Ako memorijal niste započeli vi, zanemarite ovu poruku.</p>
-  <p>Osmrtnica.com.hr</p>
-</div>`;
+const linkHtml = (name: string, link: string) => emailLayout({
+  preheader: "Nastavite memorijal kad budete spremni, i na drugom uređaju.",
+  title: "Poveznica na vaš memorijal",
+  body: [
+    emailParagraph(`Poštovani,<br>ovo je poveznica na digitalni memorijal${name ? ` za <strong>${escapeHtml(name)}</strong>` : ""} koji ste započeli. Sve što ste upisali je spremljeno.`),
+    emailButton(link, "Nastavite memorijal"),
+    emailNote("Poveznica otvara vaš nacrt na bilo kojem uređaju, zato je ne prosljeđujte drugima."),
+  ].join(""),
+  reason: "Primili ste ovaj e-mail jer ste na osmrtnica.com.hr zatražili poveznicu na nacrt memorijala. Ako to niste bili vi, zanemarite ga.",
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });

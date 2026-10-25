@@ -297,3 +297,29 @@ export function parsePozega(html: string, fromDate: string): ScheduleRow[] {
   }
   return rows
 }
+
+/**
+ * Jastrebarsko, Groblja Jastrebarsko d.o.o.: the "Raspored ukopa" box lists the
+ * coming funerals by cemetery; only families who agreed are published.
+ *   <li><span class="si_naslov">Groblje Desinec Gornji</span></li>
+ *   <li>22.10.2026. 14:00 JOSIP BURJAN  (73)</li>
+ */
+export function parseJastrebarsko(html: string, fromDate: string): ScheduleRow[] {
+  const box = html.match(/<h3>\s*Raspored ukopa\s*<\/h3>\s*<ul[^>]*>([\s\S]*?)<\/ul>/i)?.[1] ?? ''
+  const rows: ScheduleRow[] = []
+  let groblje = ''
+  for (const li of box.match(/<li[^>]*>[\s\S]*?<\/li>/gi) ?? []) {
+    const heading = li.match(/si_naslov[^>]*>([\s\S]*?)<\/span>/i)
+    if (heading) {
+      groblje = cleanGroblje(stripTags(heading[1]))
+      continue
+    }
+    const m = stripTags(li).match(/^(\d{1,2}\.\s*\d{1,2}\.\s*\d{4})\.?\s+(\d{1,2})[:.](\d{2})\s+(.+?)\s*(?:\((\d{1,3})\))?$/)
+    if (!m || !groblje) continue
+    const date = parseNumericDate(m[1])
+    if (!date || date < fromDate) continue
+    const r = row('groblja-jastrebarsko', 'gja', 'Jastrebarsko', m[4], groblje, date, `${m[2]}:${m[3]}`, m[5] ? Number(m[5]) : null)
+    if (r) rows.push(r)
+  }
+  return rows
+}
