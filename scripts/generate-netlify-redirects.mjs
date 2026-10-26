@@ -68,7 +68,14 @@ const OLD_ADMIN = [
   ['/webmail', 'https://mail.osmrtnica.com.hr:2096/'],
 ];
 
+// Short links for posts and print, where a long URL with UTM tags looks bad.
+const SHORT = [
+  // The homepage section with all four free guides, from Facebook posts.
+  ['/vodici', '/?utm_source=facebook&utm_medium=social&utm_campaign=vodici_svi_sveti#ebook-homepage'],
+];
+
 const lines = [
+  ...SHORT.map(([from, to]) => `${from} ${to} 302!`),
   ...MOVED.map(([from, to]) => `${from} ${to} 301!`),
   ...OLD_ADMIN.map(([from, to]) => `${from} ${to} 302!`),
   `/wp/wp-content/* ${OLD_SERVER}/wp/wp-content/:splat 200!`,
