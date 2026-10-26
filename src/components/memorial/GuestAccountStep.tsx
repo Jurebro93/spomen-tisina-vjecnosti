@@ -11,10 +11,16 @@ import { trackGuestRegistered } from '@/lib/metaPixel';
 
 type Mode = 'create' | 'login';
 
+const generatePassword = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(24));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+};
+
 /**
- * A guest who started a memorial without registering sets an e-mail and password before checkout.
+ * A guest who started a memorial without registering leaves an e-mail before checkout.
  * The guest session becomes a real account (or moves into the existing one), so the draft stays
- * theirs and they can log in later to edit the memorial. The e-mail left for the draft is filled in.
+ * theirs. A new account gets a generated password and a mail with a link to set their own, so
+ * checkout asks for nothing but the e-mail. The e-mail left for the draft is filled in.
  */
 const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
   const [mode, setMode] = useState<Mode>('create');
@@ -49,13 +55,14 @@ const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
     setError('');
     const cleanEmail = email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) { setError('Upišite ispravnu e-mail adresu.'); return; }
-    if (password.length < 8) { setError('Lozinka mora imati najmanje 8 znakova.'); return; }
+    if (mode === 'login' && !password) { setError('Upišite lozinku svog računa.'); return; }
+    const accountPassword = mode === 'create' ? generatePassword() : password;
     setBusy(true);
     try {
       const token = await ensureAuthToken();
       if (!token) throw new Error('no token');
       const { data, error: fnError } = await supabase.functions.invoke('convert-guest-account', {
-        body: { mode, email: cleanEmail, password },
+        body: { mode, email: cleanEmail, password: accountPassword },
         headers: { Authorization: `Bearer ${token}` },
       });
       if (fnError) throw fnError;
@@ -72,11 +79,15 @@ const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
       if (data?.code === 'wrong_password') { setError('Lozinka nije točna.'); return; }
       if (!data?.ok) throw new Error('not ok');
       // Signing in swaps the guest session for the account; the page then continues as a signed-in user.
-      const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+      const { data: signedIn, error: signInError } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: accountPassword });
       if (signInError) throw signInError;
       if (mode === 'create' && signedIn.user) {
         void trackFunnel('guest_account', { userId: signedIn.user.id });
         trackGuestRegistered(signedIn.user.id);
+        // Best effort: if the mail fails, "Zaboravili ste lozinku?" on the login page sends the same link.
+        void supabase.functions.invoke('send-password-reset', {
+          body: { email: cleanEmail, redirectTo: `${window.location.origin}/reset-password`, purpose: 'new_account' },
+        });
       }
     } catch {
       setError('Račun nije bilo moguće spremiti. Pokušajte ponovno ili nas kontaktirajte.');
@@ -89,11 +100,11 @@ const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
     <form onSubmit={submit} className="rounded-lg border border-accent/60 bg-secondary/40 p-5 space-y-4">
       <div>
         <p className="font-semibold flex items-center gap-2"><UserCheck className="h-5 w-5 text-accent" />
-          {mode === 'create' ? 'Napravite račun prije plaćanja' : 'Prijavite se na svoj račun'}
+          {mode === 'create' ? 'Na koji e-mail spremamo memorijal?' : 'Prijavite se na svoj račun'}
         </p>
         <p className="text-sm text-muted-foreground mt-1">
           {mode === 'create'
-            ? 'S ovim e-mailom i lozinkom kasnije se prijavljujete i uređujete memorijal, s bilo kojeg uređaja. Sve što ste upisali ostaje spremljeno.'
+            ? 'Memorijal spremamo na račun s ovim e-mailom. Lozinka sada ne treba: poslat ćemo vam poveznicu da je postavite kad želite i kasnije uređujete memorijal s bilo kojeg uređaja.'
             : 'Memorijal i sve što ste upisali spremit ćemo na vaš postojeći račun.'}
         </p>
         {mode === 'login' && (
@@ -104,17 +115,19 @@ const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
           </p>
         )}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={mode === 'login' ? 'grid gap-3 sm:grid-cols-2' : 'grid gap-3'}>
         <div className="space-y-1">
           <Label htmlFor="ga-email">E-mail</Label>
           <Input id="ga-email" type="email" autoComplete="email" value={email} maxLength={255}
             onChange={(e) => setEmail(e.target.value)} placeholder="vas@email.hr" />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="ga-password">{mode === 'create' ? 'Lozinka (najmanje 8 znakova)' : 'Lozinka'}</Label>
-          <Input id="ga-password" type="password" autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
-            value={password} maxLength={72} onChange={(e) => setPassword(e.target.value)} />
-        </div>
+        {mode === 'login' && (
+          <div className="space-y-1">
+            <Label htmlFor="ga-password">Lozinka</Label>
+            <Input id="ga-password" type="password" autoComplete="current-password"
+              value={password} maxLength={72} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+        )}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       {resetSent && (
@@ -126,7 +139,7 @@ const GuestAccountStep = ({ initialEmail = '' }: { initialEmail?: string }) => {
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" variant="gold" disabled={busy}>
           {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {mode === 'create' ? 'Spremi račun i nastavi' : 'Prijavi se i nastavi'}
+          {mode === 'create' ? 'Spremi i nastavi' : 'Prijavi se i nastavi'}
         </Button>
         {mode === 'login' ? (
           <>
