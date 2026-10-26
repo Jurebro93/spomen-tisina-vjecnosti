@@ -1,4 +1,4 @@
-import { getAttribution } from '@/lib/funnel';
+import { getAttribution, trackFunnel } from '@/lib/funnel';
 import { supabase } from '@/integrations/supabase/client';
 import { requestBillingDetails } from '@/lib/billing';
 import { MEMORIAL_PRICE_EUR, isDuplicateMemorialError, logMemorialAction, type Deceased, type ManagerRole, type Memorial } from '@/lib/memorial';
@@ -112,6 +112,8 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
   // Always shown so the buyer can review billing data, choose legal entity and enter a promo code.
   const chosenPromo = promoIsFree ? (promoCode ?? null) : await requestBillingDetails(memorialId, promoCode ?? null);
 
+  // Same step as the wizard's "Objavi i plati", so payments started from a saved draft show in the admin funnel too.
+  void trackFunnel('checkout_started', { memorialId });
 
   const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
     body: { memorial_id: memorialId, promo_code: chosenPromo, attribution: getAttribution(), ...consent, meta },

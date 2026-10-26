@@ -7,6 +7,12 @@ import { ga4Funnel, ga4Report, gscQuery, type GscRow } from "../_shared/google.t
 
 const CACHE_HOURS = 12;
 const ALLOWED_DAYS = [7, 28, 90];
+// Bumped when the payload shape changes, so an older cached payload is not shown with the new page.
+const PAYLOAD_VERSION = 2;
+// GA4 recorded only about a quarter of visits on these days (Search Console clicks stayed normal).
+// Any GA4 period that touches them is not comparable, so the page warns and hides the % change.
+const GA4_GAP = { start: "2026-10-01", end: "2026-10-18" };
+const overlapsGap = (start: string, end: string) => start <= GA4_GAP.end && end >= GA4_GAP.start;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status });
@@ -214,8 +220,8 @@ async function funnels(days: number) {
       return [...parseFunnel(r).entries()].map(([value, s]) => ({ value, users: f.steps.map((_, i) => s[i]?.users ?? 0) }))
         .sort((a, b) => b.users[0] - a.users[0]);
     };
-    const [device, channel] = await Promise.all([breakdown("deviceCategory"), breakdown("sessionDefaultChannelGroup")]);
-    return { id: f.id, title: f.title, note: f.note, steps: f.steps.map((s, i) => steps[i] ?? { name: s.name, users: 0, completionRate: null, abandonments: null }), device, channel };
+    const channel = await breakdown("sessionDefaultChannelGroup");
+    return { id: f.id, title: f.title, note: f.note, steps: f.steps.map((s, i) => steps[i] ?? { name: s.name, users: 0, completionRate: null, abandonments: null }), channel };
   }));
 }
 
@@ -223,6 +229,11 @@ const KEY_EVENTS = ["memorial_started", "begin_checkout", "purchase", "memorial_
 const inList = (field: string, values: string[]) => ({ filter: { fieldName: field, inListFilter: { values } } });
 
 async function channels(days: number) {
+  const yesterday = addDays(new Date(), -1);
+  const range = {
+    start: iso(addDays(yesterday, -(days - 1))), end: iso(yesterday),
+    prevStart: iso(addDays(yesterday, -(days * 2 - 1))), prevEnd: iso(addDays(yesterday, -days)),
+  };
   const dateRanges = [
     { startDate: `${days}daysAgo`, endDate: "yesterday", name: "now" },
     { startDate: `${days * 2}daysAgo`, endDate: `${days + 1}daysAgo`, name: "prev" },
@@ -249,15 +260,15 @@ async function channels(days: number) {
     }
     return [...out.values()].sort((a, b) => b.now.sessions - a.now.sessions);
   };
-  const [byChannel, byCampaign, byDevice] = await Promise.all([
+  const [byChannel, byCampaign] = await Promise.all([
     safe("Kanali", () => report("sessionDefaultChannelGroup"), []),
     safe("Kampanje", () => report("sessionCampaignName"), []),
-    safe("Uređaji", () => report("deviceCategory"), []),
   ]);
   return {
+    range,
+    ga4Gap: overlapsGap(range.prevStart, range.end) ? GA4_GAP : null,
     byChannel,
     byCampaign: byCampaign.filter((c) => c.value && !c.value.startsWith("(")).slice(0, 15),
-    byDevice,
   };
 }
 
@@ -315,7 +326,8 @@ function changes(gsc: any, ch: any) {
       }
     }
   }
-  for (const c of ch?.byChannel ?? []) {
+  // GA4 comparisons that touch the tracking gap would report a fake drop or rise.
+  for (const c of ch?.ga4Gap ? [] : ch?.byChannel ?? []) {
     const d = pct(c.now.sessions, c.prev.sessions);
     if (d != null && Math.abs(d) >= 0.25 && Math.max(c.now.sessions, c.prev.sessions) >= 50) {
       out.push({ text: `Posjeti iz kanala ${c.value}: ${fmt(d)} (${c.prev.sessions} → ${c.now.sessions})`, good: d >= 0, size: Math.abs(d) });
@@ -347,7 +359,7 @@ serve(async (req) => {
 
     if (!body.refresh) {
       const { data: hit } = await admin.from("admin_google_stats_cache").select("payload, fetched_at").eq("days", days).maybeSingle();
-      if (hit && Date.now() - new Date(hit.fetched_at).getTime() < CACHE_HOURS * 3600_000) {
+      if (hit && hit.payload?.version === PAYLOAD_VERSION && Date.now() - new Date(hit.fetched_at).getTime() < CACHE_HOURS * 3600_000) {
         return json({ ok: true, cached: true, ...hit.payload });
       }
     }
@@ -358,7 +370,7 @@ serve(async (req) => {
       channels(days),
       safe("Ulazne stranice", () => landingPages(days), null),
     ]);
-    const payload = { days, fetchedAt: new Date().toISOString(), gsc, funnels: funnel, channels: ch, landing, changes: changes(gsc, ch), errors: [...errors] };
+    const payload = { version: PAYLOAD_VERSION, days, fetchedAt: new Date().toISOString(), gsc, funnels: funnel, channels: ch, landing, changes: changes(gsc, ch), errors: [...errors] };
     if (gsc || landing) {
       await admin.from("admin_google_stats_cache").upsert({ days, payload, fetched_at: payload.fetchedAt });
     }

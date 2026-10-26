@@ -250,11 +250,12 @@ const Inner = () => {
   const funnel = r.funnel ?? {};
   const steps = funnel.steps ?? {};
   const funnelRows: { label: string; value: number | null; unit: string; note?: string }[] = [
-    { label: 'Posjet stranici Digitalni memorijal', value: steps.visit_landing?.events ?? null, unit: 'sesije' },
-    { label: 'Početak izrade', value: steps.start_create?.events ?? null, unit: 'sesije' },
-    { label: 'Prijavljen u izradi', value: steps.auth?.events ?? null, unit: 'sesije' },
-    { label: 'Spremljen nacrt', value: steps.draft_saved?.events ?? null, unit: 'memorijali' },
-    { label: 'Odlazak na plaćanje', value: funnel.checkout_users ?? null, unit: 'korisnici', note: 'iz narudžbi' },
+    // "people": one per memorial, user or consented visitor, otherwise one per browser tab; bot bursts are excluded in SQL.
+    { label: 'Posjet stranici Digitalni memorijal', value: steps.visit_landing?.people ?? steps.visit_landing?.events ?? null, unit: 'ljudi' },
+    { label: 'Početak izrade', value: steps.start_create?.people ?? steps.start_create?.events ?? null, unit: 'ljudi' },
+    { label: 'Prijavljen ili gost u izradi', value: steps.auth?.people ?? steps.auth?.events ?? null, unit: 'korisnici' },
+    { label: 'Spremljen nacrt', value: steps.draft_saved?.people ?? steps.draft_saved?.events ?? null, unit: 'memorijali' },
+    { label: 'Odlazak na plaćanje ili promo aktivaciju', value: funnel.checkout_users ?? null, unit: 'korisnici', note: 'iz narudžbi' },
     { label: 'Uspješna naplata ili besplatna aktivacija', value: funnel.paid_or_free_users ?? null, unit: 'korisnici', note: 'iz narudžbi' },
     { label: 'Objavljen memorijal', value: funnel.published ?? null, unit: 'memorijali', note: 'iz baze' },
   ];
@@ -399,6 +400,7 @@ const Inner = () => {
                   <p className="text-xs text-muted-foreground mb-3">
                     {trackingSince ? `Koraci na webu prate se od ${trackingSince}.` : 'Koraci na webu prate se od ove nadogradnje — za ranije razdoblje nema podataka.'}
                     {' '}Izvor i jedinstveni posjetitelj bilježe se samo uz privolu{consentedShare != null ? ` (${consentedShare} % događaja s privolom)` : ''}; bez privole se broji samo korak. Blokirano praćenje znači da dio puta ostaje nepoznat.
+                    {funnel.bot_excluded > 0 && ` Izostavljeno ${num(funnel.bot_excluded)} automatskih zapisa (robot).`}
                   </p>
                   <div className="space-y-2">
                     {funnelRows.map((s, i) => {
@@ -420,7 +422,7 @@ const Inner = () => {
                       );
                     })}
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">Koraci se mjere različitim jedinicama (sesija, korisnik, memorijal), pa postotak nastavka služi kao orijentir, a ne kao točno praćenje iste osobe.</p>
+                  <p className="mt-3 text-xs text-muted-foreground">Koraci se mjere različitim jedinicama (osoba, korisnik, memorijal), pa postotak nastavka služi kao orijentir, a ne kao točno praćenje iste osobe. Detaljniji lijevak izrade je u kartici „Google i ponašanje”.</p>
                 </CardContent>
               </Card>
 
