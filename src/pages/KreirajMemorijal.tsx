@@ -19,6 +19,7 @@ import RichTextEditor from '@/components/memorial/RichTextEditor';
 import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUploader';
 import MemorialContent from '@/components/memorial/MemorialContent';
 import GuestAccountStep from '@/components/memorial/GuestAccountStep';
+import MemorialHelp from '@/components/memorial/MemorialHelp';
 import DraftEmailCard, { readDraftEmailAddress, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -321,7 +322,6 @@ const KreirajMemorijal = () => {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
-  const [promoOpen, setPromoOpen] = useState(false);
   const [consent, setConsent] = useState<PurchaseConsent>(EMPTY_CONSENT);
 
   const [relationship, setRelationship] = useState('');
@@ -717,6 +717,7 @@ const KreirajMemorijal = () => {
     );
   }
 
+  const helpStep = !deceased ? 'Za koga izrađujete memorijal' : step === 0 ? 'Osoba' : step === 2 ? 'Priča i fotografije' : 'Pregled i plaćanje';
   const shell = (children: React.ReactNode) => (
     <div className="min-h-screen bg-background flex flex-col">
       <Helmet>
@@ -725,7 +726,10 @@ const KreirajMemorijal = () => {
       </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-10 md:py-14">
-        <div className="max-w-3xl mx-auto">{children}</div>
+        <div className="max-w-3xl mx-auto">
+          {children}
+          <MemorialHelp step={helpStep} memorialId={memorial?.id} person={deceased ? fullName(deceased) : ''} />
+        </div>
       </main>
       <Footer />
     </div>
@@ -923,7 +927,6 @@ const KreirajMemorijal = () => {
             <p className="text-xs text-muted-foreground">Ovo možete promijeniti i kasnije.</p>
           </div>
           <MemorialValueSummary />
-          {promo || promoOpen ? (
           <PromoCodeField
             productType="memorial"
             productLabel="memorijala"
@@ -931,11 +934,6 @@ const KreirajMemorijal = () => {
             applied={promo}
             onApplied={setPromo}
           />
-          ) : (
-            <button type="button" onClick={() => setPromoOpen(true)} className="text-sm text-accent underline underline-offset-4">
-              Imate kod za popust?
-            </button>
-          )}
           {isGuest && <GuestAccountStep initialEmail={readDraftEmailAddress(memorial.id)} />}
           <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
           <div className="flex flex-col sm:flex-row gap-3">
