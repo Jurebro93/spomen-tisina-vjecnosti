@@ -12,6 +12,7 @@ import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { MEMORIAL_PRICE_EUR, friendlyError } from '@/lib/memorial';
 import { NotAuthenticatedError, startMemorialPayment } from '@/lib/memorialActions';
 import { useToast } from '@/hooks/use-toast';
+import { autoPromoCode } from '@/lib/seasonalPromo';
 
 interface Props {
   memorialId: string | null;
@@ -88,6 +89,7 @@ const PayMemorialDialog = ({ memorialId, open, onOpenChange, onAlreadyPaid }: Pr
           basePrice={MEMORIAL_PRICE_EUR}
           applied={promo}
           onApplied={setPromo}
+          autoCode={autoPromoCode()}
         />
         <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
         <Button variant="gold" onClick={handlePay} disabled={busy || !consent.termsAccepted} className="w-full">

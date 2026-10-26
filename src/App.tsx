@@ -11,6 +11,7 @@ import CookieConsent from "./components/CookieConsent";
 import MetaPixel from "./components/MetaPixel";
 import BillingDetailsDialog from "./components/billing/BillingDetailsDialog";
 import DiscountPopup from "./components/DiscountPopup";
+import SeasonalPromoBar from "./components/SeasonalPromoBar";
 
 
 // Pages load on demand, so a visitor downloads only the code of the page they
@@ -200,6 +201,7 @@ const App = () => {
           <BillingDetailsDialog />
           <DiscountPopup />
           <ScrollToTop />
+          <SeasonalPromoBar />
           <Suspense fallback={null}>
             <Routes>
               {routes.map(({ path, element }) => (
