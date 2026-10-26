@@ -4,6 +4,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { hasConsent } from '@/lib/consent';
 import { hasAdvertisingConsent } from '@/lib/metaPixel';
+import { isBot } from '@/lib/isBot';
 
 export type BlogEvent = 'view' | 'cta_click' | 'link_click' | 'interactive' | 'start_create';
 
@@ -31,7 +32,7 @@ const PIXEL_EVENT: Partial<Record<BlogEvent, string>> = {
 };
 
 export function trackBlog(event: BlogEvent, slug: string, ctaId?: string | null) {
-  if (!slug) return;
+  if (!slug || isBot()) return;
   if (event === 'view') {
     try {
       const k = `osm_bv_${slug}`;

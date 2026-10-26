@@ -32,6 +32,7 @@ import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type Purchas
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
+import { isBot } from '@/lib/isBot';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 // Step 1 (e-mail for the draft) is shown to guests only; signed-in visitors go from 0 straight to 2.
@@ -378,7 +379,8 @@ const KreirajMemorijal = () => {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && !user && !guestStarting.current) {
+    // Crawlers (meta-externalagent ignores robots.txt) created ~13.7k empty anonymous accounts here.
+    if (!authLoading && !user && !guestStarting.current && !isBot()) {
       guestStarting.current = true;
       supabase.auth.signInAnonymously().then(({ error }) => {
         // Guest sign-in unavailable: fall back to the regular login.
