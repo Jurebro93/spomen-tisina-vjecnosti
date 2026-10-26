@@ -13,6 +13,8 @@ export type SendMailOptions = {
   html: string;
   from?: string;
   fromName?: string;
+  /** Where "Reply" goes, e.g. the visitor who asked for help. */
+  replyTo?: string;
   attachments?: MailAttachment[];
 };
 
@@ -50,6 +52,7 @@ export const sendMail = async (opts: SendMailOptions) => {
     await client.send({
       from: opts.from ?? getMailFrom(opts.fromName),
       to,
+      replyTo: opts.replyTo,
       subject: opts.subject,
       html: opts.html,
       content: " ",

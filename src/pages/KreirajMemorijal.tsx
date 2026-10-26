@@ -19,13 +19,14 @@ import RichTextEditor from '@/components/memorial/RichTextEditor';
 import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUploader';
 import MemorialContent from '@/components/memorial/MemorialContent';
 import GuestAccountStep from '@/components/memorial/GuestAccountStep';
-import DraftEmailCard, { DraftEmailStep, readDraftEmailAddress, readDraftEmailState, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
+import MemorialHelp from '@/components/memorial/MemorialHelp';
+import DraftEmailCard, { readDraftEmailAddress, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
   DECEASED_FIELDS, RELATIONSHIPS, formatCroatianDate, fetchDeceased, fetchMemorialForDeceased,
-  lifeYears, fullName, memorialUrl, type Deceased, type Memorial, type MemorialVisibility,
+  lifeYears, fullName, mediaPublicUrl, memorialUrl, type Deceased, type Memorial, type MemorialVisibility,
 } from '@/lib/memorial';
 import { claimDraft, createDraftMemorial, DuplicateMemorialError, ensureAuthToken, updateMemorial } from '@/lib/memorialActions';
 import PromoCodeField from '@/components/promo/PromoCodeField';
@@ -37,7 +38,7 @@ import { isBot } from '@/lib/isBot';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 // Step 1 (e-mail for the draft) is shown to guests only; signed-in visitors go from 0 straight to 2.
-const STEPS = ['Osoba i odnos', 'E-mail', 'Priča i fotografije', 'Pregled'];
+const STEPS = ['Osoba', 'E-mail', 'Priča i fotografije', 'Pregled i plaćanje'];
 const STEP_FUNNEL: FunnelStep[] = ['flow_osoba', 'flow_email', 'flow_prica', 'flow_pregled'];
 
 const VISIBILITY_OPTIONS: Array<{ value: MemorialVisibility; icon: React.ElementType; title: string; text: string }> = [
@@ -72,14 +73,6 @@ const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
-    if (!form.datum_rodenja) {
-      toast({ title: 'Nedostaje datum', description: 'Unesite datum rođenja.', variant: 'destructive' });
-      return;
-    }
-    if (!form.datum_smrti) {
-      toast({ title: 'Nedostaje datum', description: 'Unesite datum smrti.', variant: 'destructive' });
-      return;
-    }
     if (form.datum_rodenja > today) {
       toast({ title: 'Neispravan datum', description: 'Datum rođenja ne može biti u budućnosti.', variant: 'destructive' });
       return;
@@ -88,7 +81,7 @@ const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti u budućnosti.', variant: 'destructive' });
       return;
     }
-    if (form.datum_smrti < form.datum_rodenja) {
+    if (form.datum_rodenja && form.datum_smrti && form.datum_smrti < form.datum_rodenja) {
       toast({ title: 'Neispravan datum', description: 'Datum smrti ne može biti prije datuma rođenja.', variant: 'destructive' });
       return;
     }
@@ -122,7 +115,7 @@ const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
     <form onSubmit={submit} className="space-y-6">
       <div>
         <h2 className="font-serif text-2xl mb-2">Osnovni podaci o osobi</h2>
-        <p className="text-muted-foreground">Trebaju nam samo ime i datumi. Sve ostalo možete dodati i kasnije.</p>
+        <p className="text-muted-foreground">Dovoljno je ime i prezime. Datume upišite ako ih znate, a ako ne znate točan datum, ostavite prazno.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -134,12 +127,12 @@ const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
           <Input id="m-prezime" value={form.prezime} onChange={set('prezime')} maxLength={60} required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-rodenja">Datum rođenja *</Label>
-          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} required max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
+          <Label htmlFor="m-rodenja">Datum rođenja</Label>
+          <Input id="m-rodenja" type="date" value={form.datum_rodenja} onChange={set('datum_rodenja')} max={form.datum_smrti && form.datum_smrti < today ? form.datum_smrti : today} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="m-smrti">Datum smrti *</Label>
-          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} required min={form.datum_rodenja || undefined} max={today} />
+          <Label htmlFor="m-smrti">Datum smrti</Label>
+          <Input id="m-smrti" type="date" value={form.datum_smrti} onChange={set('datum_smrti')} min={form.datum_rodenja || undefined} max={today} />
         </div>
       </div>
       {moreOpen ? (
@@ -167,7 +160,7 @@ const ManualDeceasedForm = ({ initialName, onCreated, onCancel }: {
         </button>
       )}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim() || !form.datum_rodenja || !form.datum_smrti}>
+        <Button type="submit" disabled={saving || !form.ime.trim() || !form.prezime.trim()}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
         </Button>
         <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Natrag</Button>
@@ -586,10 +579,9 @@ const KreirajMemorijal = () => {
     try {
       const rel = relationship === 'drugo' ? customRelationship.trim() : relationship;
       const draft = await ensureDraft(rel || null);
-      // Guests are asked for an e-mail once per draft, right after the first step.
-      // The session may have started just now, so the guest check reads it directly.
-      const guest = !accountUser && (await ensureUser())?.is_anonymous === true;
-      setStep(guest && draft && !readDraftEmailState(draft.id) ? 1 : 2);
+      // Straight to the story: a separate e-mail screen here lost 6 of 8 guests (23.-26.10.2026).
+      // Guests are offered the draft link as a card on the story step instead.
+      if (draft) setStep(2);
     } catch (error) {
       if (error instanceof DuplicateMemorialError) {
         const ownDraftId = deceased ? await findOwnDraftId(deceased.id) : null;
@@ -725,6 +717,7 @@ const KreirajMemorijal = () => {
     );
   }
 
+  const helpStep = !deceased ? 'Za koga izrađujete memorijal' : step === 0 ? 'Osoba' : step === 2 ? 'Priča i fotografije' : 'Pregled i plaćanje';
   const shell = (children: React.ReactNode) => (
     <div className="min-h-screen bg-background flex flex-col">
       <Helmet>
@@ -733,7 +726,10 @@ const KreirajMemorijal = () => {
       </Helmet>
       <Header />
       <main className="flex-1 container mx-auto px-4 py-10 md:py-14">
-        <div className="max-w-3xl mx-auto">{children}</div>
+        <div className="max-w-3xl mx-auto">
+          {children}
+          <MemorialHelp step={helpStep} memorialId={memorial?.id} person={deceased ? fullName(deceased) : ''} />
+        </div>
       </main>
       <Footer />
     </div>
@@ -775,7 +771,9 @@ const KreirajMemorijal = () => {
   }
 
   const cover = media.find((m) => m.is_cover) ?? media[0] ?? null;
-  const shownSteps = STEPS.map((label, index) => ({ label, index })).filter(({ index }) => index !== 1 || isGuest);
+  const storyPreview = (quote.trim() || lifeStory.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')).trim().slice(0, 160);
+  // Index 1 (the former e-mail step) is no longer shown; indexes stay so funnel step names keep their meaning.
+  const shownSteps = STEPS.map((label, index) => ({ label, index })).filter(({ index }) => index !== 1);
 
   return shell(
     <div className="space-y-8">
@@ -811,37 +809,31 @@ const KreirajMemorijal = () => {
           </Card>
 
           <div className="space-y-3">
-            <h2 className="font-serif text-xl">U kakvom ste odnosu s pokojnikom?</h2>
-            <RadioGroup value={relationship} onValueChange={setRelationship} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <h2 className="font-serif text-xl">Vi ste pokojniku… <span className="text-sm font-sans text-muted-foreground">(neobavezno)</span></h2>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Odnos s pokojnikom">
               {RELATIONSHIPS.map((option) => (
-                <Label key={option} htmlFor={`rel-${option}`}
-                  className="flex items-center gap-3 rounded-md border border-border p-4 cursor-pointer hover:bg-secondary font-normal">
-                  <RadioGroupItem id={`rel-${option}`} value={option} />
+                <button key={option} type="button" role="radio" aria-checked={relationship === option}
+                  onClick={() => setRelationship(relationship === option ? '' : option)}
+                  className={`rounded-full border px-4 py-2 text-sm ${relationship === option ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>
                   {option}
-                </Label>
+                </button>
               ))}
-            </RadioGroup>
+            </div>
             {relationship === 'drugo' && (
-              <div className="space-y-2">
-                <Label htmlFor="rel-custom">Upišite svoj odnos s pokojnikom</Label>
-                <Input
-                  id="rel-custom"
-                  maxLength={60}
-                  placeholder="npr. kum, susjed, kolega s posla…"
-                  value={customRelationship}
-                  onChange={(e) => setCustomRelationship(e.target.value)}
-                />
-              </div>
+              <Input
+                id="rel-custom"
+                aria-label="Upišite svoj odnos s pokojnikom"
+                maxLength={60}
+                placeholder="npr. kum, susjed, kolega s posla…"
+                value={customRelationship}
+                onChange={(e) => setCustomRelationship(e.target.value)}
+              />
             )}
           </div>
-          <Button onClick={goNextFromRelationship} disabled={!relationship || (relationship === 'drugo' && !customRelationship.trim()) || busy}>
+          <Button onClick={goNextFromRelationship} disabled={busy}>
             {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
           </Button>
         </div>
-      )}
-
-      {step === 1 && memorial && user && (
-        <DraftEmailStep memorialId={memorial.id} userId={user.id} onDone={() => setStep(2)} />
       )}
 
       {step === 2 && memorial && (
@@ -879,27 +871,45 @@ const KreirajMemorijal = () => {
       {step === 3 && memorial && (
         <div className="space-y-6">
           <h1 className="font-serif text-2xl md:text-3xl flex items-center gap-2"><Eye className="h-5 w-5 text-accent" />Pregled memorijala</h1>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <MemorialContent
-              deceased={deceased}
-              memorial={{ ...memorial, quote: quote.trim() || null, life_story: lifeStory || null, visibility }}
-              media={media}
-              events={lifeEvents
-                .filter((e) => e.title.trim())
-                .map((e, i) => ({
-                  id: `preview-${i}`,
-                  event_date: null,
-                  event_year: e.event_year,
-                  title: e.title,
-                  description: e.description || null,
-                  sort_order: i,
-                }))}
-              tributes={[]}
-              candles={[]}
-              coverUrl={cover?.storage_path ?? null}
-              preview
-            />
-          </div>
+          {/* A short summary instead of the whole memorial: the full preview made this screen ~3,500 px tall on a phone. */}
+          <Card className="border-border">
+            <CardContent className="p-4 flex gap-4">
+              <img src={(cover && mediaPublicUrl(cover.storage_path)) || deceased.fotografija_url || defaultObituaryPhoto} alt=""
+                className="w-20 h-24 object-cover rounded-md shrink-0" />
+              <div className="min-w-0 space-y-1">
+                <p className="font-serif text-xl">{fullName(deceased)}</p>
+                <p className="text-sm text-muted-foreground">{lifeYears(deceased.datum_rodenja, deceased.datum_smrti)}</p>
+                {storyPreview && <p className="text-sm text-muted-foreground line-clamp-2">{storyPreview}</p>}
+                <p className="text-xs text-muted-foreground">
+                  {media.length ? `Fotografija: ${media.length}` : 'Fotografije možete dodati i nakon objave'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+          <details className="group">
+            <summary className="cursor-pointer text-sm text-accent underline underline-offset-4">Pogledaj cijeli pregled memorijala</summary>
+            <div className="mt-3 rounded-lg border border-border overflow-hidden">
+              <MemorialContent
+                deceased={deceased}
+                memorial={{ ...memorial, quote: quote.trim() || null, life_story: lifeStory || null, visibility }}
+                media={media}
+                events={lifeEvents
+                  .filter((e) => e.title.trim())
+                  .map((e, i) => ({
+                    id: `preview-${i}`,
+                    event_date: null,
+                    event_year: e.event_year,
+                    title: e.title,
+                    description: e.description || null,
+                    sort_order: i,
+                  }))}
+                tributes={[]}
+                candles={[]}
+                coverUrl={cover?.storage_path ?? null}
+                preview
+              />
+            </div>
+          </details>
           <div className="space-y-3">
             <h2 className="font-serif text-xl">Tko može vidjeti memorijal?</h2>
             <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as MemorialVisibility)} className="space-y-2">
@@ -924,8 +934,8 @@ const KreirajMemorijal = () => {
             applied={promo}
             onApplied={setPromo}
           />
-          <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
           {isGuest && <GuestAccountStep initialEmail={readDraftEmailAddress(memorial.id)} />}
+          <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />
           <div className="flex flex-col sm:flex-row gap-3">
             <Button variant="gold" onClick={handlePublish} disabled={busy || isGuest || !consent.termsAccepted}>
               {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}
