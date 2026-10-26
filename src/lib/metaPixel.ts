@@ -1,5 +1,6 @@
 import { hasConsent } from '@/lib/consent';
 import { LANDED_AT, landingFbclid } from '@/lib/landing';
+import { isAutomatedBrowser } from '@/lib/isBot';
 /**
  * Meta (Facebook) Pixel helper.
  *
@@ -48,7 +49,7 @@ export const setMetaUser = async (user: { id: string; email?: string | null } | 
 };
 
 export const hasAdvertisingConsent = () => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || isAutomatedBrowser()) return false;
   return hasConsent('marketing');
 };
 
