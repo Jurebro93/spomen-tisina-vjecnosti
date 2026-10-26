@@ -33,6 +33,7 @@ import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type Purchas
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
+import { isBot } from '@/lib/isBot';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 // Step 1 (e-mail for the draft) is shown to guests only; signed-in visitors go from 0 straight to 2.
@@ -382,6 +383,7 @@ const KreirajMemorijal = () => {
   const guestStarting = useRef<Promise<User | null> | null>(null);
   const ensureUser = useCallback(async (): Promise<User | null> => {
     if (user) return user;
+    if (isBot()) return null;
     if (!guestStarting.current) {
       guestStarting.current = supabase.auth.signInAnonymously().then(({ data, error }) => {
         if (!error && data.user) return data.user;

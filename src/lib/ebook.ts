@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { landingParams } from '@/lib/landing';
+import { hasAdvertisingConsent, metaBrowserIds } from '@/lib/metaPixel';
 
 export type GuideId = 'kad-izgubite-voljenu-osobu' | 'obiteljska-mirovina' | 'smrt-u-inozemstvu' | 'digitalna-ostavstina';
 
@@ -80,10 +81,19 @@ const rememberUnlock = (guide: GuideId) => {
  * Saves the address through claim-ebook (which also e-mails the link). Until that function is
  * deployed, falls back to the plain newsletter signup so the download never depends on it.
  */
-export const claimEbook = async (email: string, placement: string, guide: GuideId = EBOOK.id): Promise<'ok' | 'error'> => {
+export const claimEbook = async (
+  email: string,
+  placement: string,
+  guide: GuideId = EBOOK.id,
+  /** Shared with the browser pixel's NewsletterSignup so Meta de-duplicates the server copy. */
+  eventId?: string,
+): Promise<'ok' | 'error'> => {
   const utm = landingParams();
   const landingUrl = `${window.location.pathname}${utm.toString() ? `?${utm.toString()}` : ''}`;
-  const { data, error } = await supabase.functions.invoke('claim-ebook', { body: { email, placement, landingUrl, guide } });
+  const meta = eventId && hasAdvertisingConsent()
+    ? { marketing_consent: true, event_id: eventId, source_url: window.location.href, ...metaBrowserIds() }
+    : {};
+  const { data, error } = await supabase.functions.invoke('claim-ebook', { body: { email, placement, landingUrl, guide, ...meta } });
   if (!error && data?.pdf) { rememberUnlock(guide); return 'ok'; }
   const status = (error as { context?: { status?: number } } | null)?.context?.status;
   if (status === 400) return 'error';

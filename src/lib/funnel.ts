@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { hasConsent as hasCat } from '@/lib/consent';
 import { getBlogTouch } from '@/lib/blogTracking';
 import { landingParams, landingReferrer } from '@/lib/landing';
+import { isBot } from '@/lib/isBot';
 
 export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_saved' | 'checkout_started' | 'checkout_returned'
   | 'person_search' | 'person_manual' | 'guest_account' | 'draft_email' | 'draft_email_skipped' | 'draft_resumed'
@@ -79,6 +80,7 @@ export function getAttribution() {
 const sent = new Set<string>();
 
 export async function trackFunnel(step: FunnelStep, opts: { userId?: string | null; memorialId?: string | null; once?: boolean } = {}) {
+  if (isBot()) return;
   const key = `${step}:${opts.memorialId ?? ''}`;
   if (opts.once !== false) {
     if (sent.has(key)) return;
