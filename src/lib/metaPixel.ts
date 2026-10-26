@@ -106,7 +106,7 @@ export const trackPageView = (url?: string) => {
   window.fbq?.('track', 'PageView');
 };
 
-const STANDARD_EVENTS = new Set(['PageView', 'ViewContent', 'Lead', 'CompleteRegistration', 'InitiateCheckout', 'Purchase', 'Subscribe']);
+const STANDARD_EVENTS = new Set(['PageView', 'ViewContent', 'Lead', 'CompleteRegistration', 'InitiateCheckout', 'Purchase', 'Subscribe', 'AddToCart']);
 
 export const trackEvent = (
   event: string,
@@ -206,9 +206,17 @@ const sendMemorialEvent = (event: string, eventId: string, params: Record<string
 export const trackStartMemorial = (userId: string, method: 'search' | 'manual') =>
   sendMemorialEvent('StartMemorial', `start_${userId}`, { start_method: method });
 
-/** PersonSelected = an existing obituary was chosen or a new person was saved; the wizard opens. */
-export const trackPersonSelected = (userId: string, personSource: 'existing' | 'new') =>
+/**
+ * PersonSelected = an existing obituary was chosen or a new person was saved; the wizard opens.
+ * The dataset drops PersonSelected as unverified, so the browser also sends the standard AddToCart
+ * (meta-capi-event mirrors both with the same event_id).
+ */
+export const trackPersonSelected = (userId: string, personSource: 'existing' | 'new') => {
   sendMemorialEvent('PersonSelected', `person_${userId}`, { person_source: personSource });
+  if (hasAdvertisingConsent()) {
+    trackEvent('AddToCart', { content_name: 'Digitalni memorijal', person_source: personSource }, `person_${userId}`);
+  }
+};
 
 /** CompleteRegistration for a guest who turned the draft's session into a real account at checkout. */
 export const trackGuestRegistered = (userId: string) =>

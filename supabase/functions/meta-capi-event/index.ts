@@ -1,5 +1,5 @@
 // Mirrors memorial-creation events to Meta Conversions API: StartMemorial = first person search or manual entry,
-// PersonSelected = existing obituary chosen or new person saved, Lead = memorial draft created.
+// PersonSelected (+ standard AddToCart) = existing obituary chosen or new person saved, Lead = memorial draft created.
 // Signed-in owner only, production site only, and only with the visitor's marketing consent.
 // Payment events are not accepted here: InitiateCheckout is sent by create-memorial-payment
 // and Purchase by the Stripe-verified delivery pipeline.
@@ -38,17 +38,16 @@ Deno.serve(async (req) => {
     const eventId = cleanEventId(b.event_id, funnel.prefix);
     if (eventId !== `${funnel.prefix}${user.id}`) return json({ ok: false, error: "bad event" }, 400);
     const value = b[funnel.param];
-    const r = await sendMetaEvent({
-      eventName: b.event_name as string,
-      eventId,
-      sourceUrl,
-      userData: await metaUser(),
-      customData: {
-        content_name: "Digitalni memorijal",
-        ...(typeof value === "string" && funnel.values.includes(value) ? { [funnel.param]: value } : {}),
-      },
-    });
-    return json({ ok: r.ok, meta_status: r.status });
+    const userData = await metaUser();
+    const customData = {
+      content_name: "Digitalni memorijal",
+      ...(typeof value === "string" && funnel.values.includes(value) ? { [funnel.param]: value } : {}),
+    };
+    // The dataset drops PersonSelected as unverified; the standard AddToCart with the same id gets through.
+    const names = b.event_name === "PersonSelected" ? ["PersonSelected", "AddToCart"] : [b.event_name as string];
+    const results = [];
+    for (const eventName of names) results.push(await sendMetaEvent({ eventName, eventId, sourceUrl, userData, customData }));
+    return json({ ok: results.every((r) => r.ok), meta_status: results[0].status });
   }
 
   if (b.event_name !== "Lead") return json({ ok: false, error: "unsupported event" }, 400);
