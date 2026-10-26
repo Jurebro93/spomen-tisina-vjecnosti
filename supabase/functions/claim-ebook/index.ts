@@ -85,7 +85,7 @@ const emailHtml = (guide: GuideId, code: string | null) => {
 };
 
 /**
- * Server copy of the browser's NewsletterSignup (Conversions API), so ad sets can optimise for guide
+ * Server copy of the browser's NewsletterSignup and Subscribe (Conversions API), so ad sets can optimise for guide
  * signups even when the pixel copy is lost. New signups only, production site only, and only with
  * the visitor's marketing consent; the shared event_id lets Meta de-duplicate the two copies.
  */
@@ -95,14 +95,13 @@ const reportSignup = async (req: Request, b: Record<string, unknown>, email: str
   if (!eventId) return;
   const sourceUrl = typeof b.source_url === "string" && PRODUCTION_ORIGINS.some((o) => (b.source_url as string).startsWith(o))
     ? b.source_url.slice(0, 1000) : null;
-  const r = await sendMetaEvent({
-    eventName: "NewsletterSignup",
-    eventId,
-    sourceUrl,
-    userData: await buildUserData({ email, ...clientFromRequest(req), ...cleanBrowserIds(b) }),
-    customData: { content_name: "Newsletter", placement: guide === "kad-izgubite-voljenu-osobu" ? `ebook_${placement}` : `ebook_${guide}_${placement}`, guide },
-  });
-  if (!r.ok) console.error("NewsletterSignup CAPI failed", r.status, r.error);
+  const userData = await buildUserData({ email, ...clientFromRequest(req), ...cleanBrowserIds(b) });
+  const customData = { content_name: "Newsletter", placement: guide === "kad-izgubite-voljenu-osobu" ? `ebook_${placement}` : `ebook_${guide}_${placement}`, guide };
+  // The dataset drops the custom NewsletterSignup as unverified; the standard Subscribe gets through.
+  for (const eventName of ["NewsletterSignup", "Subscribe"]) {
+    const r = await sendMetaEvent({ eventName, eventId, sourceUrl, userData, customData });
+    if (!r.ok) console.error(`${eventName} CAPI failed`, r.status, r.error);
+  }
 };
 
 Deno.serve(async (req) => {
