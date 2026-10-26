@@ -3,6 +3,7 @@ import { trackInitiateCheckout, trackMemorialStarted, trackPersonSelected, track
 import { trackGa4BeginCheckout, trackGa4MemorialStarted, trackGa4PersonSearch, trackGa4PersonSelected } from '@/lib/ga4Ecommerce';
 import { readMemorialPrefill, trackStartFromBlog } from '@/lib/blogTracking';
 import { requestBillingDetails } from '@/lib/billing';
+import type { User } from '@supabase/supabase-js';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -311,7 +312,6 @@ const KreirajMemorijal = () => {
   // Visitors may start without an account: a guest session holds the draft until checkout.
   const user = accountUser ?? guestUser;
   const isGuest = !accountUser && Boolean(guestUser);
-  const guestStarting = useRef(false);
   const { toast } = useToast();
 
   const deceasedIdParam = params.get('deceased_id');
@@ -378,28 +378,39 @@ const KreirajMemorijal = () => {
     if (p.song) setLifeStory((v) => v || `<p>Pjesma koja nas podsjeća na nju/njega: <strong>${p.song!.replace(/[<>&]/g, '')}</strong></p>`);
   }, []);
 
-  useEffect(() => {
-    // Crawlers (meta-externalagent ignores robots.txt) created ~13.7k empty anonymous accounts here.
-    if (!authLoading && !user && !guestStarting.current && !isBot()) {
-      guestStarting.current = true;
-      supabase.auth.signInAnonymously().then(({ error }) => {
+  // The guest session starts at the visitor's first action (search, manual entry, draft, e-mailed link), not on
+  // page load: crawlers opening the page created ~13.7k empty anonymous accounts on 22-24.10.2026.
+  const guestStarting = useRef<Promise<User | null> | null>(null);
+  const ensureUser = useCallback(async (): Promise<User | null> => {
+    if (user) return user;
+    if (isBot()) return null;
+    if (!guestStarting.current) {
+      guestStarting.current = supabase.auth.signInAnonymously().then(({ data, error }) => {
+        if (!error && data.user) return data.user;
         // Guest sign-in unavailable: fall back to the regular login.
-        if (error) navigate(`/prijava?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+        guestStarting.current = null;
+        navigate(`/prijava?redirect=${encodeURIComponent(redirectTarget)}`, { replace: true });
+        return null;
       });
     }
+    return guestStarting.current;
+  }, [user, navigate, redirectTarget]);
+
+  useEffect(() => {
     if (!authLoading && user) void trackFunnel('auth', { userId: user.id });
-  }, [authLoading, user, navigate, redirectTarget]);
+  }, [authLoading, user]);
 
   // Ad events (pixel + Conversions API): StartMemorial on the first search or manual entry,
   // PersonSelected once the person is chosen or saved (also when opened from an obituary link).
   const startSent = useRef(false);
-  const startMemorial = useCallback((method: 'search' | 'manual') => {
-    void trackFunnel(method === 'search' ? 'person_search' : 'person_manual', { userId: user?.id });
+  const startMemorial = useCallback(async (method: 'search' | 'manual') => {
+    const u = await ensureUser();
+    void trackFunnel(method === 'search' ? 'person_search' : 'person_manual', { userId: u?.id });
     trackGa4PersonSearch(method);
-    if (!user || startSent.current) return;
+    if (!u || startSent.current) return;
     startSent.current = true;
-    trackStartMemorial(user.id, method);
-  }, [user]);
+    trackStartMemorial(u.id, method);
+  }, [ensureUser]);
 
   const personSent = useRef(false);
   useEffect(() => {
@@ -480,6 +491,10 @@ const KreirajMemorijal = () => {
   // ?nastavi=<id>: open the draft once; from another browser the e-mailed token moves it to this session first.
   const resumeHandled = useRef(false);
   useEffect(() => {
+    // Claiming a draft from the e-mailed link needs a session in this browser.
+    if (resumeParam && !authLoading && !user) void ensureUser();
+  }, [resumeParam, authLoading, user, ensureUser]);
+  useEffect(() => {
     if (!resumeParam || authLoading || !user || resumeHandled.current) return;
     resumeHandled.current = true;
     (async () => {
@@ -523,11 +538,11 @@ const KreirajMemorijal = () => {
     });
   }, [params, user]);
 
-  // ?deceased_id= (obituary link): waits for the session so the visitor's own draft for this person is found.
+  // ?deceased_id= (obituary link): waits for the session check so a returning visitor's own draft is found.
   const personHandled = useRef(false);
   useEffect(() => {
     if (!deceasedIdParam) { if (!resumeParam) setLoading(false); return; }
-    if (resumeParam || authLoading || !user || personHandled.current) return;
+    if (resumeParam || authLoading || personHandled.current) return;
     personHandled.current = true;
     (async () => {
       try {
@@ -535,7 +550,7 @@ const KreirajMemorijal = () => {
           fetchDeceased(deceasedIdParam),
           fetchMemorialForDeceased(deceasedIdParam),
         ]);
-        if (existing?.status === 'draft' && await resumeDraft(existing.id)) return;
+        if (existing?.status === 'draft' && user && await resumeDraft(existing.id)) return;
         setDeceased(person);
         if (existing) setExistingSlug(existing.slug);
       } catch {
@@ -547,7 +562,8 @@ const KreirajMemorijal = () => {
   }, [deceasedIdParam, resumeParam, authLoading, user, resumeDraft]);
 
   const ensureDraft = useCallback(async (rel: string | null) => {
-    if (!deceased || !user) return null;
+    const owner = await ensureUser();
+    if (!deceased || !owner) return null;
     if (memorial) {
       if (memorial.relationship !== rel) {
         const updated = await updateMemorial(memorial.id, { relationship: rel });
@@ -556,13 +572,13 @@ const KreirajMemorijal = () => {
       }
       return memorial;
     }
-    const created = await createDraftMemorial(deceased, user.id, rel);
+    const created = await createDraftMemorial(deceased, owner.id, rel);
     setMemorial(created);
-    void trackFunnel('draft_saved', { userId: user.id, memorialId: created.id });
+    void trackFunnel('draft_saved', { userId: owner.id, memorialId: created.id });
     trackMemorialStarted(created.id);
     trackGa4MemorialStarted(created.id);
     return created;
-  }, [deceased, user, memorial]);
+  }, [deceased, ensureUser, memorial]);
 
   const goNextFromRelationship = async () => {
     if (busy) return;
@@ -571,7 +587,9 @@ const KreirajMemorijal = () => {
       const rel = relationship === 'drugo' ? customRelationship.trim() : relationship;
       const draft = await ensureDraft(rel || null);
       // Guests are asked for an e-mail once per draft, right after the first step.
-      setStep(isGuest && draft && !readDraftEmailState(draft.id) ? 1 : 2);
+      // The session may have started just now, so the guest check reads it directly.
+      const guest = !accountUser && (await ensureUser())?.is_anonymous === true;
+      setStep(guest && draft && !readDraftEmailState(draft.id) ? 1 : 2);
     } catch (error) {
       if (error instanceof DuplicateMemorialError) {
         const ownDraftId = deceased ? await findOwnDraftId(deceased.id) : null;
