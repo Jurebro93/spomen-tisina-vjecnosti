@@ -60,6 +60,13 @@ const makeCode = () => {
   return "VODIC30-" + Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 };
 
+// Site-wide Svi sveti discount (src/lib/seasonalPromo.ts): while it runs the guide code is not the best offer.
+const SEASONAL_END = Date.parse("2026-11-02T22:59:59Z");
+const seasonalNote = () =>
+  Date.now() <= SEASONAL_END
+    ? `<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#555555">Do 2. studenoga (Svi sveti) memorijal je za sve 19,50 € umjesto 39 € i popust se na stranici sam primjenjuje. Vaš kod vrijedi i nakon toga.</p>`
+    : "";
+
 const emailHtml = (guide: GuideId, code: string | null) => {
   const g = GUIDES[guide];
   const body = [
@@ -71,7 +78,7 @@ const emailHtml = (guide: GuideId, code: string | null) => {
   <tr><td style="padding:22px 20px;text-align:center">
     <p style="margin:0 0 10px;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.5;color:#2b2b2b">${g.memorialNote} Ako ga jednom poželite izraditi, ovo je vaš kod za <strong>${DISCOUNT} % popusta</strong> (vrijedi za jednu kupnju):</p>
     <p style="margin:0 0 10px;font-family:'Courier New',Courier,monospace;font-size:26px;font-weight:bold;letter-spacing:3px;color:#111111">${code}</p>
-    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#555555">Upišite ga u polje „Promo kod“ pri plaćanju na <a href="${SITE}/digitalni-memorijal/" style="color:#8a6a1f">osmrtnica.com.hr/digitalni-memorijal</a>.</p>
+    <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#555555">Upišite ga u polje „Promo kod“ pri plaćanju na <a href="${SITE}/digitalni-memorijal/" style="color:#8a6a1f">osmrtnica.com.hr/digitalni-memorijal</a>.</p>${seasonalNote()}
   </td></tr>
 </table>` : "",
   ].join("");
