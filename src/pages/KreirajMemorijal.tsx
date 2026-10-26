@@ -32,6 +32,7 @@ import { claimDraft, createDraftMemorial, DuplicateMemorialError, ensureAuthToke
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
+import { activeSeasonalPromo, autoPromoCode, seasonalPrice } from '@/lib/seasonalPromo';
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { isBot } from '@/lib/isBot';
@@ -203,6 +204,13 @@ const OwnDrafts = ({ drafts, onResume, busyId }: { drafts: OwnDraft[]; onResume:
 );
 
 /** Obituaries matching a typed name: with two or more words both the first name and the surname must match. */
+const introPrice = () => {
+  const seasonal = activeSeasonalPromo();
+  return seasonal
+    ? `${formatEur(seasonalPrice(seasonal))} umjesto ${formatEur(MEMORIAL_PRICE_EUR)} do ${seasonal.untilLabel}`
+    : formatEur(MEMORIAL_PRICE_EUR);
+};
+
 const findObituaries = async (q: string) => {
   const parts = q.split(/\s+/).filter(Boolean).map((p) => p.replace(/[,()%]/g, ''));
   const first = parts[0];
@@ -292,7 +300,7 @@ const DeceasedSearch = ({ onSelect, onStart }: {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Izrada traje oko 10 minuta i sve se usput sprema. Plaćate tek na kraju ({formatEur(MEMORIAL_PRICE_EUR)}), kad vidite gotov memorijal.
+        Izrada traje oko 10 minuta i sve se usput sprema. Plaćate tek na kraju ({introPrice()}), kad vidite gotov memorijal.
       </p>
     </div>
   );
@@ -642,7 +650,7 @@ const KreirajMemorijal = () => {
         setBusy(false);
         return;
       }
-      const meta = trackInitiateCheckout(memorial.id, MEMORIAL_PRICE_EUR);
+      const meta = trackInitiateCheckout(memorial.id, promo?.final_price ?? MEMORIAL_PRICE_EUR);
       void trackFunnel('checkout_started', { userId: user.id, memorialId: memorial.id });
       // The server re-validates the promo code and decides the amount; we only send the code.
       const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
@@ -680,7 +688,7 @@ const KreirajMemorijal = () => {
         return;
       }
       if (!data?.url) throw new Error('Nema URL-a za plaćanje');
-      trackGa4BeginCheckout(memorial.id, MEMORIAL_PRICE_EUR);
+      trackGa4BeginCheckout(memorial.id, promo?.final_price ?? MEMORIAL_PRICE_EUR);
       window.location.href = data.url as string;
     } catch {
       toast({ title: 'Plaćanje nije moguće započeti', description: 'Pokušajte ponovno ili nas kontaktirajte.', variant: 'destructive' });
@@ -933,6 +941,7 @@ const KreirajMemorijal = () => {
             basePrice={MEMORIAL_PRICE_EUR}
             applied={promo}
             onApplied={setPromo}
+            autoCode={autoPromoCode()}
           />
           {isGuest && <GuestAccountStep initialEmail={readDraftEmailAddress(memorial.id)} />}
           <PurchaseTerms value={consent} onChange={setConsent} promo={promo} />

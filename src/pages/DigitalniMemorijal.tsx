@@ -17,6 +17,8 @@ const marijaMlada = "/site/marija-kovac-mlada.jpg";
 const marijaKuhinja = "/site/marija-kovac-kuhinja.jpg";
 const marijaVrt = "/site/marija-kovac-vrt.jpg";
 import { MEMORIAL_PRICE_EUR, MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import { activeSeasonalPromo, seasonalPrice } from '@/lib/seasonalPromo';
+import { formatEur } from '@/lib/promo';
 import { trackEvent } from '@/lib/metaPixel';
 
 const createPath = '/digitalni-memorijal/kreiraj';
@@ -96,6 +98,7 @@ const SectionIntro = ({ eyebrow, title, text }: { eyebrow?: string; title: strin
 );
 
 const DigitalniMemorijal = () => {
+  const seasonal = activeSeasonalPromo();
   const reviewsRef = useRef<HTMLDivElement>(null);
   const heroCtaRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
@@ -182,7 +185,14 @@ const DigitalniMemorijal = () => {
               <h1 className="mt-6 max-w-3xl font-display text-4xl font-semibold leading-tight text-foreground md:text-5xl lg:text-6xl">Digitalni memorijal za uspomene koje želite sačuvati</h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">Fotografije, životna priča i poruke obitelji na jednoj memorijalnoj stranici koju možete podijeliti s bližnjima.</p>
               <div className="mt-6 border-l-2 border-accent pl-4 text-base font-medium leading-7 text-foreground">Memorijal možete izraditi za osobu koja je preminula nedavno ili prije mnogo godina.</div>
-              <p className="mt-7 font-display text-3xl font-semibold text-foreground">{MEMORIAL_PRICE_LABEL} <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
+              {seasonal ? (
+                <div className="mt-7">
+                  <p className="font-display text-3xl font-semibold text-foreground">{formatEur(seasonalPrice(seasonal))} <span className="font-body text-lg font-normal text-muted-foreground line-through">{MEMORIAL_PRICE_LABEL}</span> <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
+                  <p className="mt-2 text-sm font-medium text-accent">{seasonal.occasion}: {seasonal.percent} % popusta do {seasonal.untilLabel}, primjenjuje se sam pri plaćanju.</p>
+                </div>
+              ) : (
+                <p className="mt-7 font-display text-3xl font-semibold text-foreground">{MEMORIAL_PRICE_LABEL} <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
+              )}
               <div ref={heroCtaRef} className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <Button asChild variant="gold" size="lg" className="min-h-12 px-6 text-base"><Link to={createPath}>Započni izradu memorijala<ArrowRight aria-hidden="true" /></Link></Button>
                 <Button asChild variant="outline" size="lg" className="min-h-12 bg-background px-6 text-base"><Link to={examplePath}>Pogledaj memorijal</Link></Button>

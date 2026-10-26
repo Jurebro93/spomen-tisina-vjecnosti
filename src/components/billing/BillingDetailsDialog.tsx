@@ -135,17 +135,15 @@ const BillingDetailsDialog = () => {
 
         <div className="space-y-3 max-h-[55vh] overflow-y-auto px-2">
           <div className="pb-2 border-b border-border">
-            {presetPromo && !promo ? (
-              <p className="text-sm text-muted-foreground">Primijenjen promo kod: <strong>{presetPromo}</strong></p>
-            ) : (
-              <PromoCodeField
-                productType="memorial"
-                productLabel="Digitalni memorijal"
-                basePrice={MEMORIAL_PRICE_EUR}
-                applied={promo}
-                onApplied={setPromo}
-              />
-            )}
+            {/* The code chosen in the previous step is re-validated here, so the button shows the real price. */}
+            <PromoCodeField
+              productType="memorial"
+              productLabel="Digitalni memorijal"
+              basePrice={MEMORIAL_PRICE_EUR}
+              applied={promo}
+              onApplied={(applied) => { setPromo(applied); if (!applied) setPresetPromo(null); }}
+              autoCode={presetPromo}
+            />
           </div>
           {!promo?.free && (<>
           <div>

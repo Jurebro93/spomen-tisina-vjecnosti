@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Check, Copy } from "lucide-react";
 import { CONSENT_CHANGED, readConsent } from "@/lib/consent";
 import { trackNewsletterSignup } from "@/lib/newsletterTracking";
+import { activeSeasonalPromo } from "@/lib/seasonalPromo";
 
 const DISMISS_KEY = "discountPopupDismissedAt";
 const CLAIMED_KEY = "discountPopupClaimed";
@@ -26,6 +27,8 @@ const isBlockedPath = (p: string) =>
   p.startsWith("/prijava");
 
 export const shouldSuppressPopup = (now = Date.now()) => {
+  // A running seasonal discount is bigger than the popup's 30 %; two offers would only confuse.
+  if (activeSeasonalPromo(now)) return true;
   try {
     if (localStorage.getItem(CLAIMED_KEY)) return true;
     const d = Number(localStorage.getItem(DISMISS_KEY) || 0);

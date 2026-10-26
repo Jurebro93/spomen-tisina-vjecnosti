@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, Tag, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,14 +11,30 @@ interface Props {
   basePrice: number;
   applied: AppliedPromo | null;
   onApplied: (applied: AppliedPromo | null) => void;
+  /** Applied once on mount (code from the link or a running seasonal promo); a failure stays silent. */
+  autoCode?: string | null;
 }
 
 /** Promo code entry + server-verified price summary. Nothing is applied while typing. */
-const PromoCodeField = ({ productType, productLabel, basePrice, applied, onApplied }: Props) => {
+const PromoCodeField = ({ productType, productLabel, basePrice, applied, onApplied, autoCode }: Props) => {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const autoTried = useRef(false);
+
+  useEffect(() => {
+    if (autoTried.current || applied || !autoCode) return;
+    autoTried.current = true;
+    let cancelled = false;
+    void applyPromoCode(autoCode, productType).then((result) => {
+      if (cancelled || !result.valid || !result.applied) return;
+      setCode(result.applied.code);
+      setSuccess('Popust je već primijenjen.');
+      onApplied(result.applied);
+    });
+    return () => { cancelled = true; };
+  }, [autoCode, applied, productType, onApplied]);
 
   const handleApply = async () => {
     if (!code.trim() || busy) return;
