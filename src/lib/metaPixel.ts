@@ -106,7 +106,7 @@ export const trackPageView = (url?: string) => {
   window.fbq?.('track', 'PageView');
 };
 
-const STANDARD_EVENTS = new Set(['PageView', 'ViewContent', 'Lead', 'CompleteRegistration', 'InitiateCheckout', 'Purchase']);
+const STANDARD_EVENTS = new Set(['PageView', 'ViewContent', 'Lead', 'CompleteRegistration', 'InitiateCheckout', 'Purchase', 'Subscribe']);
 
 export const trackEvent = (
   event: string,
