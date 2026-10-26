@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { saveDraftEmail } from '@/lib/memorialActions';
 import { trackFunnel } from '@/lib/funnel';
 
-type DraftEmailState = 'sent' | 'skipped' | 'dismissed';
+type DraftEmailState = 'sent' | 'dismissed';
 
 const storageKey = (memorialId: string) => `osm_draft_email_${memorialId}`;
 const addressKey = (memorialId: string) => `osm_draft_email_addr_${memorialId}`;
 
-export const readDraftEmailState = (memorialId: string) => {
+const readDraftEmailState = (memorialId: string) => {
   try { return localStorage.getItem(storageKey(memorialId)) as DraftEmailState | null; } catch { return null; }
 };
 
@@ -47,62 +47,8 @@ const submitDraftEmail = async (memorialId: string, userId: string, rawEmail: st
 };
 
 /**
- * Wizard step right after the person and relationship (guests only): an e-mail with a link back to
- * the draft, so nothing is lost when the browser closes and the reminders can reach them. Skippable.
- */
-export const DraftEmailStep = ({ memorialId, userId, onDone }: { memorialId: string; userId: string; onDone: () => void }) => {
-  const [email, setEmail] = useState(() => readDraftEmailAddress(memorialId));
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setError('');
-    setBusy(true);
-    const message = await submitDraftEmail(memorialId, userId, email);
-    setBusy(false);
-    if (message) setError(message);
-    else onDone();
-  };
-
-  const skip = () => {
-    writeDraftEmailState(memorialId, 'skipped');
-    void trackFunnel('draft_email_skipped', { userId, memorialId });
-    onDone();
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl md:text-3xl mb-2">Gdje da spremimo vaš memorijal?</h1>
-        <p className="text-muted-foreground">
-          Upišite e-mail i poslat ćemo vam poveznicu, pa memorijal možete nastaviti kad god želite, i na mobitelu i na računalu.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vas@email.hr"
-          aria-label="E-mail adresa" maxLength={255} autoComplete="email" autoFocus />
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <p className="text-xs text-muted-foreground">
-          Ne tražimo lozinku. Ako memorijal ne dovršite, poslat ćemo vam najviše dva kratka podsjetnika.
-        </p>
-      </div>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <Button type="submit" disabled={busy || !email.trim()}>
-          {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
-        </Button>
-        <button type="button" onClick={skip} disabled={busy} className="text-sm text-muted-foreground underline underline-offset-4">
-          Nastavi bez e-maila
-        </button>
-      </div>
-    </form>
-  );
-};
-
-/**
- * Second chance for guests who skipped the e-mail step (or opened the draft without it): a link back to
- * the draft by e-mail. Hidden once sent or dismissed for this draft.
+ * Optional for guests on the story step: a link back to the draft by e-mail, so it survives a closed
+ * browser and the reminders can reach them. Hidden once sent or dismissed for this draft.
  */
 const DraftEmailCard = ({ memorialId, userId }: { memorialId: string; userId: string }) => {
   const [state, setState] = useState<DraftEmailState | null>(() => readDraftEmailState(memorialId));
