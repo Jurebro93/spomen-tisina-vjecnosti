@@ -6,7 +6,7 @@ import { trackEvent } from '@/lib/metaPixel';
  * GA4 gets a `newsletter_signup` dataLayer event with analytics consent; Meta gets the
  * custom `NewsletterSignup` event with marketing consent, so ad campaigns can count it.
  */
-export const trackNewsletterSignup = (placement: string, variant?: string) => {
+export const trackNewsletterSignup = (placement: string, variant?: string, eventId?: string) => {
   if (typeof window === 'undefined') return;
   if (hasConsent('analytics')) {
     const w = window as Window & { dataLayer?: unknown[] };
@@ -18,5 +18,5 @@ export const trackNewsletterSignup = (placement: string, variant?: string) => {
       page_path: window.location.pathname,
     });
   }
-  trackEvent('NewsletterSignup', { content_name: 'Newsletter', placement });
+  trackEvent('NewsletterSignup', { content_name: 'Newsletter', placement }, eventId);
 };

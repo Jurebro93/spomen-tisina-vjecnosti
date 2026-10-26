@@ -63,10 +63,12 @@ export function EbookForm({ placement, guide = EBOOK.id, buttonLabel = 'Pošalji
     const value = email.trim().toLowerCase();
     if (!EMAIL_RE.test(value)) { setState('invalid'); return; }
     setState('sending');
-    const result = await claimEbook(value, placement, guide);
+    // One id for the pixel and the server (Conversions API) copy of NewsletterSignup.
+    const eventId = `newsletter_${crypto.randomUUID()}`;
+    const result = await claimEbook(value, placement, guide, eventId);
     if (result === 'error') { setState('error'); return; }
     // The first guide keeps its original event names so existing reports stay comparable.
-    trackNewsletterSignup(guide === EBOOK.id ? `ebook_${placement}` : `ebook_${guide}_${placement}`, 'ebook');
+    trackNewsletterSignup(guide === EBOOK.id ? `ebook_${placement}` : `ebook_${guide}_${placement}`, 'ebook', eventId);
     setFresh(true);
     setState('done');
   };

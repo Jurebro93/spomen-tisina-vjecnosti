@@ -5,6 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
 import { emailButton, emailLayout, emailParagraph, SITE } from "../_shared/emailLayout.ts";
+import { buildUserData, cleanBrowserIds, cleanEventId, clientFromRequest, PRODUCTION_ORIGINS, sendMetaEvent } from "../_shared/metaCapi.ts";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -83,11 +84,32 @@ const emailHtml = (guide: GuideId, code: string | null) => {
   });
 };
 
+/**
+ * Server copy of the browser's NewsletterSignup (Conversions API), so ad sets can optimise for guide
+ * signups even when the pixel copy is lost. New signups only, production site only, and only with
+ * the visitor's marketing consent; the shared event_id lets Meta de-duplicate the two copies.
+ */
+const reportSignup = async (req: Request, b: Record<string, unknown>, email: string, guide: GuideId, placement: string) => {
+  if (b.marketing_consent !== true || !PRODUCTION_ORIGINS.includes(req.headers.get("origin") ?? "")) return;
+  const eventId = cleanEventId(b.event_id, "newsletter_");
+  if (!eventId) return;
+  const sourceUrl = typeof b.source_url === "string" && PRODUCTION_ORIGINS.some((o) => (b.source_url as string).startsWith(o))
+    ? b.source_url.slice(0, 1000) : null;
+  const r = await sendMetaEvent({
+    eventName: "NewsletterSignup",
+    eventId,
+    sourceUrl,
+    userData: await buildUserData({ email, ...clientFromRequest(req), ...cleanBrowserIds(b) }),
+    customData: { content_name: "Newsletter", placement: guide === "kad-izgubite-voljenu-osobu" ? `ebook_${placement}` : `ebook_${guide}_${placement}`, guide },
+  });
+  if (!r.ok) console.error("NewsletterSignup CAPI failed", r.status, r.error);
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  let body: { email?: unknown; placement?: unknown; landingUrl?: unknown; guide?: unknown };
+  let body: { email?: unknown; placement?: unknown; landingUrl?: unknown; guide?: unknown; [key: string]: unknown };
   try { body = await req.json(); } catch { return json({ error: "Neispravan zahtjev." }, 400); }
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
@@ -123,6 +145,7 @@ Deno.serve(async (req) => {
       return json({ error: "Prijavu trenutačno nije moguće spremiti." }, 500);
     }
     rowId = row.id;
+    await reportSignup(req, body, email, guide, placement);
     await admin.from("newsletter_users").upsert({ email, active: true }, { onConflict: "email", ignoreDuplicates: true });
 
     // One discount code per address, whether it came from the popup or the guide.
