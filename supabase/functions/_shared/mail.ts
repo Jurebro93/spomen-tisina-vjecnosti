@@ -54,7 +54,9 @@ export const sendMail = async (opts: SendMailOptions) => {
       to,
       replyTo: opts.replyTo,
       subject: opts.subject,
-      html: opts.html,
+      // denomailer does not dot-stuff quoted-printable lines, so a "." that lands at the start of a
+      // wrapped line is dropped by the receiving server (seen: "osmrtnica.comhr"). As an entity it survives.
+      html: opts.html.replace(/\./g, "&#46;"),
       content: " ",
       attachments: opts.attachments?.map((attachment) => ({
         filename: attachment.filename,
