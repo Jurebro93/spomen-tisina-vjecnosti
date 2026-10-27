@@ -22,9 +22,10 @@ import ShareBar from '@/components/memorial/ShareBar';
 import PayMemorialDialog from '@/components/promo/PayMemorialDialog';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  DECEASED_FIELDS, MEMORIAL_PRICE_LABEL, VISIBILITY_LABELS, formatCroatianDate, friendlyError, fullName,
+  DECEASED_FIELDS, VISIBILITY_LABELS, formatCroatianDate, friendlyError, fullName,
   lifeYears, mediaPublicUrl, memorialAbsoluteUrl, type Deceased, type ManagerRole, type Memorial,
 } from '@/lib/memorial';
+import { currentMemorialPriceLabel } from '@/lib/seasonalPromo';
 import {
   addManagerByEmailInvite, archiveMemorial, changeVisibility, deleteMemorial, moderateEntry,
   publishMemorial, resolveAccessRequest, startMemorialPayment, updateMemorial,
@@ -331,7 +332,7 @@ const UrediMemorijal = () => {
             </div>
             {!isPaid && (
               <p className="text-sm text-muted-foreground mt-3 max-w-md">
-                Memorijal je vidljiv samo vama. Nakon uplate ({MEMORIAL_PRICE_LABEL}) automatski se objavljuje
+                Memorijal je vidljiv samo vama. Nakon uplate ({currentMemorialPriceLabel()}) automatski se objavljuje
                 i možete ga podijeliti s drugima.
               </p>
             )}
@@ -342,7 +343,7 @@ const UrediMemorijal = () => {
             </Button>
             {!isPaid ? (
               <Button variant="gold" disabled={saving || !isOwner} onClick={() => setPayOpen(true)}>
-                <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({MEMORIAL_PRICE_LABEL})
+                <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({currentMemorialPriceLabel()})
               </Button>
             ) : memorial.status !== 'published' ? (
               <Button disabled={saving} onClick={async () => {
@@ -694,7 +695,7 @@ const UrediMemorijal = () => {
                       Dijeljenje je dostupno nakon uplate. Memorijal se objavljuje automatski čim je uplata potvrđena.
                     </p>
                     <Button variant="gold" disabled={saving || !isOwner} onClick={() => setPayOpen(true)}>
-                      <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({MEMORIAL_PRICE_LABEL})
+                      <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({currentMemorialPriceLabel()})
                     </Button>
                   </div>
                 )}

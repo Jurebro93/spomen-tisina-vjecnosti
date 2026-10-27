@@ -2,7 +2,8 @@
 // applied automatically at checkout and a notice bar shows the reduced price.
 // The server still validates the code and decides the amount (promo_codes.expires_at).
 import { landingParams } from '@/lib/landing';
-import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
+import { MEMORIAL_PRICE_EUR, MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import { formatEur } from '@/lib/promo';
 
 export interface SeasonalPromo {
   code: string;
@@ -43,3 +44,9 @@ export const seasonalPrice = (promo: SeasonalPromo) =>
 
 /** Code to apply at checkout without typing: the one from the link, else the running promo. */
 export const autoPromoCode = (): string | null => landingCode() ?? activeSeasonalPromo()?.code ?? null;
+
+/** Memorial price as shown to visitors right now: the seasonal price while a promo runs. */
+export const currentMemorialPriceLabel = (): string => {
+  const promo = activeSeasonalPromo();
+  return promo ? formatEur(seasonalPrice(promo)) : MEMORIAL_PRICE_LABEL;
+};

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Sparkles, ArrowRight, Flower2 } from 'lucide-react';
-import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import MemorialPrice from '@/components/promo/MemorialPrice';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
 interface Props {
@@ -28,7 +28,7 @@ const MemorialCtaBanner = ({ placement = 'banner' }: Props) => {
             Sačuvajte sjećanje na voljenu osobu
           </h2>
           <p className="text-foreground/75 text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-            Digitalni memorijal je mirna stranica posvećena vašoj voljenoj osobi — s fotografijama, životnom pričom, porukama obitelji i virtualnim svijećama. {MEMORIAL_PRICE_LABEL} jednokratno.
+            Digitalni memorijal je mirna stranica posvećena vašoj voljenoj osobi — s fotografijama, životnom pričom, porukama obitelji i virtualnim svijećama. <MemorialPrice /> jednokratno.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">

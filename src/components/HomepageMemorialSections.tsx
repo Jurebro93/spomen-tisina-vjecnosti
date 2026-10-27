@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import MemorialPrice from '@/components/promo/MemorialPrice';
 const marijaPhoto = "/site/marija-kovac-portret.jpg";
 
 const CREATE_PATH = '/digitalni-memorijal/kreiraj';
@@ -41,7 +41,7 @@ export const MemorialHeroSection = ({ variant = 'section' }: { variant?: 'hero' 
           <Heading className={`mt-4 max-w-3xl font-semibold leading-tight ${isHero ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-3xl md:text-4xl'}`}>Sačuvajte priču o osobi koju volite</Heading>
           <p className={`max-w-2xl text-muted-foreground ${isHero ? 'mt-6 text-lg leading-8' : 'mt-4 text-base leading-7'}`}>Okupite fotografije, životnu priču i poruke sjećanja na jednoj memorijalnoj stranici koju možete podijeliti s obitelji i prijateljima.</p>
           <p className={`max-w-xl border-l-2 border-accent pl-4 font-semibold leading-7 ${isHero ? 'mt-6 text-lg' : 'mt-4 text-base'}`}>Za osobu koja je preminula nedavno ili prije mnogo godina.</p>
-          <p className={`font-display font-semibold ${isHero ? 'mt-7 text-3xl' : 'mt-5 text-2xl'}`}>{MEMORIAL_PRICE_LABEL} <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
+          <p className={`font-display font-semibold ${isHero ? 'mt-7 text-3xl' : 'mt-5 text-2xl'}`}><MemorialPrice /> <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
           <div className={`flex flex-col gap-3 sm:flex-row ${isHero ? 'mt-7' : 'mt-5'}`}>
             <CreateButton label="Izradi memorijal" position="create_hero" />
             <Button asChild variant="outline" size="lg" className="min-h-12 bg-background px-6 text-base"><Link to={EXAMPLE_PATH} onClick={() => trackHomepageAction('open_example')}>Pogledaj memorijal</Link></Button>
@@ -112,7 +112,7 @@ export const MemorialFinalCtaSection = () => (
     <div className="container mx-auto px-4 text-center">
       <h2 className="text-primary-foreground">Sačuvajte priču koju želite prenijeti dalje</h2>
       <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-primary-foreground/75">Započnite fotografijom, kratkom pričom ili uspomenom na osobu koja vam je važna.</p>
-      <p className="mt-6 font-display text-3xl font-semibold text-accent">{MEMORIAL_PRICE_LABEL} <span className="font-body text-base font-normal text-primary-foreground/70">jednokratno · Bez pretplate</span></p>
+      <p className="mt-6 font-display text-3xl font-semibold text-accent"><MemorialPrice /> <span className="font-body text-base font-normal text-primary-foreground/70">jednokratno · Bez pretplate</span></p>
       <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
         <CreateButton label="Izradi memorijal" position="create_final" />
         <Link to="/digitalni-memorijal" onClick={() => trackHomepageAction('memorial_details_final')} className="inline-flex min-h-12 items-center px-5 font-semibold text-primary-foreground underline underline-offset-4">Saznaj više o digitalnom memorijalu</Link>
