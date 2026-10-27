@@ -1,7 +1,8 @@
 // Shared look for e-mails to visitors: logo header, white card on a warm background, gold button, footer.
 // Table layout with inline styles, because e-mail clients (Gmail, Outlook) ignore most CSS.
 export const SITE = "https://osmrtnica.com.hr";
-const LOGO = `${SITE}/logo-osmrtnica.png`;
+// Gold candle on a transparent background: stays visible when mail apps darken or invert the header.
+const LOGO = `${SITE}/email-logo.png`;
 
 export const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -30,6 +31,7 @@ type Layout = {
   reason?: string;
 };
 
+// Trailing spaces are stripped: the SMTP client encodes them as a visible "=20" on otherwise empty lines.
 export const emailLayout = ({ preheader, title, body, image, reason }: Layout) => `<!doctype html>
 <html lang="hr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head>
 <body style="margin:0;padding:0;background:#f4efe6">
@@ -58,4 +60,4 @@ export const emailLayout = ({ preheader, title, body, image, reason }: Layout) =
     </table>
   </td></tr>
 </table>
-</body></html>`;
+</body></html>`.replace(/[ \t]+$/gm, "");
