@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
-import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import MemorialPrice from '@/components/promo/MemorialPrice';
 import { formatLifespan } from '@/lib/utils';
 import { trackNewsletterSignup } from '@/lib/newsletterTracking';
 import { citySlug } from '@/lib/cityMatch';
@@ -222,7 +222,7 @@ const HomepageTwo = () => {
                   <span className="text-xs font-semibold uppercase text-accent">Digitalni memorijal</span>
                   <h2 className="mt-3 text-2xl font-medium sm:text-3xl">Sačuvajte uspomene na dragu osobu</h2>
                   <p className="mt-4 text-base leading-relaxed text-primary-foreground/75">Fotografije, životna priča i poruke obitelji na jednom mjestu — i za osobu koja je preminula prije mnogo godina.</p>
-                  <p className="mt-5 text-base font-semibold">{MEMORIAL_PRICE_LABEL} jednokratno · Bez pretplate</p>
+                  <p className="mt-5 text-base font-semibold"><MemorialPrice /> jednokratno · Bez pretplate</p>
                   <Button asChild size="lg" className="mt-5 min-h-12 w-full bg-accent text-accent-foreground hover:bg-accent/90">
                     <Link to="/digitalni-memorijal" onClick={() => trackMemorialClick('hero_card')}>Pogledaj kako izgleda <ArrowRight className="ml-2 h-4 w-4" /></Link>
                   </Button>

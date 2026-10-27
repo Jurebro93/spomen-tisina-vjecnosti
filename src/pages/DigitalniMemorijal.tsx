@@ -17,7 +17,8 @@ const marijaMlada = "/site/marija-kovac-mlada.jpg";
 const marijaKuhinja = "/site/marija-kovac-kuhinja.jpg";
 const marijaVrt = "/site/marija-kovac-vrt.jpg";
 import { MEMORIAL_PRICE_EUR, MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
-import { activeSeasonalPromo, seasonalPrice } from '@/lib/seasonalPromo';
+import MemorialPrice from '@/components/promo/MemorialPrice';
+import { activeSeasonalPromo, seasonalPrice, currentMemorialPriceLabel } from '@/lib/seasonalPromo';
 import { formatEur } from '@/lib/promo';
 import { trackEvent } from '@/lib/metaPixel';
 
@@ -54,7 +55,7 @@ const faq = [
     q: 'Koja je razlika između osmrtnice i digitalnog memorijala?',
     a: 'Osmrtnica prvenstveno obavještava o smrti i posljednjem ispraćaju. Digitalni memorijal okuplja životnu priču, fotografije i poruke sjećanja. Može se izraditi neovisno o objavi osmrtnice.',
   },
-  { q: 'Koliko košta digitalni memorijal?', a: `Digitalni memorijal košta ${MEMORIAL_PRICE_LABEL} jednokratno. Nema mjesečne ni godišnje pretplate, a plaćanje slijedi tek nakon što izradite i pregledate memorijal.` },
+  { q: 'Koliko košta digitalni memorijal?', a: `Digitalni memorijal košta ${currentMemorialPriceLabel()} jednokratno. Nema mjesečne ni godišnje pretplate, a plaćanje slijedi tek nakon što izradite i pregledate memorijal.` },
   { q: 'Moram li unaprijed imati napisan tekst?', a: 'Ne. Možete napisati vlastiti tekst ili iz unesenih podataka pripremiti prijedlog koji zatim pregledavate i prilagođavate svojim riječima.' },
   { q: 'Koliko fotografija mogu dodati?', a: 'Možete dodati glavnu fotografiju i više fotografija iz obiteljskih albuma. Svaka fotografija može imati do 8 MB i biti u JPG, PNG ili WEBP formatu.' },
   { q: 'Mogu li kasnije uređivati memorijal?', a: 'Da. Vlasnik memorijala može se prijaviti u svoj račun i naknadno uređivati priču, fotografije, vidljivost i druge podatke memorijala.' },
@@ -288,7 +289,7 @@ const DigitalniMemorijal = () => {
                     <p className="text-xs font-semibold uppercase tracking-widest text-accent">Jedna jasna ponuda</p>
                     <h2 className="mt-4 font-display text-3xl font-semibold md:text-4xl lg:text-5xl">Jedan memorijal.<br className="hidden sm:block" /> Jednokratno plaćanje.</h2>
                     <p className="mt-5 max-w-md text-lg leading-8 text-primary-foreground/75">Bez mjesečne ili godišnje pretplate. Plaćate tek nakon što izradite i pregledate memorijal.</p>
-                    <p className="mt-8 font-display text-6xl font-semibold text-accent md:text-7xl">{MEMORIAL_PRICE_LABEL}</p>
+                    <p className="mt-8 font-display text-6xl font-semibold text-accent md:text-7xl"><MemorialPrice /></p>
                     <p className="mt-3 text-sm text-primary-foreground/60">Jednokratno · Bez skrivenih troškova</p>
                   </div>
                   <div className="flex flex-col justify-center">
@@ -370,7 +371,7 @@ const DigitalniMemorijal = () => {
       <div ref={footerRef}><Footer /></div>
 
       <div className={`fixed inset-x-0 bottom-0 z-40 p-3 pb-[max(.75rem,env(safe-area-inset-bottom))] transition-transform duration-200 md:hidden ${showMobileCta ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`} aria-hidden={!showMobileCta}>
-        <Button asChild variant="gold" size="lg" className="min-h-12 w-full shadow-memorial"><Link to={createPath} tabIndex={showMobileCta ? 0 : -1}>Započni izradu · {MEMORIAL_PRICE_LABEL}</Link></Button>
+        <Button asChild variant="gold" size="lg" className="min-h-12 w-full shadow-memorial"><Link to={createPath} tabIndex={showMobileCta ? 0 : -1}>Započni izradu · {currentMemorialPriceLabel()}</Link></Button>
       </div>
     </div>
   );

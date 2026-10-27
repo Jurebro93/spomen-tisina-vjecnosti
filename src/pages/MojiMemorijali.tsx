@@ -10,9 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  DECEASED_FIELDS, MEMORIAL_PRICE_LABEL, STATUS_LABELS, VISIBILITY_LABELS, friendlyError, fullName,
+  DECEASED_FIELDS, STATUS_LABELS, VISIBILITY_LABELS, friendlyError, fullName,
   lifeYears, mediaPublicUrl, type Deceased, type Memorial,
 } from '@/lib/memorial';
+import { currentMemorialPriceLabel } from '@/lib/seasonalPromo';
 import { deleteMemorial } from '@/lib/memorialActions';
 import PayMemorialDialog from '@/components/promo/PayMemorialDialog';
 import { useToast } from '@/hooks/use-toast';
@@ -186,7 +187,7 @@ const MojiMemorijali = () => {
                       {memorial.paid !== true && role === 'owner' && (
                         <Button size="sm" variant="gold" className="flex-1 mt-3"
                           disabled={busyId === memorial.id} onClick={() => setPayId(memorial.id)}>
-                          <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({MEMORIAL_PRICE_LABEL})
+                          <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({currentMemorialPriceLabel()})
                         </Button>
                       )}
                       {role === 'owner' && (

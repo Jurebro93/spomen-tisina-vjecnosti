@@ -1,5 +1,5 @@
 import { Check, ExternalLink, Lock } from 'lucide-react';
-import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import MemorialPrice from '@/components/promo/MemorialPrice';
 
 export const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';
 
@@ -15,7 +15,7 @@ const included = [
 /** What the family gets for the one-off price, shown right before payment. */
 const MemorialValueSummary = ({ compact = false }: { compact?: boolean }) => (
   <div className="rounded-md border border-border p-4 space-y-3 text-sm">
-    <p className="font-semibold">Što dobivate za {MEMORIAL_PRICE_LABEL}, jednokratno</p>
+    <p className="font-semibold">Što dobivate za <MemorialPrice />, jednokratno</p>
     <ul className="space-y-1.5">
       {(compact ? included.slice(0, 4) : included).map((item) => (
         <li key={item} className="flex items-start gap-2">

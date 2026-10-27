@@ -15,9 +15,10 @@ import RequestAccessDialog from '@/components/memorial/RequestAccessDialog';
 import MemorialSidebar from '@/components/memorial/MemorialSidebar';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  DECEASED_FIELDS, MEMORIAL_PRICE_EUR, MEMORIAL_PRICE_LABEL, friendlyError, fullName, lifeYears, mediaPublicUrl,
+  DECEASED_FIELDS, MEMORIAL_PRICE_EUR, friendlyError, fullName, lifeYears, mediaPublicUrl,
   memorialAbsoluteUrl, type Deceased, type Memorial,
 } from '@/lib/memorial';
+import { currentMemorialPriceLabel } from '@/lib/seasonalPromo';
 import PayMemorialDialog from '@/components/promo/PayMemorialDialog';
 import { trackEvent } from '@/lib/metaPixel';
 import { useToast } from '@/hooks/use-toast';
@@ -285,7 +286,7 @@ const MemorijalStranica = () => {
             <div className="container mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
                 {memorial.paid !== true
-                  ? `Memorijal još nije plaćen — vidljiv je samo vama. Nakon uplate (${MEMORIAL_PRICE_LABEL}) automatski se objavljuje i možete ga dijeliti.`
+                  ? `Memorijal još nije plaćen — vidljiv je samo vama. Nakon uplate (${currentMemorialPriceLabel()}) automatski se objavljuje i možete ga dijeliti.`
                   : `Vi upravljate ovim memorijalom${memorial.status !== 'published' ? ' (nije javno objavljen)' : ''}.`}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -296,7 +297,7 @@ const MemorijalStranica = () => {
                  )}
                 {memorial.paid !== true && memorial.owner_id === user?.id && (
                   <Button variant="gold" size="sm" disabled={paying} onClick={() => setPayOpen(true)}>
-                    <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({MEMORIAL_PRICE_LABEL})
+                    <CreditCard className="h-4 w-4 mr-2" /> Plati i objavi ({currentMemorialPriceLabel()})
                   </Button>
                 )}
                 <Button asChild size="sm" variant="outline">

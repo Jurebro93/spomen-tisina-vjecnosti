@@ -14,7 +14,7 @@ const candlesImage = "/site/memorial-candles.jpg";
 const candleFlame = "/site/candle-flame-large.png";
 const candleNoFlame = "/site/candle-no-flame.png";
 import { SEOHelmet } from '@/hooks/useSEO';
-import { MEMORIAL_PRICE_LABEL } from '@/lib/memorial';
+import MemorialPrice from '@/components/promo/MemorialPrice';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 
 const ZapaliSvijecu = () => {
@@ -183,7 +183,7 @@ const ZapaliSvijecu = () => {
                   Svijeća za {litFor} gori 7 dana
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Sačuvajte uspomenu trajno: digitalni memorijal s fotografijama, životnom pričom i porukama obitelji. {MEMORIAL_PRICE_LABEL} jednokratno.
+                  Sačuvajte uspomenu trajno: digitalni memorijal s fotografijama, životnom pričom i porukama obitelji. <MemorialPrice /> jednokratno.
                 </p>
                 <Link
                   to="/digitalni-memorijal/kreiraj"
