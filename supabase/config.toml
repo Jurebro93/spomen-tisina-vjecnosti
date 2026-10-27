@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.request-memorial-help]
 verify_jwt = false
+
+[functions.send-campaign-email]
+verify_jwt = false
