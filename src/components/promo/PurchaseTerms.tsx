@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
+import { currentMemorialPrice } from '@/lib/seasonalPromo';
 import { TERMS_VERSION } from '@/lib/legal';
 import { hasConsent } from '@/lib/consent';
 
@@ -22,14 +23,14 @@ const startDate = () => {
 };
 
 export const payButtonLabel = (promo: AppliedPromo | null) =>
-  promo?.free ? 'Aktiviraj besplatno' : `Naruči i plati ${formatEur(promo ? promo.final_price : MEMORIAL_PRICE_EUR)}`;
+  promo?.free ? 'Aktiviraj besplatno' : `Naruči i plati ${formatEur(promo ? promo.final_price : currentMemorialPrice())}`;
 
 const PurchaseTerms = ({ value, onChange, promo }: { value: PurchaseConsent; onChange: (v: PurchaseConsent) => void; promo: AppliedPromo | null }) => (
   <div className="space-y-3 text-sm">
     <div className="rounded-md border border-border bg-muted/40 p-3 space-y-1">
-      <p className="font-semibold">Digitalni memorijal — 39,00 €, jednokratno. Bez pretplate i naknade za obnovu.</p>
-      {promo && promo.discount_amount > 0 && <p>Popust ({promo.code}): −{formatEur(promo.discount_amount)}</p>}
-      <p>Konačni iznos: <strong>{formatEur(promo ? promo.final_price : MEMORIAL_PRICE_EUR)}</strong></p>
+      <p className="font-semibold">Digitalni memorijal, jednokratno. Bez pretplate i naknade za obnovu.</p>
+      {promo && promo.discount_amount > 0 && <p>Cijena: <span className="line-through">{formatEur(MEMORIAL_PRICE_EUR)}</span> · popust ({promo.code}): −{formatEur(promo.discount_amount)}</p>}
+      <p>Konačni iznos: <strong>{formatEur(promo ? promo.final_price : currentMemorialPrice())}</strong></p>
       <p className="text-muted-foreground">Uključuje fotografije, videozapise, tekstove i naknadno uređivanje. Memorijal se čuva trajno, bez roka isteka. Fotografije u formatu JPG, PNG ili WEBP do 8 MB po datoteci; videozapisi se dodaju kao poveznica (npr. YouTube).</p>
     </div>
     <label className="flex items-start gap-3">

@@ -45,6 +45,12 @@ export const seasonalPrice = (promo: SeasonalPromo) =>
 /** Code to apply at checkout without typing: the one from the link, else the running promo. */
 export const autoPromoCode = (): string | null => landingCode() ?? activeSeasonalPromo()?.code ?? null;
 
+/** Memorial price right now: the seasonal price while a promo runs, else the regular one. */
+export const currentMemorialPrice = (): number => {
+  const promo = activeSeasonalPromo();
+  return promo ? seasonalPrice(promo) : MEMORIAL_PRICE_EUR;
+};
+
 /** Memorial price as shown to visitors right now: the seasonal price while a promo runs. */
 export const currentMemorialPriceLabel = (): string => {
   const promo = activeSeasonalPromo();

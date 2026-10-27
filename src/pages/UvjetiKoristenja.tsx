@@ -1,9 +1,12 @@
 import LegalLayout, { H2, L } from '@/components/legal/LegalLayout';
 import { LEGAL_VERSIONS } from '@/lib/legal';
 import { fullAddress, useBusiness } from '@/lib/business';
+import { formatEur } from '@/lib/promo';
+import { activeSeasonalPromo, seasonalPrice } from '@/lib/seasonalPromo';
 
 const UvjetiKoristenja = () => {
   const b = useBusiness();
+  const seasonal = activeSeasonalPromo();
   return (
     <LegalLayout title="Uvjeti korištenja i kupnje" path="/uvjeti-koristenja" version={LEGAL_VERSIONS.uvjeti}>
       <p>Ovi uvjeti uređuju korištenje stranice osmrtnica.com.hr, objavu besplatnih osmrtnica i kupnju digitalnih memorijala.</p>
@@ -15,7 +18,7 @@ const UvjetiKoristenja = () => {
 
       <H2>Digitalni memorijal</H2>
       <p>Digitalni memorijal omogućuje čuvanje i predstavljanje uspomena kroz fotografije, videozapise i tekstove te naknadno uređivanje sadržaja.</p>
-      <p>Cijena iznosi 39,00 € i plaća se jednokratno. Ne postoji pretplata ni naknada za obnovu. {b.tax_note}</p>
+      <p>Cijena iznosi 39,00 € i plaća se jednokratno.{seasonal && ` Do ${seasonal.untilLabel} (${seasonal.occasion}) cijena uz popust iznosi ${formatEur(seasonalPrice(seasonal))}.`} Ne postoji pretplata ni naknada za obnovu. {b.tax_note}</p>
       <p>Dostupne funkcije, tehnički preduvjeti i ograničenja navedeni su u opisu usluge prije kupnje.</p>
 
       <H2>Trajanje i čuvanje</H2>

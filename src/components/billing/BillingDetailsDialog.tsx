@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
+import { currentMemorialPrice } from '@/lib/seasonalPromo';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -204,7 +205,7 @@ const BillingDetailsDialog = () => {
         <DialogFooter>
           <Button variant="outline" onClick={() => close(true)} disabled={saving}>Odustani</Button>
           <Button variant="gold" onClick={submit} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} {promo ? (promo.free ? 'Aktiviraj besplatno' : `Naruči i plati ${formatEur(promo.final_price)}`) : 'Naruči i plati 39,00 €'}
+            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} {promo ? (promo.free ? 'Aktiviraj besplatno' : `Naruči i plati ${formatEur(promo.final_price)}`) : `Naruči i plati ${formatEur(currentMemorialPrice())}`}
           </Button>
         </DialogFooter>
       </DialogContent>

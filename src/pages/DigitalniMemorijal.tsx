@@ -160,10 +160,10 @@ const DigitalniMemorijal = () => {
     <div className="min-h-screen overflow-x-hidden bg-memorial-warm text-foreground">
       <Helmet>
         <title>Digitalni memorijal – uspomene na voljenu osobu | Osmrtnica</title>
-        <meta name="description" content="Sačuvajte fotografije, životnu priču i poruke obitelji. Izradite digitalni memorijal i za osobu preminulu prije mnogo godina. 39 € jednokratno." />
+        <meta name="description" content={`Sačuvajte fotografije, životnu priču i poruke obitelji. Izradite digitalni memorijal i za osobu preminulu prije mnogo godina. ${currentMemorialPriceLabel()} jednokratno.`} />
         <link rel="canonical" href="https://osmrtnica.com.hr/digitalni-memorijal" />
         <meta property="og:title" content="Digitalni memorijal – uspomene na voljenu osobu | Osmrtnica" />
-        <meta property="og:description" content="Sačuvajte fotografije, životnu priču i poruke obitelji. Izradite digitalni memorijal i za osobu preminulu prije mnogo godina. 39 € jednokratno." />
+        <meta property="og:description" content={`Sačuvajte fotografije, životnu priču i poruke obitelji. Izradite digitalni memorijal i za osobu preminulu prije mnogo godina. ${currentMemorialPriceLabel()} jednokratno.`} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://osmrtnica.com.hr/digitalni-memorijal" />
         <meta property="og:image" content="https://osmrtnica.com.hr/wp-content/uploads/2022/12/Logo-Osmrtnica.com_.hr_-300x300.png" />
