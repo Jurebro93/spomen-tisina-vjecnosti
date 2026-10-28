@@ -2,6 +2,7 @@
 // Called by an operator with a one-time x-campaign-token inserted into email_campaign_tokens by SQL.
 // mode "test" sends one copy with a [Proba] subject; mode "all" sends to every recipient once
 // (email_campaign_sends remembers who already got it) and skips buyers and test addresses.
+// Each copy carries an open pixel and tracked links (email-track) under the recipient's rid.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
 import { emailButton, emailLayout, emailNote, emailParagraph, SITE } from "../_shared/emailLayout.ts";
@@ -18,6 +19,15 @@ const link = (content: string) =>
   `${SITE}/kreiraj-memorijal?kod=SVISVETI50&utm_source=email&utm_medium=email&utm_campaign=svisveti_2026&utm_content=${content}`;
 
 type Campaign = { subject: string; html: string };
+
+const TRACK = `${Deno.env.get("SUPABASE_URL")}/functions/v1/email-track`;
+
+// Links to the site go through the click redirect; the pixel goes last so a blocked image changes nothing visible.
+const tracked = (html: string, rid: string) =>
+  html
+    .replace(/href="(https:\/\/osmrtnica\.com\.hr[^"]*)"/g, (_, url: string) =>
+      `href="${TRACK}?r=${rid}&amp;k=c&amp;u=${encodeURIComponent(url.replace(/&amp;/g, "&"))}"`)
+    .replace("</body>", `<img src="${TRACK}?r=${rid}&amp;k=o" width="1" height="1" alt="" style="border:0"></body>`);
 
 const CAMPAIGNS: Record<string, Campaign> = {
   svisveti_e1: {
@@ -81,7 +91,7 @@ Deno.serve(async (req) => {
 
   if (mode === "test") {
     if (!EMAIL_RE.test(test_to ?? "")) return json({ error: "test_to required" }, 400);
-    await sendMail({ to: test_to, subject: `[Proba] ${content.subject}`, html: content.html });
+    await sendMail({ to: test_to, subject: `[Proba] ${content.subject}`, html: tracked(content.html, crypto.randomUUID()) });
     return json({ sent: 1, to: test_to });
   }
   if (mode !== "all") return json({ error: "mode must be test or all" }, 400);
@@ -98,7 +108,11 @@ Deno.serve(async (req) => {
   const failed: string[] = [];
   for (const email of todo) {
     try {
-      await sendMail({ to: email, subject: content.subject, html: content.html });
+      // The row (and its rid) exists before the send, so the tracked links point at a known recipient.
+      const { data: row, error: rowError } = await db.from("email_campaign_sends")
+        .upsert({ campaign, email, error: null }, { onConflict: "campaign,email" }).select("rid").single();
+      if (rowError || !row) throw rowError ?? new Error("no send row");
+      await sendMail({ to: email, subject: content.subject, html: tracked(content.html, row.rid) });
       await db.from("email_campaign_sends").upsert({ campaign, email, sent_at: new Date().toISOString(), error: null });
       sent++;
     } catch (e) {
