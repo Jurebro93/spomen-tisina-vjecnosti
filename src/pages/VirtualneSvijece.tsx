@@ -5,10 +5,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { supabase } from '@/integrations/supabase/client';
+import RelightCandleButton from '@/components/candles/RelightCandleButton';
+import { useCandleResultToast } from '@/components/candles/CandlePlanPicker';
+import { useCandlePaymentReturn } from '@/lib/candlePlans';
 const candlesImage = "/site/memorial-candles.jpg";
 const candleFlame = "/site/candle-flame-large.png";
 import { SEOHelmet } from '@/hooks/useSEO';
@@ -16,12 +18,11 @@ import MemorialCtaSection from '@/components/MemorialCtaSection';
 import { timeAgo } from '@/lib/hr';
 
 const VirtualneSvijece = () => {
-  const { toast } = useToast();
+  const showCandleResult = useCandleResultToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterBy, setFilterBy] = useState('all');
   const [candles, setCandles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [relightingCandles, setRelightingCandles] = useState<Set<string>>(new Set());
 
   const fetchCandles = useCallback(async () => {
     try {
@@ -53,6 +54,11 @@ const VirtualneSvijece = () => {
 
   const formatTimeAgo = timeAgo;
 
+  useCandlePaymentReturn((result) => {
+    showCandleResult(result);
+    if (result.status === 'paid') fetchCandles();
+  });
+
   const filteredCandles = candles.filter(candle => {
     const candleName = `${candle.pokojnik_ime || ''} ${candle.pokojnik_prezime || ''}`;
     const matchesSearch = candleName.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -72,47 +78,6 @@ const VirtualneSvijece = () => {
     return matchesSearch;
   });
 
-  const handleRelightCandle = async (candleId: string) => {
-    setRelightingCandles(prev => new Set([...prev, candleId]));
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('relight-candle', {
-        body: { candleId }
-      });
-
-      if (error) {
-        console.error('Error relighting candle:', error);
-        toast({
-          title: "Greška",
-          description: "Dogodila se greška prilikom ponovnog paljenja svijeće.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data?.success) {
-        toast({
-          title: "Uspjeh",
-          description: "Svijeća je uspješno ponovno zapaljena!",
-        });
-        // Refresh the candles list
-        fetchCandles();
-      }
-    } catch (error) {
-      console.error('Error relighting candle:', error);
-      toast({
-        title: "Greška",
-        description: "Dogodila se greška prilikom ponovnog paljenja svijeće.",
-        variant: "destructive",
-      });
-    } finally {
-      setRelightingCandles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(candleId);
-        return newSet;
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-candle-warm">
@@ -250,14 +215,7 @@ const VirtualneSvijece = () => {
                       
                       {!candle.is_burning && (
                         <div className="flex justify-center sm:justify-start">
-                          <Button 
-                            size="sm" 
-                            className="elegant-button bg-candle-flame hover:bg-candle-flame/90 text-white"
-                            onClick={() => handleRelightCandle(candle.id)}
-                            disabled={relightingCandles.has(candle.id)}
-                          >
-                            {relightingCandles.has(candle.id) ? 'Pali se...' : 'Zapali ponovno'}
-                          </Button>
+                          <RelightCandleButton candleId={candle.id} personName={`${candle.pokojnik_ime} ${candle.pokojnik_prezime}`} className="elegant-button bg-candle-flame hover:bg-candle-flame/90 text-white" />
                         </div>
                       )}
                     </div>

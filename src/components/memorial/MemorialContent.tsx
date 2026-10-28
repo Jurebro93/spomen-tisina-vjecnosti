@@ -35,6 +35,8 @@ export interface PublicCandle {
   visitor_name: string | null;
   message: string | null;
   created_at: string;
+  /** Paid candles burn until this time; older free candles have none and burn 7 days. */
+  expires_at?: string | null;
 }
 
 interface Props {
@@ -302,7 +304,9 @@ const MemorialContent = ({
               {candleSlot}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
                 {candles.map((candle) => {
-                  const lit = Date.now() - new Date(candle.created_at).getTime() < 7 * 86400000;
+                  const lit = candle.expires_at
+                    ? new Date(candle.expires_at).getTime() > Date.now()
+                    : Date.now() - new Date(candle.created_at).getTime() < 7 * 86400000;
                   return (
                   <Card key={candle.id} className="memorial-card hover:shadow-memorial transition-all duration-300 bg-background">
                     <CardContent className="p-4 flex items-start gap-3">

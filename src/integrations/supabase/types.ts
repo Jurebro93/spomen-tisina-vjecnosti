@@ -1029,6 +1029,13 @@ export type Database = {
       }
       memorial_candles: {
         Row: {
+          amount_paid: number | null
+          duration_days: number | null
+          expires_at: string | null
+          paid_at: string | null
+          payment_status: string | null
+          stripe_session_id: string | null
+          visitor_email: string | null
           approved_at: string | null
           approved_by: string | null
           created_at: string
@@ -1039,6 +1046,13 @@ export type Database = {
           visitor_name: string | null
         }
         Insert: {
+          amount_paid?: number | null
+          duration_days?: number | null
+          expires_at?: string | null
+          paid_at?: string | null
+          payment_status?: string | null
+          stripe_session_id?: string | null
+          visitor_email?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -1049,6 +1063,13 @@ export type Database = {
           visitor_name?: string | null
         }
         Update: {
+          amount_paid?: number | null
+          duration_days?: number | null
+          expires_at?: string | null
+          paid_at?: string | null
+          payment_status?: string | null
+          stripe_session_id?: string | null
+          visitor_email?: string | null
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
@@ -2264,6 +2285,10 @@ export type Database = {
       }
       virtual_candles: {
         Row: {
+          amount_paid: number | null
+          duration_days: number | null
+          last_relight_session_id: string | null
+          paid_at: string | null
           active: boolean | null
           created_at: string
           expires_at: string
@@ -2279,6 +2304,10 @@ export type Database = {
           zapalio_ime: string
         }
         Insert: {
+          amount_paid?: number | null
+          duration_days?: number | null
+          last_relight_session_id?: string | null
+          paid_at?: string | null
           active?: boolean | null
           created_at?: string
           expires_at?: string
@@ -2294,6 +2323,10 @@ export type Database = {
           zapalio_ime: string
         }
         Update: {
+          amount_paid?: number | null
+          duration_days?: number | null
+          last_relight_session_id?: string | null
+          paid_at?: string | null
           active?: boolean | null
           created_at?: string
           expires_at?: string

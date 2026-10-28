@@ -27,8 +27,8 @@ const FAQS = [
     answer: 'Cijena sprovoda u Hrvatskoj ovisi o odabranim uslugama i gradu, a u prosjeku se kreće od nekoliko tisuća do preko 10.000 eura. U cijenu ulaze prijenos pokojnika, pripremanje, lijes, cvijeće, obavijesti, grobno mjesto i sprovodna svečanost. Preporučujemo da zatražite detaljnu ponudu od odabranog pogrebnog poduzeća.',
   },
   {
-    question: 'Jesu li virtualne svijeće besplatne i koliko traju?',
-    answer: 'Da, zapaliti virtualnu svijeću je potpuno besplatno. Svaka svijeća gori 7 dana, a nakon toga se automatski ugasi. Novu svijeću možete zapaliti bilo kada.',
+    question: 'Koliko košta virtualna svijeća i koliko dugo gori?',
+    answer: 'Sami birate koliko dugo svijeća gori: 7 dana za 3,99 €, 14 dana za 5,99 € ili 30 dana za 9,99 €. Plaća se jednokratno karticom, a svijeća se pojavi odmah nakon plaćanja. Kad se ugasi, možete je ponovno zapaliti.',
   },
 ];
 

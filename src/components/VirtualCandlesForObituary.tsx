@@ -3,9 +3,11 @@ import { Flame, Heart, MessageCircle, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 const candleFlame = "/site/candle-flame-large.png";
 import { supabase } from '@/integrations/supabase/client';
+import RelightCandleButton from '@/components/candles/RelightCandleButton';
+import { useCandleResultToast } from '@/components/candles/CandlePlanPicker';
+import { useCandlePaymentReturn } from '@/lib/candlePlans';
 import { displayName, timeAgo } from '@/lib/hr';
 
 interface VirtualCandlesForObituaryProps {
@@ -19,10 +21,9 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
   pokojnikPrezime,
   onRelight
 }) => {
-  const { toast } = useToast();
+  const showCandleResult = useCandleResultToast();
   const [candles, setCandles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [relightingCandles, setRelightingCandles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchCandlesForPerson();
@@ -51,48 +52,14 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
 
   const formatTimeAgo = timeAgo;
 
-  const handleRelightCandle = async (candleId: string) => {
-    setRelightingCandles(prev => new Set([...prev, candleId]));
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('relight-candle', {
-        body: { candleId }
-      });
-
-      if (error) {
-        console.error('Error relighting candle:', error);
-        toast({
-          title: "Greška",
-          description: "Dogodila se greška prilikom ponovnog paljenja svijeće.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data?.success) {
-        onRelight?.();
-        toast({
-          title: "Uspjeh",
-          description: "Svijeća je uspješno ponovno zapaljena!",
-        });
-        // Refresh the candles list
-        fetchCandlesForPerson();
-      }
-    } catch (error) {
-      console.error('Error relighting candle:', error);
-      toast({
-        title: "Greška",
-        description: "Dogodila se greška prilikom ponovnog paljenja svijeće.",
-        variant: "destructive",
-      });
-    } finally {
-      setRelightingCandles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(candleId);
-        return newSet;
-      });
+  useCandlePaymentReturn((result) => {
+    showCandleResult(result);
+    if (result.status === 'paid') {
+      onRelight?.();
+      fetchCandlesForPerson();
     }
-  };
+  });
+
 
   if (loading) {
     return (
@@ -184,14 +151,7 @@ const VirtualCandlesForObituary: React.FC<VirtualCandlesForObituaryProps> = ({
                        
                        {!candle.is_burning && (
                          <div className="mt-3">
-                           <Button 
-                             size="sm" 
-                             className="elegant-button bg-candle-flame hover:bg-candle-flame/90 text-white text-xs"
-                             onClick={() => handleRelightCandle(candle.id)}
-                             disabled={relightingCandles.has(candle.id)}
-                           >
-                             {relightingCandles.has(candle.id) ? 'Pali se...' : 'Zapali ponovno'}
-                           </Button>
+                           <RelightCandleButton candleId={candle.id} personName={`${candle.pokojnik_ime} ${candle.pokojnik_prezime}`} className="elegant-button bg-candle-flame hover:bg-candle-flame/90 text-white text-xs" />
                          </div>
                        )}
                       
