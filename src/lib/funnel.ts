@@ -1,6 +1,6 @@
 // Sales funnel + attribution tracking for the admin "Statistika i prodaja" report.
-// Visitor id and traffic source are stored/sent ONLY with analytics consent;
-// without consent only an anonymous step counter is recorded.
+// Visitor id and stored traffic source are used ONLY with analytics consent. Without consent a step is an
+// anonymous count that carries just the utm values of the landing URL (kept in memory, never on the device).
 import { supabase } from '@/integrations/supabase/client';
 import { hasConsent as hasCat } from '@/lib/consent';
 import { getBlogTouch } from '@/lib/blogTracking';
@@ -11,7 +11,8 @@ export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_save
   | 'person_search' | 'person_manual' | 'guest_account' | 'draft_email' | 'draft_email_skipped' | 'draft_resumed'
   | 'consent_accepted' | 'consent_rejected' | 'consent_custom'
   | 'wizard_1' | 'wizard_2' | 'wizard_3' | 'wizard_4' | 'wizard_5' | 'wizard_6' | 'wizard_7'
-  | 'flow_osoba' | 'flow_email' | 'flow_prica' | 'flow_pregled';
+  | 'flow_osoba' | 'flow_email' | 'flow_prica' | 'flow_pregled'
+  | 'campaign_visit';
 
 const hasConsent = () => {
   return hasCat('analytics');
@@ -41,8 +42,12 @@ function currentTouch(): Touch {
   return { source: null, medium: null, campaign: null };
 }
 
+let captured = false;
+
 /** Call once per page load (from App). Stores first and latest known touch, only with consent. */
 export function captureAttribution() {
+  // Counted with or without consent, so the ad funnel has a first step for everyone.
+  if (!captured) { captured = true; if (landingParams().get('utm_campaign')) void trackFunnel('campaign_visit'); }
   if (!hasConsent()) return;
   const t = currentTouch();
   try {
@@ -88,7 +93,8 @@ export async function trackFunnel(step: FunnelStep, opts: { userId?: string | nu
     sent.add(key);
   }
   const consented = hasConsent();
-  const last = consented ? read(sessionStorage, 'osm_last_touch') : null;
+  // Without consent only the campaign the visitor landed from is sent: no id, nothing read from storage.
+  const last = consented ? read(sessionStorage, 'osm_last_touch') : (() => { const t = currentTouch(); return t.campaign ? t : null; })();
   try {
     await supabase.from('funnel_events' as never).insert({
       step,
