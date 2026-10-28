@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Calendar, Check, Eye, Globe, Link2, Loader2, Lock, MapPin, UserPlus } from 'lucide-react';
+import { Calendar, Check, Eye, ExternalLink, Globe, Link2, Loader2, Lock, Mail, MapPin, UserPlus } from 'lucide-react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import RichTextEditor from '@/components/memorial/RichTextEditor';
@@ -36,6 +36,8 @@ import { activeSeasonalPromo, autoPromoCode, seasonalPrice } from '@/lib/seasona
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { isBot } from '@/lib/isBot';
+import { landingParams } from '@/lib/landing';
+import { EXAMPLE_PATH } from '@/components/promo/MemorialValueSummary';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 // Step 1 (e-mail for the draft) is shown to guests only; signed-in visitors go from 0 straight to 2.
@@ -204,11 +206,74 @@ const OwnDrafts = ({ drafts, onResume, busyId }: { drafts: OwnDraft[]; onResume:
 );
 
 /** Obituaries matching a typed name: with two or more words both the first name and the surname must match. */
-const introPrice = () => {
+const EXAMPLE_PHOTO = '/site/marija-kovac-portret.jpg';
+const EXAMPLE_POINTS = ['životna priča i fotografije', 'obitelj pali svijeće i piše poruke', 'jedna poveznica za svu rodbinu'];
+
+type StartRelation = { label: string; relationship: string; placeholder: string };
+/** First-screen shortcuts: answer "for whom" with one tap; the choice pre-fills "Vi ste pokojniku…" on the next step. */
+const START_RELATIONS: StartRelation[] = [
+  { label: 'mama', relationship: 'sin/kći', placeholder: 'Ime i prezime vaše mame' },
+  { label: 'tata', relationship: 'sin/kći', placeholder: 'Ime i prezime vašeg oca' },
+  { label: 'baka', relationship: 'unuk/unuka', placeholder: 'Ime i prezime vaše bake' },
+  { label: 'djed', relationship: 'unuk/unuka', placeholder: 'Ime i prezime vašeg djeda' },
+  { label: 'suprug/a', relationship: 'suprug/supruga', placeholder: 'Ime i prezime supruga ili supruge' },
+  { label: 'netko drugi', relationship: '', placeholder: 'Ime i prezime, npr. Marija Horvat' },
+];
+
+const introPriceShort = () => {
   const seasonal = activeSeasonalPromo();
-  return seasonal
-    ? `${formatEur(seasonalPrice(seasonal))} umjesto ${formatEur(MEMORIAL_PRICE_EUR)} do ${seasonal.untilLabel}`
-    : formatEur(MEMORIAL_PRICE_EUR);
+  return formatEur(seasonal ? seasonalPrice(seasonal) : MEMORIAL_PRICE_EUR);
+};
+
+const seasonalNote = () => {
+  const seasonal = activeSeasonalPromo();
+  return seasonal ? `, a ${formatEur(seasonalPrice(seasonal))} umjesto ${formatEur(MEMORIAL_PRICE_EUR)} vrijedi do ${seasonal.untilLabel}` : '';
+};
+
+/** "No time now": one e-mail with the link back to this form (send-start-link). */
+const StartLinkForm = () => {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  if (sent) {
+    return <p className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="h-4 w-4 text-accent" />Poveznica je poslana. Provjerite e-poštu.</p>;
+  }
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="text-sm text-primary underline underline-offset-4 text-left">
+        Nemate vremena sada? Pošaljite si poveznicu na e-mail
+      </button>
+    );
+  }
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError('Upišite ispravnu e-mail adresu.'); return; }
+    setBusy(true);
+    setError('');
+    const { data } = await supabase.functions.invoke('send-start-link', {
+      body: { email: email.trim(), campaign: landingParams().get('utm_campaign') },
+    });
+    setBusy(false);
+    const code = (data as { ok?: boolean; code?: string } | null)?.code;
+    if ((data as { ok?: boolean } | null)?.ok) { setSent(true); void trackFunnel('start_link'); return; }
+    setError(code === 'too_soon' ? 'Poveznicu smo vam već poslali danas. Provjerite e-poštu i mapu neželjene pošte.'
+      : code === 'invalid_email' ? 'Upišite ispravnu e-mail adresu.' : 'Poveznicu nije bilo moguće poslati. Pokušajte ponovno.');
+  };
+  return (
+    <form onSubmit={submit} className="space-y-2">
+      <Label htmlFor="start-link-email">Pošaljite si poveznicu i napravite memorijal kad budete imali vremena</Label>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Input id="start-link-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="vas@email.hr" maxLength={255} />
+        <Button type="submit" variant="outline" disabled={busy}>{busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Pošalji</Button>
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <p className="text-xs text-muted-foreground">Šaljemo samo tu jednu poruku i ne upisujemo vas ni na kakav popis.</p>
+    </form>
+  );
 };
 
 const findObituaries = async (q: string) => {
@@ -233,11 +298,21 @@ const findObituaries = async (q: string) => {
  * visitor never has to decide up front whether an obituary exists; with no match the person's
  * details are entered right away, name already filled in.
  */
-const DeceasedSearch = ({ onSelect, onStart }: {
+const DeceasedSearch = ({ onSelect, onStart, onRelation }: {
   onSelect: (d: Deceased, source: PersonSource) => void;
   onStart: (method: 'search' | 'manual') => void;
+  onRelation: (relationship: string) => void;
 }) => {
   const [term, setTerm] = useState(() => readMemorialPrefill()?.name ?? '');
+  const [relation, setRelation] = useState('');
+  const nameInput = useRef<HTMLInputElement>(null);
+
+  const pickRelation = (r: StartRelation) => {
+    setRelation(r.label);
+    onRelation(r.relationship);
+    void trackFunnel('start_relation');
+    nameInput.current?.focus();
+  };
   const [results, setResults] = useState<Deceased[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -265,17 +340,44 @@ const DeceasedSearch = ({ onSelect, onStart }: {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-serif text-2xl mb-2">Za koga izrađujete memorijal?</h2>
-        <p className="text-muted-foreground">Upišite ime i prezime. Ako osoba već ima osmrtnicu kod nas, preuzet ćemo njezine podatke.</p>
-      </div>
-      <form onSubmit={search} className="flex flex-col sm:flex-row gap-3">
-        <Input value={term} onChange={(e) => { setTerm(e.target.value); setSearched(false); }} placeholder="npr. Ivan Horvat"
+      <h1 className="font-serif text-2xl md:text-3xl">Čiju uspomenu želite sačuvati?</h1>
+      <Card className="border-border">
+        <CardContent className="p-3 flex items-center gap-4">
+          <img src={EXAMPLE_PHOTO} alt="" className="h-20 w-20 rounded object-cover grayscale shrink-0" />
+          <div className="min-w-0 space-y-1.5 text-sm">
+            <ul className="space-y-0.5">
+              {EXAMPLE_POINTS.map((point) => (
+                <li key={point} className="flex items-start gap-1.5"><Check className="h-4 w-4 mt-0.5 shrink-0 text-accent" />{point}</li>
+              ))}
+            </ul>
+            <a href={EXAMPLE_PATH} target="_blank" rel="noopener" onClick={() => void trackFunnel('start_example')}
+              className="inline-flex items-center gap-1 text-primary underline underline-offset-4">
+              Pogledajte primjer memorijala<ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+      <form onSubmit={search} className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Za koga">
+          {START_RELATIONS.map((r) => (
+            <button key={r.label} type="button" role="radio" aria-checked={relation === r.label} onClick={() => pickRelation(r)}
+              className={`rounded-full border px-4 py-1.5 text-sm ${relation === r.label ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <Input ref={nameInput} value={term} onChange={(e) => { setTerm(e.target.value); setSearched(false); }}
+          placeholder={START_RELATIONS.find((r) => r.label === relation)?.placeholder ?? 'Ime i prezime, npr. Marija Horvat'}
           aria-label="Ime i prezime" maxLength={100} autoComplete="off" />
-        <Button type="submit" disabled={searching || term.trim().length < 3}>
-          {searching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi
+        <p className="text-sm text-muted-foreground">Može i osoba koja je umrla davno. Osmrtnica ni točan datum nisu potrebni.</p>
+        <Button type="submit" className="w-full sm:w-auto" disabled={searching || term.trim().length < 3}>
+          {searching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Započni memorijal
         </Button>
       </form>
+      <div className="rounded-md bg-secondary/60 px-4 py-3 flex items-center justify-between gap-3 text-sm">
+        <span>Plaćate tek kad vidite gotov memorijal</span>
+        <span className="font-semibold text-base whitespace-nowrap">{introPriceShort()}</span>
+      </div>
 
       {searched && results.length > 0 && (
         <div className="space-y-3">
@@ -300,8 +402,9 @@ const DeceasedSearch = ({ onSelect, onStart }: {
       )}
 
       <p className="text-sm text-muted-foreground">
-        Izrada traje oko 10 minuta i sve se usput sprema. Plaćate tek na kraju ({introPrice()}), kad vidite gotov memorijal.
+        Izrada traje oko 10 minuta i sve se usput sprema{seasonalNote()}.
       </p>
+      <StartLinkForm />
     </div>
   );
 };
@@ -718,7 +821,7 @@ const KreirajMemorijal = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        <Header />
+        <Header hideSearch />
         <main className="flex-1 flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></main>
         <Footer />
       </div>
@@ -732,7 +835,7 @@ const KreirajMemorijal = () => {
         <title>Kreirajte digitalni memorijal</title>
         <meta name="robots" content="noindex,nofollow" />
       </Helmet>
-      <Header />
+      <Header hideSearch />
       <main className="flex-1 container mx-auto px-4 py-10 md:py-14">
         <div className="max-w-3xl mx-auto">
           {children}
@@ -773,7 +876,7 @@ const KreirajMemorijal = () => {
           </Card>
         )}
         {drafts.length > 0 && <OwnDrafts drafts={drafts} onResume={resumeFromList} busyId={resumingId} />}
-        <DeceasedSearch onStart={startMemorial} onSelect={selectPerson} />
+        <DeceasedSearch onStart={startMemorial} onSelect={selectPerson} onRelation={setRelationship} />
       </div>
     );
   }

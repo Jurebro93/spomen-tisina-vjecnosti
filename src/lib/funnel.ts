@@ -12,7 +12,7 @@ export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_save
   | 'consent_accepted' | 'consent_rejected' | 'consent_custom'
   | 'wizard_1' | 'wizard_2' | 'wizard_3' | 'wizard_4' | 'wizard_5' | 'wizard_6' | 'wizard_7'
   | 'flow_osoba' | 'flow_email' | 'flow_prica' | 'flow_pregled'
-  | 'campaign_visit';
+  | 'campaign_visit' | 'start_example' | 'start_relation' | 'start_link';
 
 const hasConsent = () => {
   return hasCat('analytics');

@@ -100,7 +100,8 @@ const NavDropdown = ({ label, to, items, align = 'left' }: { label: string; to: 
   );
 };
 
-const Header = () => {
+/** hideSearch: pages with their own name field (memorial wizard) drop the obituary search, so there is one field. */
+const Header = ({ hideSearch = false }: { hideSearch?: boolean }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { handleSignOut, signingOut } = useSignOut();
@@ -227,6 +228,7 @@ const Header = () => {
         </div>
 
         {/* Search Bar */}
+        {!hideSearch && (
         <div className="pb-2 sm:pb-4 border-t border-primary-foreground/20 pt-2 sm:pt-4">
           <div className="flex flex-row gap-1 sm:gap-3 max-w-4xl lg:mx-0 mx-auto w-full items-center">
             <div className="flex-1 min-w-0">
@@ -291,6 +293,7 @@ const Header = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Mobile Navigation */}
         {isMenuOpen && (

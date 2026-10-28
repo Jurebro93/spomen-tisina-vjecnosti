@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.email-track]
 verify_jwt = false
+
+[functions.send-start-link]
+verify_jwt = false
