@@ -16,6 +16,8 @@ const candleNoFlame = "/site/candle-no-flame.png";
 import { SEOHelmet } from '@/hooks/useSEO';
 import MemorialPrice from '@/components/promo/MemorialPrice';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
+import { CandleConsent, CandlePlanPicker, useCandleResultToast } from '@/components/candles/CandlePlanPicker';
+import { CANDLE_PRICES_TEXT, DEFAULT_CANDLE_DAYS, candlePriceLabel, startCandleCheckout, useCandlePaymentReturn, type CandleDays } from '@/lib/candlePlans';
 
 const ZapaliSvijecu = () => {
   const [formData, setFormData] = useState({
@@ -30,8 +32,11 @@ const ZapaliSvijecu = () => {
   const [showAllCandles, setShowAllCandles] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   // Name of the person a candle was just lit for, to offer a lasting memorial.
-  const [litFor, setLitFor] = useState<string | null>(null);
+  const [litFor, setLitFor] = useState<{ name: string; days: number } | null>(null);
+  const [days, setDays] = useState<CandleDays>(DEFAULT_CANDLE_DAYS);
+  const [consent, setConsent] = useState(false);
   const { toast } = useToast();
+  const showCandleResult = useCandleResultToast();
 
   // Extract URL parameters on component mount
   useEffect(() => {
@@ -112,39 +117,44 @@ const ZapaliSvijecu = () => {
       });
       return;
     }
+    if (!consent) {
+      toast({
+        title: "Potrebna je potvrda",
+        description: "Označite da želite da svijeća zasvijetli odmah nakon plaćanja.",
+        variant: "destructive"
+      });
+      return;
+    }
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('submit-candle', {
-        body: {
-          pokojnikIme: formData.pokojnikIme,
-          pokojnikPrezime: formData.pokojnikPrezime,
-          zapalioIme: formData.zapalioIme,
-          zapalioEmail: formData.zapalioEmail,
-          poruka: formData.poruka
-        }
+      await startCandleCheckout({
+        kind: 'obituary',
+        days,
+        pokojnikIme: formData.pokojnikIme,
+        pokojnikPrezime: formData.pokojnikPrezime,
+        zapalioIme: formData.zapalioIme,
+        zapalioEmail: formData.zapalioEmail,
+        poruka: formData.poruka
       });
-      if (error) {
-        throw new Error(error.message || 'Greška pri slanju zahtjeva');
-      }
-      toast({
-        title: 'Svijeća zapaljena!',
-        description: 'Vaša svijeća je uspješno zapaljena i odmah je vidljiva.',
-      });
-      setLitFor(`${formData.pokojnikIme} ${formData.pokojnikPrezime}`.trim());
-      // Reset form and refresh candles list
-      setFormData({ pokojnikIme: '', pokojnikPrezime: '', zapalioIme: '', zapalioEmail: '', poruka: '' });
-      fetchCandles();
-    } catch (error: any) {
-      console.error('Submit error:', error);
+    } catch (error) {
+      console.error('Checkout error:', error);
       toast({
         title: 'Greška',
-        description: error.message || 'Dogodila se greška prilikom slanja.',
+        description: error instanceof Error ? error.message : 'Dogodila se greška prilikom pokretanja plaćanja.',
         variant: 'destructive'
       });
-    } finally {
       setIsProcessing(false);
     }
   };
+
+  useCandlePaymentReturn((result) => {
+    showCandleResult(result);
+    if (result.status === 'paid') {
+      setLitFor({ name: result.name ?? '', days: result.days ?? DEFAULT_CANDLE_DAYS });
+      fetchCandles();
+    }
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-candle-warm">
       <SEOHelmet pagePath="/zapali-svijecu" />
@@ -162,7 +172,7 @@ const ZapaliSvijecu = () => {
               </h1>
             </div>
             <p className="memorial-subtitle text-sm sm:text-base md:text-lg max-w-2xl text-gray-300">
-              Vječno svjetlo za vječnu uspomenu • Besplatno • Svijetli 7 dana
+              Vječno svjetlo za vječnu uspomenu • Svijetli 7, 14 ili 30 dana
             </p>
           </div>
         </div>
@@ -180,7 +190,7 @@ const ZapaliSvijecu = () => {
             <Card className="mb-6 border-memorial-gold bg-memorial-gold/10">
               <CardContent className="p-5 sm:p-6 text-center">
                 <p className="font-display text-lg sm:text-xl font-semibold text-foreground mb-2">
-                  Svijeća za {litFor} gori 7 dana
+                  Svijeća za {litFor.name} gori {litFor.days} dana
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
                   Sačuvajte uspomenu trajno: digitalni memorijal s fotografijama, životnom pričom i porukama obitelji. <MemorialPrice /> jednokratno.
@@ -255,11 +265,15 @@ const ZapaliSvijecu = () => {
 
               <div className="bg-candle-warm/20 rounded-lg p-4 sm:p-6 border border-candle-flame/20">
                 <h3 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
-                  Besplatna svijeća
+                  Koliko dugo svijeća gori?
                 </h3>
-                <p className="text-sm text-muted-foreground">
-                  Svijeća je besplatna i bit će odmah vidljiva na stranici. Svijetli 7 dana.
+                <CandlePlanPicker value={days} onChange={setDays} />
+                <p className="text-sm text-muted-foreground mt-3">
+                  Svijeća se pojavi na stranici odmah nakon plaćanja. Plaćanje karticom preko sigurnog Stripe sustava.
                 </p>
+                <div className="mt-4">
+                  <CandleConsent checked={consent} onChange={setConsent} />
+                </div>
               </div>
 
               {/* Submit Button */}
@@ -267,16 +281,16 @@ const ZapaliSvijecu = () => {
                 <Button onClick={handlePayment} disabled={isProcessing} variant="gold" className="w-full py-4 sm:py-6 text-base sm:text-lg candle-glow">
                   {isProcessing ? <>
                       <div className="animate-spin mr-2 h-4 w-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent rounded-full" />
-                      <span className="text-sm sm:text-base">Palim svijeću...</span>
+                      <span className="text-sm sm:text-base">Otvaram plaćanje...</span>
                     </> : <>
                       <Flame className="mr-2" size={18} />
-                      <span className="text-sm sm:text-base">Zapali svijeću</span>
+                      <span className="text-sm sm:text-base">Plati {candlePriceLabel(days)} i zapali svijeću</span>
                     </>}
                 </Button>
               </div>
 
               <p className="text-sm text-muted-foreground text-center">
-                Svijeća će biti odmah vidljiva nakon paljenja.
+                Cijene: {CANDLE_PRICES_TEXT}.
               </p>
             </CardContent>
           </Card>

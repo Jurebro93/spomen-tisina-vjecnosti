@@ -69,19 +69,19 @@ const CestoPostavljenaPitanja = () => {
       questions: [
         {
           question: "Što su virtualne svijeće?",
-          answer: "Virtualne svijeće su digitalni način iskazivanja poštovanja i sjećanja na pokojnike. Možete zapaliti virtualnu svijeću s porukom za 7 dana."
+          answer: "Virtualne svijeće su digitalni način iskazivanja poštovanja i sjećanja na pokojnike. Možete zapaliti virtualnu svijeću s porukom koja gori 7, 14 ili 30 dana."
         },
         {
           question: "Koliko košta zapaljenje virtualne svijeće?",
-          answer: "Zapaljenje virtualne svijeće košta 2 eura za 7 dana prikazivanja. Plaćanje se vrši putem sigurnog Stripe sustava."
+          answer: "Svijeća koja gori 7 dana košta 3,99 €, 14 dana 5,99 €, a 30 dana 9,99 €. Plaća se jednokratno karticom putem sigurnog Stripe sustava."
         },
         {
           question: "Mogu li ostaviti anonimnu poruku?",
-          answer: "Da, možete ostaviti poruku bez navođenja vašeg imena. Trebate unijeti samo ime pokojnika i vašu poruku sjećanja."
+          answer: "Na digitalnom memorijalu ime nije obvezno, pa svijeću možete zapaliti anonimno. Kod svijeće za osmrtnicu upisujete svoje ime, a e-mail adresa se nikad ne prikazuje javno."
         },
         {
           question: "Koliko dugo će moja svijeća biti vidljiva?",
-          answer: "Vaša virtualna svijeća će biti vidljiva 7 dana od trenutka odobrenja. Nakon tog vremena, svijeća se automatski gasi."
+          answer: "Svijeća gori onoliko dana koliko ste odabrali (7, 14 ili 30) od trenutka plaćanja. Nakon toga se automatski gasi, a možete je ponovno zapaliti."
         }
       ]
     },

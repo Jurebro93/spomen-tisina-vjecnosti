@@ -6,6 +6,7 @@ import { adminClient, getSettings, logInvoice, processInvoice, upsertInvoiceForS
 import { deliverPurchase, ensureDelivery } from "../_shared/capiDelivery.ts";
 import { PRODUCT_PRICES, recordPromoUsage } from "../_shared/promo.ts";
 import { failureLabelHr, findOrder, recordPaymentEvent, setOrderStatus } from "../_shared/orders.ts";
+import { activateCandleFromSession } from "../_shared/candles.ts";
 
 const log = (step: string, details?: unknown) =>
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
@@ -52,7 +53,14 @@ serve(async (req) => {
         return new Response(JSON.stringify({ ignored: true }), { status: 200 });
       }
 
-      const memorialId = session.metadata?.memorial_id ?? null;
+      const isCandle = session.metadata?.type === "candle";
+      if (isCandle) {
+        // Paid candle: light it (idempotent with verify-candle-payment), then invoice like any sale.
+        const lit = await activateCandleFromSession(admin, session);
+        log("Candle", { sessionId: session.id, ok: lit.ok, activated: lit.activated });
+      }
+
+      const memorialId = isCandle ? null : session.metadata?.memorial_id ?? null;
       const paymentIntentId =
         typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
 
@@ -155,7 +163,7 @@ serve(async (req) => {
 
       // 3) Meta CAPI Purchase (deduplicated with the browser pixel, retried on failure).
       //    Consent decides inside ensureDelivery; independent of who marked the memorial paid.
-      try {
+      if (!isCandle) try {
         await ensureDelivery(admin, session);
         await deliverPurchase(admin, stripe, session.id);
       } catch (capiError) { log("CAPI delivery failed", { message: String(capiError) }); }

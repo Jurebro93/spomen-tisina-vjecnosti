@@ -77,7 +77,7 @@ const MemorijalStranica = () => {
         supabase.from('memorial_life_events').select('*').eq('memorial_id', m.id).order('sort_order', { ascending: true }),
         supabase.from('memorial_tributes').select('id,author_name,relationship,title,message,photo_path,created_at')
           .eq('memorial_id', m.id).eq('status', 'approved').order('created_at', { ascending: false }),
-        supabase.from('memorial_candles').select('id,visitor_name,message,created_at')
+        supabase.from('memorial_candles').select('id,visitor_name,message,created_at,expires_at')
           .eq('memorial_id', m.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(60),
         supabase.rpc('can_edit_memorial', { _memorial_id: m.id }),
          supabase.rpc('can_moderate_memorial', { _memorial_id: m.id }),
@@ -338,7 +338,7 @@ const MemorijalStranica = () => {
               onLit={async () => {
                 const { data } = await supabase
                   .from('memorial_candles')
-                  .select('id,visitor_name,message,created_at')
+                  .select('id,visitor_name,message,created_at,expires_at')
                   .eq('memorial_id', memorial.id)
                   .eq('status', 'approved')
                   .order('created_at', { ascending: false })

@@ -1,151 +1,170 @@
+// Starts a Stripe Checkout for a paid candle (7 / 14 / 30 days).
+// kind "obituary": new candle for a deceased person, or relighting an extinguished one (relightCandleId).
+// kind "memorial": candle on a digital memorial.
+// The candle stays hidden until verify-candle-payment or stripe-webhook confirms the payment.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { CANDLE_PLANS, candleProductName, isCandlePlan } from "../_shared/candles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SITE = "https://osmrtnica.com.hr";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const log = (step: string, details?: unknown) =>
+  console.log(`[CREATE-CANDLE-PAYMENT] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
+
+// Only our own site (and local development) may receive the visitor back after payment.
+const siteOrigin = (req: Request) => {
+  const origin = req.headers.get("origin") ?? "";
+  if (/^https:\/\/(www\.)?osmrtnica\.com\.hr$/.test(origin)) return origin;
+  if (/^https:\/\/[a-z0-9-]+--zesty-gaufre-5d2a88\.netlify\.app$/.test(origin)) return origin;
+  if (/^http:\/\/localhost:\d+$/.test(origin)) return origin;
+  return SITE;
+};
+
+const cleanPath = (path: unknown, fallback: string) => {
+  if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.length > 500) return fallback;
+  const url = new URL(path, SITE);
+  url.searchParams.delete("svijeca");
+  url.searchParams.delete("session_id");
+  return url.pathname + url.search;
+};
+
+const withParams = (base: string, path: string, params: string) =>
+  `${base}${path}${path.includes("?") ? "&" : "?"}${params}`;
+
+const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status });
 
   try {
-    const { 
-      pokojnikIme, 
-      pokojnikPrezime, 
-      zapalioIme, 
-      zapalioEmail, 
-      poruka 
-    } = await req.json();
+    const body = await req.json();
+    const days = Number(body.days);
+    if (!isCandlePlan(days)) return json({ error: "Odaberite koliko dugo svijeća gori." }, 400);
+    const price = CANDLE_PLANS[days];
 
-    // Validate required fields
-    if (!pokojnikIme || !pokojnikPrezime || !zapalioIme || !zapalioEmail) {
-      throw new Error("Svi obavezni podaci moraju biti uneseni");
-    }
-
-    // Initialize Stripe (prefer live key, fall back to generic secret)
     const stripeKey = Deno.env.get("STRIPE_LIVE_API_KEY") || Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeKey) throw new Error("STRIPE_LIVE_API_KEY or STRIPE_SECRET_KEY is not set");
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
+    const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+      auth: { persistSession: false },
+    });
 
-    // Initialize Supabase with service role key for database operations
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
+    const origin = siteOrigin(req);
+    const kind = body.kind === "memorial" ? "memorial" : "obituary";
+    let candleId: string;
+    let forName: string;
+    let email: string | undefined;
+    let relight = false;
+    let returnPath: string;
+    let table: "virtual_candles" | "memorial_candles";
 
-    // Check if a candle already exists for this person
-    const { data: existingCandle, error: checkError } = await supabase
-      .from('virtual_candles')
-      .select('id')
-      .eq('pokojnik_ime', pokojnikIme)
-      .eq('pokojnik_prezime', pokojnikPrezime)
-      .maybeSingle(); // Use maybeSingle to avoid error when no results found
+    if (kind === "memorial") {
+      const memorialId = text(body.memorialId, 64);
+      email = text(body.email, 200).toLowerCase();
+      if (!memorialId) return json({ error: "Memorijal nije pronađen." }, 400);
+      if (!EMAIL_RE.test(email)) return json({ error: "Unesite ispravnu e-mail adresu." }, 400);
 
-    if (checkError) {
-      console.error("Database error checking existing candle:", checkError);
-      throw new Error("Greška pri provjeri postojanja svijeće");
-    }
+      const { data: allowed } = await admin.rpc("memorial_allows", { _memorial_id: memorialId, _what: "candles" });
+      if (allowed !== true) return json({ error: "Na ovom memorijalu nije moguće zapaliti svijeću." }, 400);
+      const { data: m } = await admin.from("memorials")
+        .select("slug, obituaries:deceased_id(ime, prezime)").eq("id", memorialId).maybeSingle();
+      const o = m?.obituaries as { ime?: string; prezime?: string } | null;
+      forName = [o?.ime, o?.prezime].filter(Boolean).join(" ") || "voljenu osobu";
+      returnPath = cleanPath(body.returnPath, `/memorijal/${m?.slug ?? ""}`);
 
-    let candleData;
-    if (existingCandle) {
-      // Update existing candle - relight it
-      const { data: updatedCandle, error: updateError } = await supabase
-        .from('virtual_candles')
-        .update({
-          zapalio_ime: zapalioIme,
-          zapalio_email: zapalioEmail,
-          poruka: poruka || null,
-          paid: false, // Will be set to true after payment
-          active: true, // Immediately activate for relighting
-          created_at: new Date().toISOString(), // Move to top
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
-        })
-        .eq('id', existingCandle.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error("Database error updating candle:", updateError);
-        throw new Error("Greška pri ažuriranju svijeće");
-      }
-      candleData = updatedCandle;
+      const { data: row, error } = await admin.from("memorial_candles").insert({
+        memorial_id: memorialId,
+        visitor_name: text(body.visitorName, 100) || null,
+        visitor_email: email,
+        message: text(body.message, 500) || null,
+        status: "pending",
+        payment_status: "unpaid",
+        duration_days: days,
+      }).select("id").single();
+      if (error) throw new Error(`Database error: ${error.message}`);
+      candleId = row.id;
+      table = "memorial_candles";
+    } else if (body.relightCandleId) {
+      const { data: candle } = await admin.from("virtual_candles")
+        .select("id, pokojnik_ime, pokojnik_prezime").eq("id", text(body.relightCandleId, 64))
+        .eq("paid", true).eq("active", true).maybeSingle();
+      if (!candle) return json({ error: "Svijeća nije pronađena." }, 404);
+      candleId = candle.id;
+      forName = `${candle.pokojnik_ime} ${candle.pokojnik_prezime}`.trim();
+      relight = true;
+      returnPath = cleanPath(body.returnPath, "/virtualne-svijece");
+      table = "virtual_candles";
     } else {
-      // Create new candle record
-      const { data: newCandle, error: candleError } = await supabase
-        .from('virtual_candles')
-        .insert({
-          pokojnik_ime: pokojnikIme,
-          pokojnik_prezime: pokojnikPrezime,
-          zapalio_ime: zapalioIme,
-          zapalio_email: zapalioEmail,
-          poruka: poruka || null,
-          paid: false,
-          active: false
-        })
-        .select()
-        .single();
+      const pokojnikIme = text(body.pokojnikIme, 100);
+      const pokojnikPrezime = text(body.pokojnikPrezime, 100);
+      const zapalioIme = text(body.zapalioIme, 100);
+      email = text(body.zapalioEmail, 200).toLowerCase();
+      if (!pokojnikIme || !pokojnikPrezime || !zapalioIme) return json({ error: "Molimo unesite sve obavezne podatke." }, 400);
+      if (!EMAIL_RE.test(email)) return json({ error: "Unesite ispravnu e-mail adresu." }, 400);
 
-      if (candleError) {
-        console.error("Database error creating candle:", candleError);
-        throw new Error("Greška pri spremanju podataka");
-      }
-      candleData = newCandle;
-    }
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      customer_email: zapalioEmail,
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: {
-              name: `Virtualna svijeća za ${pokojnikIme} ${pokojnikPrezime}`,
-              description: "Vječno svjetlo za vječnu uspomenu - svijetli 7 dana",
-            },
-            unit_amount: 100, // 1€ in cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.get("origin")}/virtualne-svijece?success=true&candle_id=${candleData.id}`,
-      cancel_url: `${req.headers.get("origin")}/zapali-svijecu?cancelled=true`,
-      metadata: {
-        candle_id: candleData.id,
+      const { data: row, error } = await admin.from("virtual_candles").insert({
         pokojnik_ime: pokojnikIme,
         pokojnik_prezime: pokojnikPrezime,
+        zapalio_ime: zapalioIme,
+        zapalio_email: email,
+        poruka: text(body.poruka, 1000) || null,
+        paid: false,
+        active: false,
+        duration_days: days,
+      }).select("id").single();
+      if (error) throw new Error(`Database error: ${error.message}`);
+      candleId = row.id;
+      forName = `${pokojnikIme} ${pokojnikPrezime}`;
+      returnPath = cleanPath(body.returnPath, "/zapali-svijecu");
+      table = "virtual_candles";
+    }
+
+    const productName = candleProductName(days);
+    const productDescription = `Svijeća za ${forName}`;
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      locale: "hr",
+      customer_email: email || undefined,
+      line_items: [{
+        price_data: {
+          currency: "eur",
+          product_data: { name: productName, description: productDescription },
+          unit_amount: Math.round(price * 100),
+        },
+        quantity: 1,
+      }],
+      success_url: withParams(origin, returnPath, "svijeca=placeno&session_id={CHECKOUT_SESSION_ID}"),
+      cancel_url: withParams(origin, returnPath, "svijeca=otkazano"),
+      metadata: {
+        type: "candle",
+        candle_kind: kind,
+        candle_id: candleId,
+        relight: relight ? "1" : "0",
+        days: String(days),
+        product_name: productName,
+        product_description: productDescription,
       },
     });
 
-    // Update candle record with Stripe session info
-    await supabase
-      .from('virtual_candles')
-      .update({
-        stripe_payment_intent_id: session.id
-      })
-      .eq('id', candleData.id);
+    if (!relight) {
+      const column = table === "memorial_candles" ? "stripe_session_id" : "stripe_payment_intent_id";
+      await admin.from(table).update({ [column]: session.id }).eq("id", candleId);
+    }
 
-    console.log("Candle payment session created:", session.id);
-
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
-
+    log("Session created", { sessionId: session.id, kind, relight, days, candleId });
+    return json({ url: session.url });
   } catch (error) {
-    console.error("Error creating candle payment:", error);
-    return new Response(JSON.stringify({ 
-      error: error.message || "Dogodila se greška prilikom kreiranja plaćanja" 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
+    log("ERROR", { message: String(error) });
+    return json({ error: "Plaćanje trenutno nije moguće pokrenuti. Pokušajte ponovno za nekoliko minuta." }, 500);
   }
 });

@@ -21,6 +21,9 @@ const UvjetiKoristenja = () => {
       <p>Cijena iznosi 39,00 € i plaća se jednokratno.{seasonal && ` Do ${seasonal.untilLabel} (${seasonal.occasion}) cijena uz popust iznosi ${formatEur(seasonalPrice(seasonal))}.`} Ne postoji pretplata ni naknada za obnovu. {b.tax_note}</p>
       <p>Dostupne funkcije, tehnički preduvjeti i ograničenja navedeni su u opisu usluge prije kupnje.</p>
 
+      <H2>Virtualne svijeće</H2>
+      <p>Virtualnu svijeću možete zapaliti za osmrtnicu ili na digitalnom memorijalu. Sami birate koliko dugo gori: 7 dana za 3,99 €, 14 dana za 5,99 € ili 30 dana za 9,99 €. Plaća se jednokratno karticom, bez pretplate. Svijeća se prikaže odmah nakon potvrde plaćanja i automatski se gasi kad istekne odabrano razdoblje. Ugašenu svijeću možete ponovno zapaliti uz istu cijenu.</p>
+
       <H2>Trajanje i čuvanje</H2>
       <p>Memorijale i osmrtnice čuvamo trajno, bez unaprijed određenog roka isteka. Korisnik nije obvezan periodično plaćati nastavak čuvanja.</p>
       <p>Trajno čuvanje ne sprječava uklanjanje na zahtjev ovlaštenog korisnika, nakon raskida ugovora ili kada za uklanjanje postoji zakonska osnova. Na sadržaj se primjenjuju i <L to="/pravila-objavljivanja">Pravila objavljivanja</L>.</p>
@@ -61,6 +64,7 @@ const UvjetiKoristenja = () => {
 
       <H2>Odustajanje i problemi s uslugom</H2>
       <p>Potrošač može odustati od kupnje u roku od 14 dana od sklapanja ugovora bez navođenja razloga. U tom slučaju vraćamo cjelokupan stvarno plaćeni iznos i uklanjamo memorijal prema postupku na stranici <L to="/raskid-i-povrat">Jednostrani raskid i povrat</L>.</p>
+      <p>Kod virtualne svijeće kupac prije plaćanja izričito traži da svijeća zasvijetli odmah i potvrđuje da time gubi pravo na jednostrani raskid. Ako svijeća nakon plaćanja nije prikazana, javite nam se i vratit ćemo plaćeni iznos.</p>
       <p>Pravo na raskid u navedenom roku ne zamjenjuje prava zbog neisporuke ili neusklađenosti usluge.</p>
       <p>Ako usluga ne odgovara ugovorenome, korisnik može zatražiti rješavanje problema i ostvariti druga prava prema primjenjivim propisima. Pisani prigovor možete podnijeti putem stranice <L to="/prigovori">Prigovori i reklamacije</L>.</p>
 

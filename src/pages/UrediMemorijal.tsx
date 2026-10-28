@@ -139,6 +139,7 @@ const UrediMemorijal = () => {
         supabase.from('memorial_tributes').select('id,author_name,relationship,title,message,photo_path,status,created_at')
           .eq('memorial_id', mem.id).order('created_at', { ascending: false }),
         supabase.from('memorial_candles').select('id,visitor_name,message,status,created_at')
+          .or('payment_status.is.null,payment_status.neq.unpaid')
           .eq('memorial_id', mem.id).order('created_at', { ascending: false }),
         supabase.from('memorial_access_requests').select('id,requester_user_id,relationship,message,status,created_at')
           .eq('memorial_id', mem.id).order('created_at', { ascending: false }),

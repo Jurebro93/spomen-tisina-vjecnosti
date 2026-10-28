@@ -13,7 +13,7 @@
 - Groblja: https://osmrtnica.com.hr/groblje/{naziv-groblja} i po gradu https://osmrtnica.com.hr/groblja/{grad}
 - [Blog i savjeti](https://osmrtnica.com.hr/blog): članci o osmrtnicama, sprovodima, tugovanju i sjećanju.
 - [Objavi osmrtnicu](https://osmrtnica.com.hr/objavi-osmrtnicu) i [Kako objaviti osmrtnicu](https://osmrtnica.com.hr/kako-objaviti-osmrtnicu)
-- [Virtualne svijeće](https://osmrtnica.com.hr/virtualne-svijece) i [Zapali svijeću](https://osmrtnica.com.hr/zapali-svijecu)
+- [Virtualne svijeće](https://osmrtnica.com.hr/virtualne-svijece) i [Zapali svijeću](https://osmrtnica.com.hr/zapali-svijecu): svijeća gori 7 dana (3,99 €), 14 dana (5,99 €) ili 30 dana (9,99 €).
 - [Memorijalni vrt](https://osmrtnica.com.hr/memorijalni-vrt)
 - [Često postavljena pitanja](https://osmrtnica.com.hr/cesto-postavljena-pitanja)
 - [Informacije](https://osmrtnica.com.hr/informacije)
