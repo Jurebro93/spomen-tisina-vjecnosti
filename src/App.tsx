@@ -9,6 +9,7 @@ import { lazyPage } from "./lib/lazyPage";
 import { AuthProvider } from "./hooks/useAuth";
 import CookieConsent from "./components/CookieConsent";
 import MetaPixel from "./components/MetaPixel";
+import LinkerRetargeting from "./components/LinkerRetargeting";
 import BillingDetailsDialog from "./components/billing/BillingDetailsDialog";
 import DiscountPopup from "./components/DiscountPopup";
 import SeasonalPromoBar from "./components/SeasonalPromoBar";
@@ -197,6 +198,7 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
           <MetaPixel />
+          <LinkerRetargeting />
           <CookieConsent />
           <BillingDetailsDialog />
           <DiscountPopup />

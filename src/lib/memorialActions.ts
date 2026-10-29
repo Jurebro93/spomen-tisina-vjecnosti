@@ -1,9 +1,10 @@
 import { getAttribution, trackFunnel } from '@/lib/funnel';
 import { supabase } from '@/integrations/supabase/client';
 import { requestBillingDetails } from '@/lib/billing';
-import { MEMORIAL_PRICE_EUR, isDuplicateMemorialError, logMemorialAction, type Deceased, type ManagerRole, type Memorial } from '@/lib/memorial';
+import { isDuplicateMemorialError, logMemorialAction, type Deceased, type ManagerRole, type Memorial } from '@/lib/memorial';
 import { trackInitiateCheckout } from '@/lib/metaPixel';
 import { trackGa4BeginCheckout } from '@/lib/ga4Ecommerce';
+import { currentMemorialPrice } from '@/lib/seasonalPromo';
 
 export class DuplicateMemorialError extends Error {
   constructor(public existingSlug?: string) {
@@ -106,7 +107,7 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
   const token = await ensureAuthToken();
   if (!token) throw new NotAuthenticatedError();
 
-  const meta = trackInitiateCheckout(memorialId, MEMORIAL_PRICE_EUR);
+  const meta = trackInitiateCheckout(memorialId, currentMemorialPrice());
 
   // Billing data for the invoice is collected before the redirect to Stripe.
   // Always shown so the buyer can review billing data, choose legal entity and enter a promo code.
@@ -138,7 +139,7 @@ export const startMemorialPayment = async (memorialId: string, promoCode: string
     };
   }
   if (!data?.url) throw new Error('Nije moguće otvoriti stranicu za plaćanje.');
-  trackGa4BeginCheckout(memorialId, MEMORIAL_PRICE_EUR);
+  trackGa4BeginCheckout(memorialId, currentMemorialPrice());
   window.location.href = data.url as string;
   return { alreadyPaid: false as const };
 };

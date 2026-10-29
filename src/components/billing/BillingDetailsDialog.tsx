@@ -3,7 +3,6 @@ import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
-import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
 import { currentMemorialPrice } from '@/lib/seasonalPromo';
 import { z } from 'zod';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -140,7 +139,7 @@ const BillingDetailsDialog = () => {
             <PromoCodeField
               productType="memorial"
               productLabel="Digitalni memorijal"
-              basePrice={MEMORIAL_PRICE_EUR}
+              basePrice={currentMemorialPrice()}
               applied={promo}
               onApplied={(applied) => { setPromo(applied); if (!applied) setPresetPromo(null); }}
               autoCode={presetPromo}

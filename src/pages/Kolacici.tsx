@@ -10,6 +10,8 @@ const ROWS = [
   ['Analitika', 'GTM i alati koje učitava (npr. _ga)', 'Google', 'Razumijevanje korištenja stranice', 'do 2 godine'],
   ['Analitika', 'funnel_visitor, attribution (localStorage)', 'osmrtnica.com.hr', 'Anonimno praćenje koraka izrade memorijala i izvora posjeta', 'do brisanja u pregledniku'],
   ['Marketing', '_fbp, _fbc', 'Meta', 'Mjerenje oglasa (Meta Pixel i Conversions API)', 'do 90 dana'],
+  ['Marketing', 'Linker.hr piksel konverzije (bez kolačića na našoj domeni)', 'Linker.hr', 'Mjerenje uspješnosti oglasa: šalje vrstu i iznos kupnje nakon plaćanja', 'jednokratni zahtjev'],
+  ['Marketing', 'Linker.hr piksel za retargeting (bez kolačića na našoj domeni)', 'Linker.hr', 'Ponovno prikazivanje oglasa posjetiteljima koji su pregledali stranice o digitalnim memorijalima', 'jednokratni zahtjev pri otvaranju stranice'],
 ];
 
 const Kolacici = () => (

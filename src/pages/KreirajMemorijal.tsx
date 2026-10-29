@@ -32,7 +32,7 @@ import { claimDraft, createDraftMemorial, DuplicateMemorialError, ensureAuthToke
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
-import { activeSeasonalPromo, autoPromoCode, seasonalPrice } from '@/lib/seasonalPromo';
+import { activeSeasonalPromo, autoPromoCode, currentMemorialPrice, seasonalPrice } from '@/lib/seasonalPromo';
 import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { isBot } from '@/lib/isBot';
@@ -753,7 +753,7 @@ const KreirajMemorijal = () => {
         setBusy(false);
         return;
       }
-      const meta = trackInitiateCheckout(memorial.id, promo?.final_price ?? MEMORIAL_PRICE_EUR);
+      const meta = trackInitiateCheckout(memorial.id, promo?.final_price ?? currentMemorialPrice());
       void trackFunnel('checkout_started', { userId: user.id, memorialId: memorial.id });
       // The server re-validates the promo code and decides the amount; we only send the code.
       const { data, error } = await supabase.functions.invoke('create-memorial-payment', {
@@ -791,7 +791,7 @@ const KreirajMemorijal = () => {
         return;
       }
       if (!data?.url) throw new Error('Nema URL-a za plaćanje');
-      trackGa4BeginCheckout(memorial.id, promo?.final_price ?? MEMORIAL_PRICE_EUR);
+      trackGa4BeginCheckout(memorial.id, promo?.final_price ?? currentMemorialPrice());
       window.location.href = data.url as string;
     } catch {
       toast({ title: 'Plaćanje nije moguće započeti', description: 'Pokušajte ponovno ili nas kontaktirajte.', variant: 'destructive' });
@@ -1041,7 +1041,7 @@ const KreirajMemorijal = () => {
           <PromoCodeField
             productType="memorial"
             productLabel="memorijala"
-            basePrice={MEMORIAL_PRICE_EUR}
+            basePrice={currentMemorialPrice()}
             applied={promo}
             onApplied={setPromo}
             autoCode={autoPromoCode()}

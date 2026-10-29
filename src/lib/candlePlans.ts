@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatEur } from '@/lib/promo';
 import { trackFunnel } from '@/lib/funnel';
 import { trackGa4CandlePurchase } from '@/lib/ga4Ecommerce';
+import { trackLinkerConversion } from '@/lib/linkerPixel';
 
 /** Paid candle plans. Keep in sync with supabase/functions/_shared/candles.ts */
 export const CANDLE_PLANS = [
@@ -83,6 +84,7 @@ export const useCandlePaymentReturn = (onResult: (result: CandlePaymentResult) =
         const plan = CANDLE_PLANS.find((p) => p.days === data.days);
         if (plan) trackGa4CandlePurchase(sessionId, plan.price, plan.days);
         void trackFunnel('candle_paid', { once: false });
+        if (data.currency === 'EUR') trackLinkerConversion('svijeca_kupnja', sessionId, Number(data.amount));
         callback.current({ status: 'paid', name: data.name, days: data.days, expiresAt: data.expires_at });
         return;
       }
