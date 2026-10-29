@@ -19,6 +19,7 @@ import BlogSalesSection from '@/components/blog/BlogSalesSection';
 import BlogMemorialQuiz from '@/components/blog/BlogMemorialQuiz';
 import BlogInlineWidget, { WIDGET_RE } from '@/components/blog/BlogInlineWidget';
 import ImageLightbox from '@/components/blog/ImageLightbox';
+import MemorialStickyBar from '@/components/memorial/MemorialStickyBar';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
 import NewsletterSignup from '@/components/NewsletterSignup';
 import EbookSignup from '@/components/EbookSignup';
@@ -46,13 +47,23 @@ interface BlogPost {
   interactive_items?: string[] | null;
 }
 
-/** Adds one natural in-text link to the memorial page after the 3rd paragraph, if the article has none. */
-const withContextLink = (html: string, enabled: boolean) => {
-  if (!enabled || /href="[^"]*digitalni-memorijal|<!--widget:memorial/.test(html)) return html;
-  const link = '<p><em>Uspomene na voljenu osobu možete trajno sačuvati na jednom mjestu – u <a href="/digitalni-memorijal" data-cta="context_link">digitalnom memorijalu</a> s fotografijama, životnom pričom i porukama bližnjih.</em></p>';
+/** Memorial card copy matched to the article's topic (by slug): heading, sentence, button. */
+const MEMORIAL_COPY: [RegExp, [string, string, string]][] = [
+  [/molitv|krunic|misa|zadusnic|psalam|blagoslov/, ['Molitva i sjećanje na jednom mjestu', 'U digitalni memorijal obitelj može zapisati molitve, životnu priču i fotografije, a bližnji ostaviti poruku i zapaliti svijeću.', 'Pogledajte kako izgleda']],
+  [/sprovod|pogreb|troskov|kremir|urn|grob|groblj/, ['Nakon sprovoda: trajno mjesto sjećanja', 'Osmrtnica traje nekoliko dana. U digitalnom memorijalu fotografije, životna priča i poruke bližnjih ostaju zauvijek.', 'Pogledajte kako izgleda']],
+  [/tug|gubit|podrsk|sucut|zalovanj|ozalosc/, ['Uspomene koje pomažu u tugovanju', 'Mnogim obiteljima pomaže kad uspomene skupe na jedno mjesto: fotografije, priče i poruke prijatelja u digitalnom memorijalu.', 'Pogledajte kako izgleda']],
+  [/osmrtnic|citat|poruk|stihov|pjesm/, ['Riječi koje ostaju', 'Osim osmrtnice, voljenoj osobi možete posvetiti digitalni memorijal sa životnom pričom, fotografijama i porukama bližnjih.', 'Pogledajte kako izgleda']],
+];
+const DEFAULT_MEMORIAL_COPY: [string, string, string] = ['Sačuvajte uspomene na voljenu osobu', 'Fotografije, životna priča i poruke bližnjih na jednom mjestu, u digitalnom memorijalu.', 'Pogledajte kako izgleda'];
+
+/** Adds a memorial card after the 3rd paragraph, with copy for the article's topic, if the article has none. */
+const withMemorialCard = (html: string, slug: string, enabled: boolean) => {
+  if (!enabled || /<!--widget:memorial/.test(html)) return html;
+  const copy = MEMORIAL_COPY.find(([re]) => re.test(slug))?.[1] ?? DEFAULT_MEMORIAL_COPY;
+  const card = `<!--widget:memorial|${copy.join('|')}|auto_memorial-->`;
   let c = 0;
-  const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + link : m));
-  return c >= 3 ? out : html + link;
+  const out = html.replace(/<\/p>/g, (m) => (++c === 3 ? m + card : m));
+  return c >= 3 ? out : html + card;
 };
 
 /** Adds a link to the post's free guide after the 6th paragraph (or at the end), if the article doesn't link it yet. */
@@ -343,7 +354,7 @@ const BlogPost = () => {
                 {(blogPost.interactive_type === 'quiz' && blogPost.cta_enabled !== false && blogPost.slug
                   // Quiz blogs: the quiz replaces the in-text link and sits after the 3rd paragraph.
                   ? splitAfterParagraph(withGuideLink(blogPost.content || '', guide), 3)
-                  : [withGuideLink(withContextLink(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.cta_enabled !== false), guide), '']
+                  : [withGuideLink(withMemorialCard(blogPost.content || '<p>Sadržaj nije dostupan.</p>', blogPost.slug || '', blogPost.cta_enabled !== false), guide), '']
                 ).map((html, i) => (
                   <React.Fragment key={i}>
                     {i === 1 && <BlogMemorialQuiz slug={blogPost.slug!} heading={blogPost.interactive_items?.[0]} />}
@@ -440,6 +451,16 @@ const BlogPost = () => {
       
       <CitiesSection />
       <Footer />
+
+      {blogPost.slug && blogPost.cta_enabled !== false && (
+        <MemorialStickyBar
+          to="/digitalni-memorijal"
+          label="Digitalni memorijal"
+          action="Pogledaj"
+          onClick={() => recordBlogClick(blogPost.slug!, 'sticky_bar')}
+          onClose={() => trackBlog('interactive', blogPost.slug!, 'sticky_bar_close')}
+        />
+      )}
     </div>
   );
 };

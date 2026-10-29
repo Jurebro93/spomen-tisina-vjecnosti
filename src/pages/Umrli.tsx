@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MemorialCtaBanner from '@/components/MemorialCtaBanner';
+import MemorialInlineCard from '@/components/memorial/MemorialInlineCard';
 import VirtualCandles from '@/components/VirtualCandles';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -509,6 +510,18 @@ const Umrli = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {obituaries.slice(0, Math.min(3, visibleCount)).map(renderObituaryCard)}
               </div>
+              {/* Memorial card after the first 3 obituaries, where most visitors still are (the quiz sits further down) */}
+              {obituaries.length > 3 && (
+                <div className="max-w-3xl mx-auto">
+                  <MemorialInlineCard
+                    heading="Sačuvajte sjećanje na voljenu osobu"
+                    text="Digitalni memorijal čuva fotografije, životnu priču i poruke bližnjih na jednom mjestu, za cijelu obitelj."
+                    cta="Pogledajte kako izgleda"
+                    className="mt-8 sm:mt-10"
+                    onClick={() => trackObituaryEvent('obituary_memorial_click', null, { placement: 'city_list_card', memorial_action: 'learn_more' })}
+                  />
+                </div>
+              )}
               {city && cityName && (
                 <CityObituaryAlert city={city} cityName={cityName} className="my-6 sm:my-8" />
               )}
