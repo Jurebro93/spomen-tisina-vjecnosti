@@ -77,10 +77,14 @@ const PRESET_HR: Record<Preset, string> = {
 };
 
 // Midnight in Zagreb for a given Y-M-D, as a UTC Date.
+// The Zagreb wall clock is read as UTC (not browser time), so the offset is the real UTC offset.
+const zagrebClock = new Intl.DateTimeFormat('en-US', {
+  timeZone: TZ, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+});
 function zagrebMidnight(y: number, m: number, d: number) {
   const guess = new Date(Date.UTC(y, m, d));
-  const local = new Date(guess.toLocaleString('en-US', { timeZone: TZ }));
-  const offset = local.getTime() - guess.getTime();
+  const p = Object.fromEntries(zagrebClock.formatToParts(guess).map((x) => [x.type, Number(x.value)]));
+  const offset = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - guess.getTime();
   return new Date(guess.getTime() - offset);
 }
 function todayParts() {
@@ -163,6 +167,8 @@ const Inner = () => {
   const [report, setReport] = useState<Report | null>(null);
   const [prevReport, setPrevReport] = useState<Report | null>(null);
   const [state, setState] = useState<Report | null>(null);
+  const [candles, setCandles] = useState<Report | null>(null);
+  const [prevCandles, setPrevCandles] = useState<Report | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersTotal, setOrdersTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -202,20 +208,23 @@ const Inner = () => {
     try {
       const len = to.getTime() - from.getTime();
       const pFrom = new Date(from.getTime() - len);
-      const [r, p, s] = await Promise.all([
+      const [r, p, s, c, pc] = await Promise.all([
         supabase.rpc('admin_sales_report' as never, { _from: from.toISOString(), _to: to.toISOString(), ...filters } as never),
         supabase.rpc('admin_sales_report' as never, { _from: pFrom.toISOString(), _to: from.toISOString(), ...filters } as never),
         supabase.rpc('admin_sales_state' as never),
+        supabase.rpc('admin_candle_report' as never, { _from: from.toISOString(), _to: to.toISOString(), _livemode: live } as never),
+        supabase.rpc('admin_candle_report' as never, { _from: pFrom.toISOString(), _to: from.toISOString(), _livemode: live } as never),
       ]);
       if (r.error) throw r.error;
       setReport(r.data as Report); setPrevReport(p.data as Report); setState(s.data as Report);
+      setCandles(c.error ? null : (c.data as Report)); setPrevCandles(pc.error ? null : (pc.data as Report));
       await loadOrders();
     } catch (e: any) {
       setError(e?.message ?? 'Podatke nije bilo moguće učitati.');
     } finally {
       setLoading(false);
     }
-  }, [from, to, filters, loadOrders]);
+  }, [from, to, filters, live, loadOrders]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -235,7 +244,8 @@ const Inner = () => {
     { label: 'Uspješno plaćene narudžbe', v: num(r.paid_orders), p: num(pr.paid_orders), hint: 'Narudžbe potvrđene Stripe webhookom (uključuje kasnije vraćene). Bez besplatnih aktivacija.' },
     { label: 'Plaćeni memorijali', v: num(r.paid_memorials), p: num(pr.paid_memorials), hint: 'Različiti memorijali s barem jednom uspješnom naplatom u razdoblju.' },
     { label: 'Besplatno aktivirani memorijali', v: num(r.free_activations), p: num(pr.free_activations), hint: 'Aktivacije promo kodom od 100 % — bez Stripe naplate.' },
-    { label: 'Započete checkout sesije', v: num(r.checkouts_started), p: num(pr.checkouts_started), hint: 'Svaka otvorena Stripe Checkout sesija (jedna osoba može imati više).' },
+    { label: 'Započete checkout sesije (svi proizvodi)', v: num((r.checkouts_started ?? 0) + (candles?.checkouts_started ?? 0)), p: num((pr.checkouts_started ?? 0) + (prevCandles?.checkouts_started ?? 0)), hint: 'Sve otvorene Stripe Checkout sesije: digitalni memorijal i svijeće. Jedna osoba može imati više.' },
+    { label: 'Započete checkout sesije — memorijal', v: num(r.checkouts_started), p: num(pr.checkouts_started), hint: 'Svaka otvorena Stripe Checkout sesija za digitalni memorijal (jedna osoba može imati više).' },
     { label: 'Sesije koje čekaju dovršetak', v: num(r.checkouts_open), p: num(pr.checkouts_open), hint: 'Sesije koje još nisu istekle i nemaju potvrđenu naplatu (otvorene, u obradi, potrebna potvrda ili povratak bez uplate).' },
     { label: 'Istekle checkout sesije', v: num(r.checkouts_expired), p: num(pr.checkouts_expired), hint: 'Sesije za koje je Stripe javio istek (nakon 24 h) bez naplate. Samo zatvaranje stranice ne računa se kao odustajanje.' },
     { label: 'Sesije s neuspjelim pokušajem', v: num(r.checkouts_failed), p: num(pr.checkouts_failed), hint: 'Sesije s barem jednim neuspjelim pokušajem naplate (i ako su kasnije plaćene).' },
@@ -244,7 +254,13 @@ const Inner = () => {
     { label: 'Vraćeno', v: eur(r.refunded), p: eur(pr.refunded), hint: 'Zbroj povrata prema Stripeu za narudžbe iz razdoblja.' },
     { label: 'Naplaćeno umanjeno za povrate', v: eur(net(r)), p: eur(net(pr)), hint: 'Naplaćeno − vraćeno. Nije dobit.' },
     { label: 'Prosječna plaćena narudžba', v: eur(r.avg_order), p: eur(pr.avg_order), hint: 'Naplaćeno / broj uspješno plaćenih narudžbi.' },
-    { label: 'Konverzija checkouta', v: conv(r), p: conv(pr), hint: 'Uspješno plaćene narudžbe / započete checkout sesije.' },
+    { label: 'Konverzija checkouta', v: conv(r), p: conv(pr), hint: 'Memorijal: uspješno plaćene narudžbe / započete checkout sesije za memorijal.' },
+  ];
+
+  const candleMetrics = [
+    { label: 'Započete checkout sesije — svijeće', v: num(candles?.checkouts_started), p: num(prevCandles?.checkouts_started), hint: `Otvorene Stripe Checkout sesije za svijeće (osmrtnice: ${num(candles?.checkouts_obituary)}, memorijali: ${num(candles?.checkouts_memorial)}). Svijeće se naplaćuju od 28. 10. 2026. Ponovno paljenje postojeće svijeće nije uključeno.` },
+    { label: 'Plaćene svijeće', v: num(candles?.paid), p: num(prevCandles?.paid), hint: 'Svijeće čiju je naplatu Stripe potvrdio, prema datumu otvaranja checkouta.' },
+    { label: 'Naplaćeno za svijeće', v: eur(candles?.gross), p: eur(prevCandles?.gross), hint: 'Zbroj naplaćenih iznosa za svijeće prema Stripeu.' },
   ];
 
   const funnel = r.funnel ?? {};
@@ -289,6 +305,7 @@ const Inner = () => {
   const exportSummary = () => csv([
     ['Pokazatelj', 'Odabrano razdoblje', 'Prethodno razdoblje'],
     ...metrics.map((m) => [m.label, m.v, m.p]),
+    ...candleMetrics.map((m) => [m.label, m.v, m.p]),
     [], ['Razdoblje', `${dt(from.toISOString())} – ${dt(to.toISOString())}`],
     ['Transakcije', live ? 'stvarne' : 'testne'], ['Osvježeno', dt(state?.refreshed_at)],
   ], `sazetak-${from.toISOString().slice(0, 10)}.csv`);
@@ -317,7 +334,7 @@ const Inner = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold">Statistika i prodaja</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Digitalni memorijali · vrijeme Europe/Zagreb · iznosi u eurima · osvježeno {dt(state?.refreshed_at)}
+                Digitalni memorijali i svijeće · vrijeme Europe/Zagreb · iznosi u eurima · osvježeno {dt(state?.refreshed_at)}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -387,6 +404,10 @@ const Inner = () => {
               </p>
               <section className="mt-3 grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
                 {metrics.map((m) => <Metric key={m.label} label={m.label} value={m.v} prev={m.p} hint={m.hint} />)}
+              </section>
+              <h2 className="mt-6 text-sm font-medium text-muted-foreground">Svijeće</h2>
+              <section className="mt-2 grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+                {candleMetrics.map((m) => <Metric key={m.label} label={m.label} value={candles ? m.v : 'Nema podataka'} prev={candles ? m.p : undefined} hint={m.hint} />)}
               </section>
               <p className="mt-2 text-xs text-muted-foreground">
                 Naknade Stripea: {r.fees_known_count ? `${eur(r.fees)} (poznato za ${r.fees_known_count} narudžbi) · nakon povrata i naknada ${eur(net(r) - (r.fees ?? 0))}` : 'nisu još dostupne za ovo razdoblje — ne procjenjuju se.'}
