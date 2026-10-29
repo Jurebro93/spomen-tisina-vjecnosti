@@ -19,15 +19,17 @@ import {
 const base = {
   full_name: z.string().trim().min(2, 'Unesite ime i prezime').max(120),
   email: z.string().trim().email('Unesite ispravnu e-mail adresu').max(255),
+};
+
+// Private buyers give only name and e-mail; the address is asked of companies alone, for their invoice.
+const individualSchema = z.object({ ...base, customer_type: z.literal('individual') })
+  .transform((v) => ({ ...v, address: null, postal_code: null, city: null, country: 'Hrvatska' }));
+const companySchema = z.object({
+  ...base,
   address: z.string().trim().min(3, 'Unesite adresu').max(160),
   postal_code: z.string().trim().min(3, 'Unesite poštanski broj').max(20),
   city: z.string().trim().min(2, 'Unesite grad').max(80),
   country: z.string().trim().min(2, 'Unesite državu').max(60),
-};
-
-const individualSchema = z.object({ ...base, customer_type: z.literal('individual') });
-const companySchema = z.object({
-  ...base,
   customer_type: z.literal('company'),
   company_name: z.string().trim().min(2, 'Unesite naziv tvrtke').max(160),
   oib: z.string().trim().regex(/^\d{11}$/, 'OIB mora imati 11 brojeva'),
@@ -178,26 +180,26 @@ const BillingDetailsDialog = () => {
                   <Input id="bd-vat" value={form.vat_id} maxLength={30} onChange={(e) => set('vat_id')(e.target.value)} />
                 </div>
               </div>
+              <div>
+                <Label htmlFor="bd-address">Adresa *</Label>
+                <Input id="bd-address" value={form.address} maxLength={160} onChange={(e) => set('address')(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="bd-zip">Poštanski broj *</Label>
+                  <Input id="bd-zip" value={form.postal_code} maxLength={20} onChange={(e) => set('postal_code')(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="bd-city">Grad *</Label>
+                  <Input id="bd-city" value={form.city} maxLength={80} onChange={(e) => set('city')(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="bd-country">Država *</Label>
+                <Input id="bd-country" value={form.country} maxLength={60} onChange={(e) => set('country')(e.target.value)} />
+              </div>
             </>
           )}
-          <div>
-            <Label htmlFor="bd-address">Adresa *</Label>
-            <Input id="bd-address" value={form.address} maxLength={160} onChange={(e) => set('address')(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="bd-zip">Poštanski broj *</Label>
-              <Input id="bd-zip" value={form.postal_code} maxLength={20} onChange={(e) => set('postal_code')(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="bd-city">Grad *</Label>
-              <Input id="bd-city" value={form.city} maxLength={80} onChange={(e) => set('city')(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="bd-country">Država *</Label>
-            <Input id="bd-country" value={form.country} maxLength={60} onChange={(e) => set('country')(e.target.value)} />
-          </div>
           </>)}
         </div>
 

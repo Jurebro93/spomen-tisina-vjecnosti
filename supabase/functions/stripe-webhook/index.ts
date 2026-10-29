@@ -116,25 +116,15 @@ serve(async (req) => {
               action: "memorial_paid_and_published",
               entity_type: "stripe_webhook",
             });
-
-            try {
-              const { data: ord } = await admin.from("memorial_orders").select("id, customer_name, original_amount, discount_amount, promo_code, terms_version, paid_at")
-                .eq("stripe_checkout_session_id", session.id).maybeSingle();
-              if (ord) {
-                await admin.from("memorial_orders").update({ service_start_at: startAt }).eq("id", ord.id);
-                const { data: mm } = await admin.from("memorials").select("slug, obituaries:deceased_id(ime, prezime)").eq("id", memorialId).maybeSingle();
-                const { sendOrderConfirmation } = await import("../_shared/orderConfirmation.ts");
-                await sendOrderConfirmation(admin, {
-                  orderId: ord.id, email: session.customer_details?.email ?? session.customer_email ?? "", customerName: ord.customer_name,
-                  memorialSlug: mm?.slug ?? null, fullName: mm?.obituaries ? `${(mm.obituaries as any).ime} ${(mm.obituaries as any).prezime}` : "voljenu osobu",
-                  originalAmount: Number(ord.original_amount ?? PRODUCT_PRICES.memorial), discountAmount: Number(ord.discount_amount ?? 0),
-                  amountPaid: (session.amount_total ?? 0) / 100, promoCode: ord.promo_code, contractAt: nowIso, serviceStartAt: startAt,
-                  termsVersion: ord.terms_version ?? session.metadata?.terms_version ?? "—", isFree: false,
-                });
-              }
-            } catch (e) { log("Confirmation email failed", { message: String(e) }); }
-
           }
+        }
+
+        // Order confirmation (sent once, also when the thank-you page marked the memorial paid first).
+        if (memorial) {
+          try {
+            const { confirmPaidMemorialOrder } = await import("../_shared/orderConfirmation.ts");
+            await confirmPaidMemorialOrder(admin, session, memorialId, PRODUCT_PRICES.memorial);
+          } catch (e) { log("Confirmation email failed", { message: String(e) }); }
         }
       }
 

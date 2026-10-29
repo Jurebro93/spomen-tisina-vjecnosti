@@ -110,6 +110,14 @@ serve(async (req) => {
       }
     }
 
+    // Order confirmation (sent once, shared with the webhook, whichever confirms the payment first).
+    try {
+      const { confirmPaidMemorialOrder } = await import("../_shared/orderConfirmation.ts");
+      await confirmPaidMemorialOrder(admin, session, memorialId, PRODUCT_PRICES.memorial);
+    } catch (confirmationError) {
+      log("Confirmation email failed", { message: String(confirmationError) });
+    }
+
     // Invoice record in the admin list (idempotent, shared with the webhook) + Minimax issuing.
     try {
       const pi = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? null;
