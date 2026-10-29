@@ -109,9 +109,30 @@
     @apply border-border;
   }
 
+  /* Nothing may push the page sideways on phones. `clip` (not `hidden`) keeps
+     sticky elements working because it does not create a scroll container. */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     @apply bg-background text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* iOS Safari gives date/time inputs a fixed native width that ignores w-full
+     and overflows narrow screens. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+
+  input::-webkit-date-and-time-value {
+    text-align: left;
   }
 
   /* Typography Hierarchy */
