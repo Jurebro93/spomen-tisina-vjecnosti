@@ -67,3 +67,17 @@ export const trackGa4FreeActivation = (memorialId: string, promoCode?: string | 
   once(`ga4_free_activation_${memorialId}`, () =>
     push({ event: 'memorial_free_activation', memorial_id: memorialId, promo_code: promoCode ?? undefined }),
   );
+
+/** Paid candle confirmed by the backend. Same GA4 purchase event as memorials, told apart by the item. */
+export const trackGa4CandlePurchase = (sessionId: string, value: number, days: number) =>
+  once(`ga4_purchase_${sessionId}`, () =>
+    push({
+      event: 'purchase',
+      ecommerce: {
+        transaction_id: sessionId,
+        currency: 'EUR',
+        value,
+        items: [{ item_id: `svijeca-${days}`, item_name: 'Virtualna svijeća', item_category: 'candle', item_variant: `${days} dana`, price: value, quantity: 1 }],
+      },
+    }),
+  );

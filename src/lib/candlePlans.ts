@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatEur } from '@/lib/promo';
+import { trackFunnel } from '@/lib/funnel';
+import { trackGa4CandlePurchase } from '@/lib/ga4Ecommerce';
 
 /** Paid candle plans. Keep in sync with supabase/functions/_shared/candles.ts */
 export const CANDLE_PLANS = [
@@ -30,6 +32,7 @@ type CheckoutBody =
 /** Opens Stripe Checkout; the visitor comes back to the current page. */
 export const startCandleCheckout = async (body: CheckoutBody) => {
   const returnPath = window.location.pathname + window.location.search;
+  void trackFunnel('candle_checkout', { once: false });
   const { data, error } = await supabase.functions.invoke('create-candle-payment', { body: { ...body, returnPath } });
   if (error || !data?.url) {
     let message = 'Plaćanje trenutno nije moguće pokrenuti. Pokušajte ponovno.';
@@ -77,6 +80,9 @@ export const useCandlePaymentReturn = (onResult: (result: CandlePaymentResult) =
       const { data, error } = await supabase.functions.invoke('verify-candle-payment', { body: { session_id: sessionId } });
       if (error) { callback.current({ status: 'error' }); return; }
       if (data?.paid && data?.lit) {
+        const plan = CANDLE_PLANS.find((p) => p.days === data.days);
+        if (plan) trackGa4CandlePurchase(sessionId, plan.price, plan.days);
+        void trackFunnel('candle_paid', { once: false });
         callback.current({ status: 'paid', name: data.name, days: data.days, expiresAt: data.expires_at });
         return;
       }
