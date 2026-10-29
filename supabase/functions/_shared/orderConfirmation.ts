@@ -40,6 +40,21 @@ export const sendOrderConfirmation = async (admin: Admin, i: ConfirmationInput) 
   if (!i.email || !isMailConfigured()) return false;
   const { data: already } = await admin.from("payment_events").select("id").eq("order_id", i.orderId).eq("event_type", "confirmation_email").maybeSingle();
   if (already) return false;
+  // The webhook and the thank-you page can both get here at once: the unique stripe_event_id lets only one send.
+  const claimKey = `confirmation_email:${i.orderId}`;
+  const { error: claimError } = await admin.from("payment_events").insert({ order_id: i.orderId, stripe_event_id: claimKey, event_type: "confirmation_email", status: "sending" });
+  if (claimError) return false;
+  try {
+    await sendConfirmationMail(admin, i);
+  } catch (e) {
+    await admin.from("payment_events").delete().eq("stripe_event_id", claimKey);
+    throw e;
+  }
+  await admin.from("payment_events").update({ status: "sent" }).eq("stripe_event_id", claimKey);
+  return true;
+};
+
+const sendConfirmationMail = async (admin: Admin, i: ConfirmationInput) => {
   const { data: biz } = await admin.from("business_settings").select("*").eq("id", 1).single();
   const orderNo = i.orderId.slice(0, 8).toUpperCase();
   const immediate = new Date(i.serviceStartAt).getTime() - new Date(i.contractAt).getTime() < 60_000;
@@ -65,6 +80,35 @@ ${modelForm}
 <p style="color:#666;font-size:13px">${esc(biz.legal_name)} · ${esc(biz.address)}, ${esc([biz.postal_code, biz.city].filter(Boolean).join(" "))} · OIB ${esc(biz.oib)} · Podrška: ${esc(biz.email)}</p>
 </div>`;
   await sendMail({ to: i.email, subject: `Potvrda narudžbe ${orderNo} — Digitalni memorijal`, html });
-  await admin.from("payment_events").insert({ order_id: i.orderId, event_type: "confirmation_email", status: "sent" });
-  return true;
+};
+
+type PaidSession = {
+  id: string; customer_email?: string | null; customer_details?: { email?: string | null } | null;
+  amount_total?: number | null; metadata?: Record<string, string> | null;
+};
+
+/**
+ * Paid Stripe memorial: records the service start and sends the order confirmation once,
+ * whichever path confirms the payment first (Stripe webhook or the thank-you page).
+ */
+export const confirmPaidMemorialOrder = async (admin: Admin, session: PaidSession, memorialId: string, regularPrice: number) => {
+  const { data: ord } = await admin.from("memorial_orders")
+    .select("id, customer_name, customer_email, original_amount, discount_amount, promo_code, terms_version, service_start_at")
+    .eq("stripe_checkout_session_id", session.id).maybeSingle();
+  if (!ord) return false;
+  const { data: mm } = await admin.from("memorials")
+    .select("slug, paid_at, scheduled_publish_at, obituaries:deceased_id(ime, prezime)").eq("id", memorialId).maybeSingle();
+  const contractAt = mm?.paid_at ?? new Date().toISOString();
+  const immediate = session.metadata?.immediate_start !== "false";
+  const startAt = ord.service_start_at
+    ?? (immediate ? contractAt : mm?.scheduled_publish_at ?? new Date(new Date(contractAt).getTime() + 14 * 86400_000).toISOString());
+  if (!ord.service_start_at) await admin.from("memorial_orders").update({ service_start_at: startAt }).eq("id", ord.id);
+  return sendOrderConfirmation(admin, {
+    orderId: ord.id, email: session.customer_details?.email ?? session.customer_email ?? ord.customer_email ?? "",
+    customerName: ord.customer_name, memorialSlug: mm?.slug ?? null,
+    fullName: mm?.obituaries ? `${mm.obituaries.ime} ${mm.obituaries.prezime}` : "voljenu osobu",
+    originalAmount: Number(ord.original_amount ?? regularPrice), discountAmount: Number(ord.discount_amount ?? 0),
+    amountPaid: (session.amount_total ?? 0) / 100, promoCode: ord.promo_code, contractAt, serviceStartAt: startAt,
+    termsVersion: ord.terms_version ?? session.metadata?.terms_version ?? "—", isFree: false,
+  });
 };

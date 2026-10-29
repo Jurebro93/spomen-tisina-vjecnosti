@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { MEMORIAL_PRICE_EUR } from '@/lib/memorial';
-import { currentMemorialPrice } from '@/lib/seasonalPromo';
+import { activeSeasonalPromo, currentMemorialPrice } from '@/lib/seasonalPromo';
 import { TERMS_VERSION } from '@/lib/legal';
 import { hasConsent } from '@/lib/consent';
 
@@ -39,11 +39,17 @@ const PurchaseTerms = ({ value, onChange, promo }: { value: PurchaseConsent; onC
     </label>
     <label className="flex items-start gap-3">
       <Checkbox checked={value.immediateStart} onCheckedChange={(v) => onChange({ ...value, immediateStart: v === true })} className="mt-0.5" />
-      <span>Želim da pružanje usluge započne odmah, prije isteka roka od 14 dana za jednostrani raskid.</span>
+      <span><strong>Objavite memorijal odmah nakon plaćanja.</strong> Tražim da usluga započne prije isteka roka od 14 dana za jednostrani raskid.</span>
     </label>
     <p className="text-muted-foreground pl-7">Pravo na odustajanje u roku od 14 dana ostaje dostupno prema našim uvjetima.</p>
-    {!value.immediateStart && (
-      <p className="rounded-md bg-accent/20 p-2">Bez ovog zahtjeva memorijal će biti objavljen {startDate()}, nakon isteka roka od 14 dana.</p>
+    {/* The box may not be pre-ticked (consumer law), so the later date is spelled out plainly. */}
+    {value.immediateStart ? (
+      <p className="rounded-md bg-accent/20 p-2">Memorijal će biti vidljiv odmah nakon plaćanja.</p>
+    ) : (
+      <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2">
+        <strong>Pažnja:</strong> bez kvačice iznad memorijal će biti vidljiv tek <strong>{startDate()}</strong>, nakon isteka roka od 14 dana.
+        {activeSeasonalPromo() && ` Ako ga želite imati za blagdan ${activeSeasonalPromo()!.occasion}, označite kvačicu.`}
+      </p>
     )}
     <p className="text-xs text-muted-foreground">Obrada podataka opisana je u <Link to="/politika-privatnosti" target="_blank" className="underline">Politici privatnosti</Link>.</p>
   </div>

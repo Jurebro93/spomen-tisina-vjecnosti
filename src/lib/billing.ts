@@ -4,9 +4,9 @@ export interface BillingDetailsInput {
   customer_type: 'individual' | 'company';
   full_name: string;
   email: string;
-  address: string;
-  postal_code: string;
-  city: string;
+  address: string | null;
+  postal_code: string | null;
+  city: string | null;
   country: string;
   company_name?: string | null;
   oib?: string | null;
