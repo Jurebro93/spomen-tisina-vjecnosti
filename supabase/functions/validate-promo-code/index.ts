@@ -1,6 +1,7 @@
 // Checks a promo code and returns the server-computed price. No price input is accepted.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { adminSupabase, PRODUCT_NAMES, validatePromoCode, type ProductType } from "../_shared/promo.ts";
+import { adminSupabase, PRODUCT_NAMES, priceMemorial, validatePromoCode, type ProductType } from "../_shared/promo.ts";
+import { SEASONAL_PROMO } from "../_shared/seasonalPromo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +28,29 @@ serve(async (req) => {
     if (authHeader.startsWith("Bearer ")) {
       const { data } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
       userId = data.user?.id ?? null;
+    }
+
+    // Memorial: same pricing as checkout (seasonal discount by date, the cheaper of it and the code).
+    if (productType === "memorial") {
+      const price = await priceMemorial(admin, String(code ?? ""), userId);
+      if (!price.ok) return json({ valid: false, message: price.message });
+      if (price.codeError) {
+        return json({ valid: false, message: `${price.codeError} Popust za ${SEASONAL_PROMO.occasion} (${SEASONAL_PROMO.percent} %) i dalje vrijedi sam od sebe.` });
+      }
+      if (!price.code) return json({ valid: false, message: "Unesite promo kod." });
+      return json({
+        valid: true,
+        message: price.codeOutdone
+          ? `Popust za ${SEASONAL_PROMO.occasion} (${SEASONAL_PROMO.percent} %) veći je od ovog koda. Popusti se ne zbrajaju, pa vrijedi veći.`
+          : "Promo kod je uspješno primijenjen.",
+        code: price.code,
+        discount_type: price.discountType,
+        product_name: PRODUCT_NAMES[productType],
+        original_price: price.originalPrice,
+        discount_amount: price.discountAmount,
+        final_price: price.finalPrice,
+        free: price.free,
+      });
     }
 
     const result = await validatePromoCode(admin, String(code ?? ""), productType, userId);
