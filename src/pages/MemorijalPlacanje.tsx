@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { purchaseEventId, trackEvent } from '@/lib/metaPixel';
 import { trackGa4FreeActivation, trackGa4Purchase } from '@/lib/ga4Ecommerce';
+import { trackLinkerConversion } from '@/lib/linkerPixel';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '@/hooks/useAuth';
 import GuestAccountClaim from '@/components/memorial/GuestAccountClaim';
@@ -74,6 +75,8 @@ const MemorijalPlacanje = () => {
           setSlug(data.slug ?? null);
           setState('success');
           trackGa4Purchase(sessionId, Number(data.amount ?? 0), data.currency ?? 'EUR', data.memorial_id);
+          // Linker.hr conversion with the amount Stripe charged (EUR only), once per Checkout session.
+          if ((data.currency ?? 'EUR') === 'EUR') trackLinkerConversion('memorijal_kupnja', sessionId, Number(data.amount ?? 0));
           // Meta Pixel Purchase — only after the backend confirmed the Stripe payment.
           if (!sessionStorage.getItem(`fb_purchase_${sessionId}`)) {
             sessionStorage.setItem(`fb_purchase_${sessionId}`, '1');
