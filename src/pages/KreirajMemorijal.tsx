@@ -320,6 +320,21 @@ const DeceasedSearch = ({ onSelect, onStart, onRelation }: {
 
   const enterManually = () => { onStart('manual'); setManual(true); };
 
+  // Switching between search and the manual form is not a new route or step, so the
+  // page-level scroll reset does not run; without this the form opened at the footer.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [manual]);
+
+  // On phones the results start below the fold; bring their heading into view.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = resultsRef.current;
+    if (searched && el && el.getBoundingClientRect().top > window.innerHeight * 0.5) {
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [searched]);
+
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = term.trim();
@@ -332,6 +347,12 @@ const DeceasedSearch = ({ onSelect, onStart, onRelation }: {
     setResults(found);
     setSearched(true);
   };
+
+  const notListedButton = (
+    <Button type="button" variant="outline" className="w-full whitespace-normal h-auto py-3" onClick={enterManually}>
+      <UserPlus className="h-4 w-4 mr-2 shrink-0" />Nije među njima, nastavi s imenom „{term.trim()}”
+    </Button>
+  );
 
   if (manual) {
     return <ManualDeceasedForm initialName={term} onCreated={(d) => onSelect(d, 'new')}
@@ -380,24 +401,24 @@ const DeceasedSearch = ({ onSelect, onStart, onRelation }: {
       </div>
 
       {searched && results.length > 0 && (
-        <div className="space-y-3">
+        <div ref={resultsRef} className="space-y-3 scroll-mt-32">
           <p className="font-medium">Je li to netko od ovih osoba?</p>
+          {/* On phones the list is long, so the way out goes above it. */}
+          <div className="sm:hidden">{notListedButton}</div>
           {results.map((d) => (
             <Card key={d.id} className="border-border">
-              <CardContent className="p-4 flex items-center gap-4">
-                <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover" />
+              <CardContent className="p-4 flex flex-wrap sm:flex-nowrap items-center gap-4">
+                <img src={d.fotografija_url || defaultObituaryPhoto} alt="" className="h-16 w-16 rounded object-cover shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{fullName(d)}</p>
                   <p className="text-sm text-muted-foreground">{lifeYears(d.datum_rodenja, d.datum_smrti)}</p>
                   {d.mjesto_smrti && <p className="text-sm text-muted-foreground truncate">{d.mjesto_smrti}</p>}
                 </div>
-                <Button type="button" onClick={() => onSelect(d, 'existing')}>Da, to je ta osoba</Button>
+                <Button type="button" className="w-full sm:w-auto" onClick={() => onSelect(d, 'existing')}>Da, to je ta osoba</Button>
               </CardContent>
             </Card>
           ))}
-          <Button type="button" variant="outline" className="w-full whitespace-normal h-auto py-3" onClick={enterManually}>
-            <UserPlus className="h-4 w-4 mr-2 shrink-0" />Nije među njima, nastavi s imenom „{term.trim()}”
-          </Button>
+          <div className="hidden sm:block">{notListedButton}</div>
         </div>
       )}
 

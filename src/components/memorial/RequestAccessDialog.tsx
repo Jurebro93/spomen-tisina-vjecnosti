@@ -84,8 +84,8 @@ const RequestAccessDialog = ({ memorialId, redirectPath, autoOpen, variant = 'ou
 
   return (
     <>
-      <Button type="button" variant={variant} onClick={handleClick}>
-        <UserPlus className="h-4 w-4 mr-2" /> {label}
+      <Button type="button" variant={variant} onClick={handleClick} className="max-w-full h-auto min-h-10 whitespace-normal text-center">
+        <UserPlus className="h-4 w-4 mr-2 shrink-0" /> {label}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
