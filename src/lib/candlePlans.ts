@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatEur } from '@/lib/promo';
+import { formatEur, type AppliedPromo } from '@/lib/promo';
 import { trackFunnel } from '@/lib/funnel';
 import { trackGa4CandlePurchase } from '@/lib/ga4Ecommerce';
 import { trackLinkerConversion } from '@/lib/linkerPixel';
@@ -19,18 +19,23 @@ export const DEFAULT_CANDLE_DAYS: CandleDays = 7;
 export const candlePriceLabel = (days: CandleDays) =>
   formatEur(CANDLE_PLANS.find((p) => p.days === days)?.price ?? CANDLE_PLANS[0].price);
 
+/** Button text: "Plati 3,99 € i zapali" or, with a 100 % promo code, "Zapali besplatno". */
+export const candlePayLabel = (days: CandleDays, promo: AppliedPromo | null, rest = 'i zapali') =>
+  promo?.free ? 'Zapali besplatno' : `Plati ${promo ? formatEur(promo.final_price) : candlePriceLabel(days)} ${rest}`;
+
 /** Short line for texts: "7 dana 3,99 €, 14 dana 5,99 € ili 30 dana 9,99 €". */
 export const CANDLE_PRICES_TEXT = CANDLE_PLANS
   .map((p) => `${p.days} dana ${formatEur(p.price)}`)
   .join(', ')
   .replace(/, ([^,]*)$/, ' ili $1');
 
-type CheckoutBody =
+type CheckoutBody = { promoCode?: string } & (
   | { kind: 'obituary'; days: CandleDays; pokojnikIme: string; pokojnikPrezime: string; zapalioIme: string; zapalioEmail: string; poruka?: string }
   | { kind: 'obituary'; days: CandleDays; relightCandleId: string }
-  | { kind: 'memorial'; days: CandleDays; memorialId: string; visitorName?: string; email: string; message?: string };
+  | { kind: 'memorial'; days: CandleDays; memorialId: string; visitorName?: string; email: string; message?: string }
+);
 
-/** Opens Stripe Checkout; the visitor comes back to the current page. */
+/** Opens Stripe Checkout; the visitor comes back to the current page. A 100 % promo code skips Stripe. */
 export const startCandleCheckout = async (body: CheckoutBody) => {
   const returnPath = window.location.pathname + window.location.search;
   void trackFunnel('candle_checkout', { once: false });
@@ -55,6 +60,7 @@ export type CandlePaymentResult =
 
 /**
  * After Stripe sends the visitor back (?svijeca=placeno&session_id=… or ?svijeca=otkazano),
+ * or a 100 % promo code lit the candle without Stripe (?svijeca=besplatno&dana=…&ime=…),
  * confirms the payment once and removes the parameters from the address bar.
  */
 export const useCandlePaymentReturn = (onResult: (result: CandlePaymentResult) => void) => {
@@ -69,12 +75,15 @@ export const useCandlePaymentReturn = (onResult: (result: CandlePaymentResult) =
     if (!state) return;
     handled.current = true;
     const sessionId = params.get('session_id');
-    params.delete('svijeca');
-    params.delete('session_id');
+    const freeDays = Number(params.get('dana')) || undefined;
+    const freeName = params.get('ime') ?? undefined;
+    ['svijeca', 'session_id', 'dana', 'ime'].forEach((key) => params.delete(key));
     const rest = params.toString();
     window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : '') + window.location.hash);
 
     if (state === 'otkazano') { callback.current({ status: 'cancelled' }); return; }
+    // Lit with a 100 % promo code: nothing was paid, so no purchase tracking.
+    if (state === 'besplatno') { callback.current({ status: 'paid', name: freeName, days: freeDays }); return; }
     if (state !== 'placeno' || !sessionId) return;
 
     const verify = async (attempt: number): Promise<void> => {

@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AdminGuard from '@/components/admin/AdminGuard';
 import {
   DISCOUNT_TYPE_LABELS, PRODUCT_TYPE_LABELS, PROMO_STATUS_LABELS, discountValueLabel, formatEur,
-  promoStatus, type PromoCode, type PromoUsage,
+  promoStatus, type PromoCode, type PromoProductType, type PromoUsage,
 } from '@/lib/promo';
 
 const formatDateTime = (value?: string | null) =>
@@ -136,7 +136,7 @@ const AdminPromoCodeDetailInner = () => {
               {usage.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.user_id ? emails[row.user_id] ?? row.user_id : 'Gost'}</TableCell>
-                  <TableCell>{PRODUCT_TYPE_LABELS[(row.product_type as 'memorial' | 'obituary') ?? 'memorial'] ?? row.product_type}</TableCell>
+                  <TableCell>{PRODUCT_TYPE_LABELS[row.product_type as PromoProductType] ?? row.product_type}</TableCell>
                   <TableCell className="text-right">{formatEur(Number(row.original_price))}</TableCell>
                   <TableCell className="text-right">-{formatEur(Number(row.discount_amount))}</TableCell>
                   <TableCell className="text-right">{formatEur(Number(row.final_price))}</TableCell>

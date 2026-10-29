@@ -3,6 +3,7 @@
 import type Stripe from "https://esm.sh/stripe@14.21.0";
 import { isMailConfigured, sendMail } from "./mail.ts";
 import { SITE, emailButton, emailLayout, emailParagraph, escapeHtml } from "./emailLayout.ts";
+import { recordPromoUsage } from "./promo.ts";
 
 // Keep in sync with src/lib/candlePlans.ts
 export const CANDLE_PLANS: Record<number, number> = { 7: 3.99, 14: 5.99, 30: 9.99 };
@@ -25,6 +26,29 @@ export type CandleActivation = {
   days?: number;
   expiresAt?: string;
   memorialSlug?: string | null;
+};
+
+// Counts a promo code use once, only by the call that actually lit the candle.
+// Relights reuse the candle id, so they are recorded without an order id.
+// deno-lint-ignore no-explicit-any
+const recordCandlePromo = async (admin: any, session: Stripe.Checkout.Session) => {
+  const meta = session.metadata ?? {};
+  if (!meta.promo_code_id) return;
+  const originalPrice = Number(meta.original_price) || CANDLE_PLANS[Number(meta.days)] || 0;
+  const finalPrice = (session.amount_total ?? 0) / 100;
+  try {
+    await recordPromoUsage(admin, {
+      promoCodeId: meta.promo_code_id,
+      userId: meta.user_id || null,
+      orderId: meta.relight === "1" ? null : meta.candle_id,
+      productType: "candle",
+      originalPrice,
+      discountAmount: Math.max(Math.round((originalPrice - finalPrice) * 100) / 100, 0),
+      finalPrice,
+    });
+  } catch (e) {
+    log("Promo usage failed", { message: String(e) });
+  }
 };
 
 // deno-lint-ignore no-explicit-any
@@ -60,6 +84,7 @@ export const activateCandleFromSession = async (admin: any, session: Stripe.Chec
       ok: true, activated: Boolean(lit), kind: "memorial", name, days,
       expiresAt: row?.expires_at ?? expiresAt, memorialSlug: m?.slug ?? null,
     };
+    if (lit) await recordCandlePromo(admin, session);
     if (lit) await sendCandleConfirmation(lit.visitor_email ?? email, result);
     return result;
   }
@@ -83,6 +108,7 @@ export const activateCandleFromSession = async (admin: any, session: Stripe.Chec
       .or(`last_relight_session_id.is.null,last_relight_session_id.neq.${session.id}`)
       .select("id").maybeSingle();
     const result: CandleActivation = { ok: true, activated: Boolean(lit), kind: "obituary", name, days, expiresAt };
+    if (lit) await recordCandlePromo(admin, session);
     if (lit) await sendCandleConfirmation(email, result);
     return result;
   }
@@ -96,6 +122,7 @@ export const activateCandleFromSession = async (admin: any, session: Stripe.Chec
   const result: CandleActivation = {
     ok: true, activated: Boolean(lit), kind: "obituary", name, days, expiresAt: lit ? expiresAt : candle.expires_at,
   };
+  if (lit) await recordCandlePromo(admin, session);
   if (lit) await sendCandleConfirmation(candle.zapalio_email ?? email, result);
   return result;
 };

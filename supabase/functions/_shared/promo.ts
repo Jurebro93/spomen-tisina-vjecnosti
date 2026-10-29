@@ -3,10 +3,13 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { SEASONAL_PROMO, isSeasonalPromoRunning, seasonalPriceFor } from "./seasonalPromo.ts";
 
-export type ProductType = "memorial" | "obituary";
+export type ProductType = "memorial" | "obituary" | "candle";
 
-/** Canonical prices in EUR. Never trust a price coming from the client. */
-export const PRODUCT_PRICES: Record<ProductType, number> = {
+/** What an admin can pick a code for: one product, "both" (obituary + memorial) or "all" (also candles). */
+export type PromoTarget = ProductType | "both" | "all";
+
+/** Canonical prices in EUR. Never trust a price coming from the client. Candles depend on the plan (candles.ts). */
+export const PRODUCT_PRICES: Record<"memorial" | "obituary", number> = {
   memorial: 39,
   obituary: 9,
 };
@@ -14,14 +17,18 @@ export const PRODUCT_PRICES: Record<ProductType, number> = {
 export const PRODUCT_NAMES: Record<ProductType, string> = {
   memorial: "Digitalni memorijal",
   obituary: "Objava osmrtnice",
+  candle: "Virtualna svijeća",
 };
+
+export const promoAppliesTo = (target: PromoTarget, productType: ProductType) =>
+  target === "all" || target === productType || (target === "both" && productType !== "candle");
 
 export interface PromoCodeRow {
   id: string;
   code: string;
   discount_type: "percentage" | "fixed" | "free";
   discount_value: number;
-  product_type: "memorial" | "obituary" | "both";
+  product_type: PromoTarget;
   active: boolean;
   expires_at: string | null;
   max_uses: number | null;
@@ -56,6 +63,7 @@ const round2 = (value: number) => Math.round(value * 100) / 100;
 /**
  * Looks the code up itself, checks every rule and computes the final price.
  * Returns a Croatian message for every failure reason.
+ * basePrice is required for candles (price of the chosen plan, from candles.ts).
  */
 export const validatePromoCode = async (
   admin: SupabaseClient,
@@ -63,6 +71,7 @@ export const validatePromoCode = async (
   productType: ProductType,
   userId: string | null,
   now = Date.now(),
+  basePrice?: number,
 ): Promise<PromoResult | PromoFailure> => {
   const code = (rawCode ?? "").trim();
   if (!code) return { ok: false, message: "Unesite promo kod." };
@@ -81,7 +90,7 @@ export const validatePromoCode = async (
   if (promo.expires_at && new Date(promo.expires_at).getTime() < now) {
     return { ok: false, message: "Promo kod je istekao." };
   }
-  if (promo.product_type !== "both" && promo.product_type !== productType) {
+  if (!promoAppliesTo(promo.product_type, productType)) {
     return { ok: false, message: "Promo kod nije moguće koristiti za ovaj proizvod." };
   }
 
@@ -106,7 +115,8 @@ export const validatePromoCode = async (
     }
   }
 
-  const originalPrice = PRODUCT_PRICES[productType];
+  const originalPrice = basePrice ?? (productType === "candle" ? NaN : PRODUCT_PRICES[productType]);
+  if (!Number.isFinite(originalPrice)) return { ok: false, message: "Odaberite proizvod." };
   let discountAmount = 0;
   if (promo.discount_type === "free") discountAmount = originalPrice;
   else if (promo.discount_type === "percentage") discountAmount = originalPrice * (Number(promo.discount_value) / 100);
