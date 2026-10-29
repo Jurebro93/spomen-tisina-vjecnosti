@@ -17,7 +17,9 @@ import { SEOHelmet } from '@/hooks/useSEO';
 import MemorialPrice from '@/components/promo/MemorialPrice';
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import { CandleConsent, CandlePlanPicker, useCandleResultToast } from '@/components/candles/CandlePlanPicker';
-import { CANDLE_PRICES_TEXT, DEFAULT_CANDLE_DAYS, candlePriceLabel, startCandleCheckout, useCandlePaymentReturn, type CandleDays } from '@/lib/candlePlans';
+import CandlePromoField from '@/components/candles/CandlePromoField';
+import type { AppliedPromo } from '@/lib/promo';
+import { CANDLE_PRICES_TEXT, DEFAULT_CANDLE_DAYS, candlePayLabel, startCandleCheckout, useCandlePaymentReturn, type CandleDays } from '@/lib/candlePlans';
 
 const ZapaliSvijecu = () => {
   const [formData, setFormData] = useState({
@@ -35,6 +37,7 @@ const ZapaliSvijecu = () => {
   const [litFor, setLitFor] = useState<{ name: string; days: number } | null>(null);
   const [days, setDays] = useState<CandleDays>(DEFAULT_CANDLE_DAYS);
   const [consent, setConsent] = useState(false);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
   const { toast } = useToast();
   const showCandleResult = useCandleResultToast();
 
@@ -134,7 +137,8 @@ const ZapaliSvijecu = () => {
         pokojnikPrezime: formData.pokojnikPrezime,
         zapalioIme: formData.zapalioIme,
         zapalioEmail: formData.zapalioEmail,
-        poruka: formData.poruka
+        poruka: formData.poruka,
+        promoCode: promo?.code
       });
     } catch (error) {
       console.error('Checkout error:', error);
@@ -272,6 +276,9 @@ const ZapaliSvijecu = () => {
                   Svijeća se pojavi na stranici odmah nakon plaćanja. Plaćanje karticom preko sigurnog Stripe sustava.
                 </p>
                 <div className="mt-4">
+                  <CandlePromoField days={days} applied={promo} onApplied={setPromo} />
+                </div>
+                <div className="mt-4">
                   <CandleConsent checked={consent} onChange={setConsent} />
                 </div>
               </div>
@@ -284,7 +291,7 @@ const ZapaliSvijecu = () => {
                       <span className="text-sm sm:text-base">Otvaram plaćanje...</span>
                     </> : <>
                       <Flame className="mr-2" size={18} />
-                      <span className="text-sm sm:text-base">Plati {candlePriceLabel(days)} i zapali svijeću</span>
+                      <span className="text-sm sm:text-base">{candlePayLabel(days, promo, 'i zapali svijeću')}</span>
                     </>}
                 </Button>
               </div>

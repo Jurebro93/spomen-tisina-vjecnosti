@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export type PromoDiscountType = 'percentage' | 'fixed' | 'free';
-export type PromoProductType = 'memorial' | 'obituary' | 'both';
+export type PromoProductType = 'memorial' | 'obituary' | 'candle' | 'both' | 'all';
 
 export interface PromoCode {
   id: string;
@@ -50,7 +50,9 @@ export const DISCOUNT_TYPE_LABELS: Record<PromoDiscountType, string> = {
 export const PRODUCT_TYPE_LABELS: Record<PromoProductType, string> = {
   memorial: 'Digitalni memorijal',
   obituary: 'Osmrtnica',
-  both: 'Oboje',
+  candle: 'Svijeće',
+  both: 'Osmrtnica i memorijal',
+  all: 'Sve (osmrtnica, memorijal i svijeće)',
 };
 
 export const formatEur = (value: number) =>
@@ -91,10 +93,12 @@ export const generatePromoCode = (prefix = 'PROMO') => {
 /** Asks the server to validate the code and compute the price. */
 export const applyPromoCode = async (
   code: string,
-  productType: 'memorial' | 'obituary'
+  productType: 'memorial' | 'obituary' | 'candle',
+  /** Candles only: the chosen plan (7 / 14 / 30 days), its price is the base. */
+  days?: number
 ): Promise<{ valid: boolean; message: string; applied?: AppliedPromo }> => {
   const { data, error } = await supabase.functions.invoke('validate-promo-code', {
-    body: { code, product_type: productType },
+    body: { code, product_type: productType, days },
   });
   if (error) return { valid: false, message: 'Provjera promo koda trenutno nije moguća.' };
   if (!data?.valid) return { valid: false, message: data?.message ?? 'Promo kod nije pronađen.' };

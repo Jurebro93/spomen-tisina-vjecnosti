@@ -7,7 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { CandleConsent, CandlePlanPicker, useCandleResultToast } from '@/components/candles/CandlePlanPicker';
-import { DEFAULT_CANDLE_DAYS, candlePriceLabel, startCandleCheckout, useCandlePaymentReturn, type CandleDays } from '@/lib/candlePlans';
+import CandlePromoField from '@/components/candles/CandlePromoField';
+import { DEFAULT_CANDLE_DAYS, candlePayLabel, startCandleCheckout, useCandlePaymentReturn, type CandleDays } from '@/lib/candlePlans';
+import type { AppliedPromo } from '@/lib/promo';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,6 +22,7 @@ const CandleForm = ({ memorialId, personName, onLit }: { memorialId: string; per
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lit, setLit] = useState(false);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
   const { toast } = useToast();
   const showCandleResult = useCandleResultToast();
 
@@ -51,6 +54,7 @@ const CandleForm = ({ memorialId, personName, onLit }: { memorialId: string; per
         visitorName: name.trim() || undefined,
         email: email.trim(),
         message: message.trim() || undefined,
+        promoCode: promo?.code,
       });
     } catch (error) {
       setSubmitting(false);
@@ -88,10 +92,11 @@ const CandleForm = ({ memorialId, personName, onLit }: { memorialId: string; per
             <Label>Koliko dugo svijeća gori?</Label>
             <CandlePlanPicker value={days} onChange={setDays} />
           </div>
+          <CandlePromoField id="memorial-candle-promo" days={days} applied={promo} onApplied={setPromo} />
           <CandleConsent id="memorial-candle-consent" checked={consent} onChange={setConsent} />
           <Button type="submit" variant="gold" className="w-full" disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Flame className="h-4 w-4 mr-2" />}
-            Plati {candlePriceLabel(days)} i zapali
+            {candlePayLabel(days, promo)}
           </Button>
           <p className="text-xs text-center text-muted-foreground">Plaćanje karticom preko sigurnog Stripe sustava.</p>
         </form>

@@ -2,10 +2,12 @@
 // kind "obituary": new candle for a deceased person, or relighting an extinguished one (relightCandleId).
 // kind "memorial": candle on a digital memorial.
 // The candle stays hidden until verify-candle-payment or stripe-webhook confirms the payment.
+// An optional promo code (made for "Svijeće" or "Sve" in the admin) lowers the price; a 100 % code lights it without Stripe.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { CANDLE_PLANS, candleProductName, isCandlePlan } from "../_shared/candles.ts";
+import { CANDLE_PLANS, activateCandleFromSession, candleProductName, isCandlePlan } from "../_shared/candles.ts";
+import { validatePromoCode } from "../_shared/promo.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,8 +32,7 @@ const siteOrigin = (req: Request) => {
 const cleanPath = (path: unknown, fallback: string) => {
   if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.length > 500) return fallback;
   const url = new URL(path, SITE);
-  url.searchParams.delete("svijeca");
-  url.searchParams.delete("session_id");
+  for (const key of ["svijeca", "session_id", "dana", "ime"]) url.searchParams.delete(key);
   return url.pathname + url.search;
 };
 
@@ -39,6 +40,9 @@ const withParams = (base: string, path: string, params: string) =>
   `${base}${path}${path.includes("?") ? "&" : "?"}${params}`;
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+// Stripe does not accept card payments under 0,50 €.
+const STRIPE_MIN_EUR = 0.5;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -50,7 +54,7 @@ serve(async (req) => {
     const body = await req.json();
     const days = Number(body.days);
     if (!isCandlePlan(days)) return json({ error: "Odaberite koliko dugo svijeća gori." }, 400);
-    const price = CANDLE_PLANS[days];
+    const planPrice = CANDLE_PLANS[days];
 
     const stripeKey = Deno.env.get("STRIPE_LIVE_API_KEY") || Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeKey) throw new Error("STRIPE_LIVE_API_KEY or STRIPE_SECRET_KEY is not set");
@@ -58,6 +62,25 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
       auth: { persistSession: false },
     });
+
+    // Logged-in visitors count towards the per-user limit of a promo code.
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (authHeader.startsWith("Bearer ")) {
+      const { data } = await admin.auth.getUser(authHeader.replace("Bearer ", ""));
+      userId = data.user?.id ?? null;
+    }
+
+    // Price is always computed here; the browser only sends the code.
+    let price = planPrice;
+    let promo: { id: string; code: string } | null = null;
+    const promoCode = text(body.promoCode, 64);
+    if (promoCode) {
+      const result = await validatePromoCode(admin, promoCode, "candle", userId, Date.now(), planPrice);
+      if (!result.ok) return json({ error: result.message }, 400);
+      price = result.finalPrice > 0 ? Math.max(result.finalPrice, STRIPE_MIN_EUR) : 0;
+      promo = { id: result.promo.id, code: result.promo.code };
+    }
 
     const origin = siteOrigin(req);
     const kind = body.kind === "memorial" ? "memorial" : "obituary";
@@ -131,6 +154,32 @@ serve(async (req) => {
 
     const productName = candleProductName(days);
     const productDescription = `Svijeća za ${forName}`;
+    const metadata: Record<string, string> = {
+      type: "candle",
+      candle_kind: kind,
+      candle_id: candleId,
+      relight: relight ? "1" : "0",
+      days: String(days),
+      product_name: productName,
+      product_description: productDescription,
+      original_price: String(planPrice),
+      ...(promo ? { promo_code_id: promo.id, promo_code: promo.code } : {}),
+      ...(userId ? { user_id: userId } : {}),
+    };
+    const sessionColumn = table === "memorial_candles" ? "stripe_session_id" : "stripe_payment_intent_id";
+
+    // 100 % promo code: nothing to pay, light the candle right away the same way a paid one is lit.
+    if (price <= 0) {
+      const freeId = `free_${crypto.randomUUID()}`;
+      if (!relight) await admin.from(table).update({ [sessionColumn]: freeId }).eq("id", candleId);
+      const lit = await activateCandleFromSession(admin, {
+        id: freeId, metadata, payment_status: "paid", amount_total: 0, customer_email: email ?? null, customer_details: null,
+      } as unknown as Stripe.Checkout.Session);
+      if (!lit.ok) throw new Error("Free candle could not be lit");
+      log("Free candle lit", { kind, relight, days, candleId, promo: promo?.code });
+      return json({ free: true, url: withParams(origin, returnPath, `svijeca=besplatno&dana=${days}&ime=${encodeURIComponent(lit.name ?? forName)}`) });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       locale: "hr",
@@ -145,23 +194,12 @@ serve(async (req) => {
       }],
       success_url: withParams(origin, returnPath, "svijeca=placeno&session_id={CHECKOUT_SESSION_ID}"),
       cancel_url: withParams(origin, returnPath, "svijeca=otkazano"),
-      metadata: {
-        type: "candle",
-        candle_kind: kind,
-        candle_id: candleId,
-        relight: relight ? "1" : "0",
-        days: String(days),
-        product_name: productName,
-        product_description: productDescription,
-      },
+      metadata,
     });
 
-    if (!relight) {
-      const column = table === "memorial_candles" ? "stripe_session_id" : "stripe_payment_intent_id";
-      await admin.from(table).update({ [column]: session.id }).eq("id", candleId);
-    }
+    if (!relight) await admin.from(table).update({ [sessionColumn]: session.id }).eq("id", candleId);
 
-    log("Session created", { sessionId: session.id, kind, relight, days, candleId });
+    log("Session created", { sessionId: session.id, kind, relight, days, candleId, promo: promo?.code, price });
     return json({ url: session.url });
   } catch (error) {
     log("ERROR", { message: String(error) });

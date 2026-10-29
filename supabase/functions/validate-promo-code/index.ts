@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { adminSupabase, PRODUCT_NAMES, priceMemorial, validatePromoCode, type ProductType } from "../_shared/promo.ts";
 import { SEASONAL_PROMO } from "../_shared/seasonalPromo.ts";
+import { CANDLE_PLANS, isCandlePlan } from "../_shared/candles.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,8 +19,15 @@ serve(async (req) => {
     });
 
   try {
-    const { code, product_type } = await req.json();
-    const productType: ProductType = product_type === "obituary" ? "obituary" : "memorial";
+    const { code, product_type, days } = await req.json();
+    const productType: ProductType =
+      product_type === "obituary" ? "obituary" : product_type === "candle" ? "candle" : "memorial";
+    // Candles: price of the chosen plan (7 / 14 / 30 days). The seasonal memorial discount never applies.
+    const candleDays = Number(days);
+    if (productType === "candle" && !isCandlePlan(candleDays)) {
+      return json({ valid: false, message: "Odaberite koliko dugo svijeća gori." });
+    }
+    const basePrice = productType === "candle" ? CANDLE_PLANS[candleDays] : undefined;
 
     const admin = adminSupabase();
 
@@ -53,7 +61,7 @@ serve(async (req) => {
       });
     }
 
-    const result = await validatePromoCode(admin, String(code ?? ""), productType, userId);
+    const result = await validatePromoCode(admin, String(code ?? ""), productType, userId, Date.now(), basePrice);
     if (!result.ok) return json({ valid: false, message: result.message });
 
     return json({
