@@ -9,10 +9,10 @@ import MemorialValueSummary from '@/components/promo/MemorialValueSummary';
 import PromoCodeField from '@/components/promo/PromoCodeField';
 import PurchaseTerms, { EMPTY_CONSENT, consentBody, payButtonLabel, type PurchaseConsent } from '@/components/promo/PurchaseTerms';
 import { formatEur, type AppliedPromo } from '@/lib/promo';
-import { MEMORIAL_PRICE_EUR, friendlyError } from '@/lib/memorial';
+import { friendlyError } from '@/lib/memorial';
 import { NotAuthenticatedError, startMemorialPayment } from '@/lib/memorialActions';
 import { useToast } from '@/hooks/use-toast';
-import { autoPromoCode } from '@/lib/seasonalPromo';
+import { autoPromoCode, currentMemorialPrice } from '@/lib/seasonalPromo';
 
 interface Props {
   memorialId: string | null;
@@ -86,7 +86,7 @@ const PayMemorialDialog = ({ memorialId, open, onOpenChange, onAlreadyPaid }: Pr
         <PromoCodeField
           productType="memorial"
           productLabel="memorijala"
-          basePrice={MEMORIAL_PRICE_EUR}
+          basePrice={currentMemorialPrice()}
           applied={promo}
           onApplied={setPromo}
           autoCode={autoPromoCode()}

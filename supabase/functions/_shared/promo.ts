@@ -1,6 +1,7 @@
 // Server-side promo code validation and usage tracking.
 // The frontend never decides prices — every amount comes from here.
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { SEASONAL_PROMO, isSeasonalPromoRunning, seasonalPriceFor } from "./seasonalPromo.ts";
 
 export type ProductType = "memorial" | "obituary";
 
@@ -61,6 +62,7 @@ export const validatePromoCode = async (
   rawCode: string,
   productType: ProductType,
   userId: string | null,
+  now = Date.now(),
 ): Promise<PromoResult | PromoFailure> => {
   const code = (rawCode ?? "").trim();
   if (!code) return { ok: false, message: "Unesite promo kod." };
@@ -76,7 +78,7 @@ export const validatePromoCode = async (
   const promo = data as PromoCodeRow | null;
   if (!promo) return { ok: false, message: "Promo kod nije pronađen." };
   if (!promo.active) return { ok: false, message: "Promo kod više nije aktivan." };
-  if (promo.expires_at && new Date(promo.expires_at).getTime() < Date.now()) {
+  if (promo.expires_at && new Date(promo.expires_at).getTime() < now) {
     return { ok: false, message: "Promo kod je istekao." };
   }
   if (promo.product_type !== "both" && promo.product_type !== productType) {
@@ -158,4 +160,88 @@ export const recordPromoUsage = async (
     .eq("promo_code_id", params.promoCodeId);
   await admin.from("promo_codes").update({ current_uses: count ?? 1 }).eq("id", params.promoCodeId);
   return true;
+};
+
+export interface MemorialPrice {
+  ok: true;
+  originalPrice: number;
+  discountAmount: number;
+  finalPrice: number;
+  free: boolean;
+  promoId: string | null;
+  /** Code recorded on the order: the buyer's code, or the seasonal one when that is cheaper. */
+  code: string | null;
+  discountType: PromoCodeRow["discount_type"] | null;
+  /** The seasonal discount was used. */
+  seasonal: boolean;
+  /** The buyer's code was valid but the seasonal discount is bigger, so the code was not used. */
+  codeOutdone: boolean;
+  /** Why the buyer's code was rejected while the seasonal discount still applies. */
+  codeError: string | null;
+}
+
+/**
+ * Memorial price for checkout. While the seasonal discount runs (seasonalPromo.ts) it applies by date,
+ * no code needed. Discounts never add up: with a promo code the buyer gets whichever is cheaper.
+ */
+export const priceMemorial = async (
+  admin: SupabaseClient,
+  rawCode: string | null | undefined,
+  userId: string | null,
+  now = Date.now(),
+): Promise<MemorialPrice | PromoFailure> => {
+  const originalPrice = PRODUCT_PRICES.memorial;
+  const code = String(rawCode ?? "").trim();
+  const seasonalOn = isSeasonalPromoRunning(now);
+  const isSeasonalCode = code.toUpperCase() === SEASONAL_PROMO.code;
+
+  let fromCode: PromoResult | null = null;
+  let codeError: string | null = null;
+  if (code && !(seasonalOn && isSeasonalCode)) {
+    const result = await validatePromoCode(admin, code, "memorial", userId, now);
+    if (result.ok) fromCode = result;
+    else if (!seasonalOn) return result;
+    else codeError = result.message;
+  }
+
+  if (seasonalOn) {
+    const seasonalFinal = seasonalPriceFor(originalPrice);
+    if (!fromCode || fromCode.finalPrice >= seasonalFinal) {
+      const { data } = await admin.from("promo_codes").select("id, code").ilike("code", SEASONAL_PROMO.code).maybeSingle();
+      return {
+        ok: true,
+        originalPrice,
+        discountAmount: round2(originalPrice - seasonalFinal),
+        finalPrice: seasonalFinal,
+        free: false,
+        promoId: (data as { id: string } | null)?.id ?? null,
+        code: (data as { code: string } | null)?.code ?? SEASONAL_PROMO.code,
+        discountType: "percentage",
+        seasonal: true,
+        codeOutdone: fromCode !== null,
+        codeError,
+      };
+    }
+  }
+
+  if (fromCode) {
+    return {
+      ok: true,
+      originalPrice,
+      discountAmount: fromCode.discountAmount,
+      finalPrice: fromCode.finalPrice,
+      free: fromCode.free,
+      promoId: fromCode.promo.id,
+      code: fromCode.promo.code,
+      discountType: fromCode.promo.discount_type,
+      seasonal: false,
+      codeOutdone: false,
+      codeError: null,
+    };
+  }
+
+  return {
+    ok: true, originalPrice, discountAmount: 0, finalPrice: originalPrice, free: false,
+    promoId: null, code: null, discountType: null, seasonal: false, codeOutdone: false, codeError: null,
+  };
 };

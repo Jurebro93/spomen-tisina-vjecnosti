@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { PRODUCT_PRICES, recordPromoUsage, validatePromoCode } from "../_shared/promo.ts";
+import { priceMemorial, recordPromoUsage } from "../_shared/promo.ts";
 import { cleanAttribution } from "../_shared/orders.ts";
 import { buildUserData, cleanBrowserIds, cleanEventId, clientFromRequest, PRODUCTION_ORIGINS, sendMetaEvent } from "../_shared/metaCapi.ts";
 
@@ -86,26 +86,19 @@ serve(async (req) => {
     const fullName = deceased ? `${deceased.ime} ${deceased.prezime}` : "voljenu osobu";
     const origin = req.headers.get("origin") ?? "https://osmrtnica.com.hr";
 
-    // The server alone decides the amount: it re-validates the promo code and recomputes the price.
-    const originalPrice = PRODUCT_PRICES.memorial;
-    let finalPrice = originalPrice;
-    let discountAmount = 0;
-    let promoId: string | null = null;
-    let promoCodeLabel: string | null = null;
-
-    if (promo_code) {
-      const promoResult = await validatePromoCode(admin, String(promo_code), "memorial", user.id);
-      if (!promoResult.ok) {
-        return new Response(JSON.stringify({ error: promoResult.message, promo_error: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-      finalPrice = promoResult.finalPrice;
-      discountAmount = promoResult.discountAmount;
-      promoId = promoResult.promo.id;
-      promoCodeLabel = promoResult.promo.code;
+    // The server alone decides the amount: seasonal discount by date, promo code re-validated, never added up.
+    const price = await priceMemorial(admin, promo_code ? String(promo_code) : null, user.id);
+    if (!price.ok) {
+      return new Response(JSON.stringify({ error: price.message, promo_error: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
     }
+    const originalPrice = price.originalPrice;
+    const finalPrice = price.finalPrice;
+    const discountAmount = price.discountAmount;
+    const promoId = price.promoId;
+    const promoCodeLabel = price.code;
 
     // Free promo code — no Stripe session, the memorial is activated through the same publish logic.
     if (finalPrice <= 0) {
