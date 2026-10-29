@@ -22,7 +22,8 @@ import {
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import VirtualCandlesForObituary from '@/components/VirtualCandlesForObituary';
-import MemorialCta from '@/components/memorial/MemorialCta';
+import MemorialCta, { MEMORIAL_CTA_ID } from '@/components/memorial/MemorialCta';
+import MemorialStickyBar from '@/components/memorial/MemorialStickyBar';
 import { supabase } from '@/integrations/supabase/client';
 const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 import { PersonSEO } from '@/hooks/usePersonSEO';
@@ -30,7 +31,7 @@ import { formatObituaryDate, formatObituaryLocation, calculateObituaryAge, isFut
 import { trackObituaryEvent } from '@/lib/obituaryTracking';
 import EbookSignup from '@/components/EbookSignup';
 import RelatedObituaries from '@/components/RelatedObituaries';
-import { ageLabel, mergeMourners } from '@/lib/hr';
+import { ageLabel, displayName, mergeMourners } from '@/lib/hr';
 
 const ObituaryPage = () => {
   const { slug } = useParams();
@@ -313,6 +314,9 @@ const ObituaryPage = () => {
             </div>
           )}
 
+          {/* Digital memorial CTA: right after the text, before the long list of mourners */}
+          <MemorialCta deceasedId={obituary.id} personName={`${obituary.ime} ${obituary.prezime}`} photoUrl={obituary.fotografija_url} obituary={obituary} />
+
           {/* Mourners */}
           {obituary.ozalosceni && obituary.ozalosceni.length > 0 && (
             <Card className="mb-6 sm:mb-8">
@@ -329,9 +333,6 @@ const ObituaryPage = () => {
               </CardContent>
             </Card>
           )}
-
-          {/* Digital memorial CTA */}
-          <MemorialCta deceasedId={obituary.id} personName={`${obituary.ime} ${obituary.prezime}`} obituary={obituary} />
 
           {/* Virtual Candles Section */}
           <VirtualCandlesForObituary 
@@ -449,6 +450,14 @@ const ObituaryPage = () => {
       </main>
       
       <Footer />
+
+      <MemorialStickyBar
+        to={`/kreiraj-memorijal?deceased_id=${encodeURIComponent(obituary.id)}`}
+        label={`Memorijal: ${displayName(`${obituary.ime} ${obituary.prezime}`)}`}
+        watchId={MEMORIAL_CTA_ID}
+        onClick={() => trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'sticky_bar', memorial_action: 'create' })}
+        onClose={() => trackObituaryEvent('obituary_memorial_click', obituary, { placement: 'sticky_bar', memorial_action: 'close' })}
+      />
     </div>
   );
 };

@@ -1,13 +1,13 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ArrowRight, BookOpen } from 'lucide-react';
+import MemorialInlineCard from '@/components/memorial/MemorialInlineCard';
 import { EBOOKS, type GuideId } from '@/lib/ebook';
 import { recordBlogClick, trackBlog } from '@/lib/blogTracking';
 
 /**
  * A small card inside the article text, placed by the editor with an HTML comment:
  *   <!--widget:guide-->                                   the post's free guide (BLOG_GUIDES)
- *   <!--widget:memorial|Heading|One sentence|Button-->    digital memorial, copy per post
+ *   <!--widget:memorial|Heading|One sentence|Button|cta id-->  digital memorial, copy per post (cta id optional)
  */
 export const WIDGET_RE = /<!--widget:(guide|memorial)((?:\|[^|>]*)*)-->/g;
 
@@ -41,20 +41,8 @@ const BlogInlineWidget = ({ slug, kind, args, guide }: Props) => {
   }
 
   if (kind === 'memorial') {
-    const [heading = 'Sačuvajte uspomene na jednom mjestu', text = 'Fotografije, životna priča i poruke bližnjih u digitalnom memorijalu.', cta = 'Izradite digitalni memorijal'] = args;
-    return (
-      <aside className="not-prose my-10 rounded-xl border-l-4 border-memorial-gold bg-memorial-parchment/60 p-5 sm:p-6 dark:bg-muted/40">
-        <div className="flex items-center gap-1.5 text-memorial-gold">
-          <Heart className="h-3.5 w-3.5" aria-hidden="true" />
-          <span className="text-[0.7rem] font-semibold uppercase tracking-wide">Digitalni memorijal</span>
-        </div>
-        <p className="mt-1 font-display text-lg font-bold leading-snug text-primary">{heading}</p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground sm:text-base">{text}</p>
-        <Button asChild size="sm" className="mt-3 bg-memorial-gold text-white hover:bg-memorial-gold/90">
-          <Link to="/digitalni-memorijal" onClick={() => recordBlogClick(slug, 'inline_memorial')}>{cta}</Link>
-        </Button>
-      </aside>
-    );
+    const [heading = 'Sačuvajte uspomene na jednom mjestu', text = 'Fotografije, životna priča i poruke bližnjih u digitalnom memorijalu.', cta = 'Izradite digitalni memorijal', ctaId = 'inline_memorial'] = args;
+    return <MemorialInlineCard heading={heading} text={text} cta={cta} onClick={() => recordBlogClick(slug, ctaId)} />;
   }
 
   return null;
