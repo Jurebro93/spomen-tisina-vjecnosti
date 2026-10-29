@@ -33,7 +33,12 @@ serve(async (req) => {
 
     const result = await activateCandleFromSession(admin, session);
     if (!result.ok) return json({ paid: true, lit: false });
-    return json({ paid: true, lit: true, kind: result.kind, name: result.name, days: result.days, expires_at: result.expiresAt });
+    return json({
+      paid: true, lit: true, kind: result.kind, name: result.name, days: result.days, expires_at: result.expiresAt,
+      // Amount Stripe charged, for the Linker.hr conversion pixel on the frontend.
+      amount: (session.amount_total ?? 0) / 100,
+      currency: (session.currency ?? "eur").toUpperCase(),
+    });
   } catch (error) {
     console.error("[VERIFY-CANDLE-PAYMENT] ERROR", String(error));
     return json({ error: "Provjera plaćanja nije uspjela." }, 500);

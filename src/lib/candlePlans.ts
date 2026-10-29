@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatEur } from '@/lib/promo';
+import { trackLinkerConversion } from '@/lib/linkerPixel';
 
 /** Paid candle plans. Keep in sync with supabase/functions/_shared/candles.ts */
 export const CANDLE_PLANS = [
@@ -77,6 +78,7 @@ export const useCandlePaymentReturn = (onResult: (result: CandlePaymentResult) =
       const { data, error } = await supabase.functions.invoke('verify-candle-payment', { body: { session_id: sessionId } });
       if (error) { callback.current({ status: 'error' }); return; }
       if (data?.paid && data?.lit) {
+        if (data.currency === 'EUR') trackLinkerConversion('svijeca_kupnja', sessionId, Number(data.amount));
         callback.current({ status: 'paid', name: data.name, days: data.days, expiresAt: data.expires_at });
         return;
       }
