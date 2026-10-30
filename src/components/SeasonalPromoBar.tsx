@@ -8,6 +8,8 @@ const isHiddenPath = (p: string) =>
   p.startsWith('/admin') ||
   p.startsWith('/digitalni-memorijal/placanje') ||
   p.startsWith('/zahvaljujemo') ||
+  // Candle ads land here; a memorial discount would only distract from lighting a candle.
+  p.startsWith('/zapali-svijecu') ||
   p.startsWith('/auth') ||
   p.startsWith('/prijava') ||
   p.startsWith('/registracija') ||

@@ -176,7 +176,7 @@ const ZapaliSvijecu = () => {
               </h1>
             </div>
             <p className="memorial-subtitle text-sm sm:text-base md:text-lg max-w-2xl text-gray-300">
-              Vječno svjetlo za vječnu uspomenu • Svijetli 7, 14 ili 30 dana
+              Gori 7, 14 ili 30 dana • Kad se ugasi, ime i poruka ostaju
             </p>
           </div>
         </div>
@@ -352,8 +352,8 @@ const ZapaliSvijecu = () => {
                 {recentCandles.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {recentCandles.map((candle: any) => {
-                      const candleAge = Math.floor((Date.now() - new Date(candle.created_at).getTime()) / (1000 * 60 * 60 * 24));
-                      const isOld = candleAge > 7;
+                      // A paid candle burns until expires_at (7, 14 or 30 days), then stays listed unlit.
+                      const isOld = candle.is_burning === false;
                       
                       return (
                         <div key={candle.id} className={`bg-candle-warm/10 rounded-lg p-4 sm:p-6 border border-candle-flame/20 text-center ${isOld ? 'opacity-70' : ''}`}>
@@ -385,7 +385,7 @@ const ZapaliSvijecu = () => {
                           {isOld && (
                             <div className="mt-4">
                               <p className="text-xs text-muted-foreground mb-2">
-                                Svijeća je ugašena (više od 7 dana)
+                                Svijeća se ugasila. Ime i poruka ostaju.
                               </p>
                               <Button 
                                 size="sm"
