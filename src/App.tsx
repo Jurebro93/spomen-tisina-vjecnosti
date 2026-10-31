@@ -46,6 +46,7 @@ const CestoPostavljenaPitanja = lazyPage(() => import("./pages/CestoPostavljenaP
 const UvjetiKoristenja = lazyPage(() => import("./pages/UvjetiKoristenja"));
 const PolitikaPrivatnosti = lazyPage(() => import("./pages/PolitikaPrivatnosti"));
 const Kolacici = lazyPage(() => import("./pages/Kolacici"));
+const Odjava = lazyPage(() => import("./pages/Odjava"));
 const SitemapIndex = lazyPage(() => import("./pages/SitemapIndex"));
 const GrobljaGrad = lazyPage(() => import("./pages/GrobljaGrad"));
 const GrobljePage = lazyPage(() => import("./pages/GrobljePage"));
@@ -137,6 +138,7 @@ export const routes = [
   { path: "/uvjeti-koristenja", element: <UvjetiKoristenja />, preload: UvjetiKoristenja.preload },
   { path: "/politika-privatnosti", element: <PolitikaPrivatnosti />, preload: PolitikaPrivatnosti.preload },
   { path: "/kolacici", element: <Kolacici />, preload: Kolacici.preload },
+  { path: "/odjava", element: <Odjava />, preload: Odjava.preload },
   { path: "/kontakt", element: <Kontakt />, preload: Kontakt.preload },
   { path: "/raskid-i-povrat", element: <RaskidIPovrat />, preload: RaskidIPovrat.preload },
   { path: "/prigovori", element: <Prigovori />, preload: Prigovori.preload },
