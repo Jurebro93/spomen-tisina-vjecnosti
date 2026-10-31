@@ -26,7 +26,6 @@ const TRACK = `${FN_URL}/email-track`;
 const PRICE = 39;
 const DISCOUNT = 30;
 const CODE_VALID_DAYS = 14;
-const EXAMPLE = `${SITE}/memorijal-primjer/obiteljske-uspomene`;
 // A signup older than this when the sequence would start is not mailed (safety net for old rows).
 const MAX_START_AGE_MS = 45 * DAY;
 
