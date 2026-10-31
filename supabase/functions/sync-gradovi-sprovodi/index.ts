@@ -60,8 +60,9 @@ const SOURCES: Source[] = [
         await getText('https://boninovo.hr/index.php/boninovo-d-o-o-lista-sprovoda?format=feed&type=rss'),
         fromDate,
       )
-      // The cemetery is only written in the event text; a failed page keeps "Boninovo".
+      // The old feed had the cemetery only in the event page text; a failed page keeps "Boninovo".
       for (const item of items) {
+        if (item.row.groblje !== 'Boninovo') continue
         try {
           await sleep(300)
           const groblje = boninovoGroblje(await getText(item.link))

@@ -153,7 +153,7 @@ async function fetchSchedule(datum: string) {
 }
 
 function publishedDates(html: string) {
-  return [...html.matchAll(/class="filterSprovodi\b[^"]*"[^>]*data-val="(\d{2}\.\d{2}\.\d{4}\.)"/g)].map((match) => match[1])
+  return [...html.matchAll(/class="filterSprovodi\b[^"]*"[^>]*data-val="(\d{1,2}\.\d{1,2}\.\d{4}\.)"/g)].map((match) => match[1])
 }
 
 function parseSchedule(html: string, isoDate: string): ScheduleRow[] {
@@ -206,10 +206,11 @@ function dedupe(rows: ScheduleRow[]) {
   return [...byKey.values()]
 }
 
+// The date filter writes days without padding ("3.11.2026."), the page header with it ("03.11.2026.").
 function parseHrDate(value: string) {
-  const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})\.?$/)
+  const match = value.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})\.?$/)
   if (!match) return null
-  return `${match[3]}-${match[2]}-${match[1]}`
+  return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
 }
 
 function stripTags(value: string) {
