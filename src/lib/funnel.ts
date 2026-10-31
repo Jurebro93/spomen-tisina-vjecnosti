@@ -13,7 +13,8 @@ export type FunnelStep = 'visit_landing' | 'start_create' | 'auth' | 'draft_save
   | 'wizard_1' | 'wizard_2' | 'wizard_3' | 'wizard_4' | 'wizard_5' | 'wizard_6' | 'wizard_7'
   | 'flow_osoba' | 'flow_email' | 'flow_prica' | 'flow_pregled'
   | 'campaign_visit' | 'start_example' | 'start_relation' | 'start_link'
-  | 'candle_checkout' | 'candle_paid';
+  | 'candle_checkout' | 'candle_paid'
+  | 'obit_cta' | 'obit_preview' | 'obit_email' | 'obit_email_skipped';
 
 const hasConsent = () => {
   return hasCat('analytics');
