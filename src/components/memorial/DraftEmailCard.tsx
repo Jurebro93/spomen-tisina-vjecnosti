@@ -31,7 +31,7 @@ const writeDraftEmailAddress = (memorialId: string, email: string) => {
 const validEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 /** Sends the draft link; returns an error message for the visitor, or '' when the e-mail is saved. */
-const submitDraftEmail = async (memorialId: string, userId: string, rawEmail: string) => {
+export const submitDraftEmail = async (memorialId: string, userId: string, rawEmail: string) => {
   const email = rawEmail.trim();
   if (!validEmail(email)) return 'Upišite ispravnu e-mail adresu.';
   const result = await saveDraftEmail(memorialId, email);

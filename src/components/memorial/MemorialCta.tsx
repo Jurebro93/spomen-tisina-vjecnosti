@@ -66,13 +66,14 @@ const MemorialCta = ({ deceasedId, personName, photoUrl, obituary }: Props) => {
               </p>
             </div>
           </div>
-          <p className="mt-4 text-sm">
-            <span className="font-semibold text-foreground">Jednokratno <MemorialPrice /></span>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Ime, datumi i fotografija s osmrtnice već su upisani. Plaćate tek kad vidite gotov memorijal:{' '}
+            <span className="font-semibold text-foreground">jednokratno <MemorialPrice /></span>
           </p>
           <div className="mt-4 flex flex-col sm:flex-row sm:flex-wrap gap-3">
-            <Button asChild variant="gold" size="lg">
+            <Button asChild variant="gold" size="lg" className="whitespace-normal h-auto min-h-11 py-2.5 text-left">
               <Link to={`/kreiraj-memorijal?deceased_id=${deceasedId}`} onClick={() => track('create')}>
-                <Flower2 className="h-4 w-4 mr-2" /> Izradi memorijal
+                <Flower2 className="h-4 w-4 mr-2 shrink-0" /> Napravite spomen-stranicu za {name}
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
