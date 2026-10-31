@@ -41,6 +41,10 @@ const day = (v?: string | null) => {
 type WizardRow = { key: string; label: string; sub?: boolean };
 const WIZARD: WizardRow[] = [
   { key: 'start_create', label: 'Otvorena izrada' },
+  { key: 'obit_cta', label: '– klik na memorijal na osmrtnici', sub: true },
+  { key: 'obit_preview', label: '– od toga vidjeli memorijal ispunjen s osmrtnice', sub: true },
+  { key: 'obit_email', label: '– upisali e-mail na prvom ekranu (osmrtnica)', sub: true },
+  { key: 'obit_email_skipped', label: '– nastavili bez e-maila (osmrtnica)', sub: true },
   { key: 'person_search', label: '– odabrali osobu pretragom', sub: true },
   { key: 'person_manual', label: '– upisali novu osobu ručno', sub: true },
   { key: 'flow_osoba', label: '1. Osoba i odnos' },

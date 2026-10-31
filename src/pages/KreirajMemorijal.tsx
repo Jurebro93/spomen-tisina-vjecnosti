@@ -20,7 +20,8 @@ import PhotoUploader, { type MediaItem } from '@/components/memorial/PhotoUpload
 import MemorialContent from '@/components/memorial/MemorialContent';
 import GuestAccountStep from '@/components/memorial/GuestAccountStep';
 import MemorialHelp from '@/components/memorial/MemorialHelp';
-import DraftEmailCard, { readDraftEmailAddress, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
+import DraftEmailCard, { readDraftEmailAddress, submitDraftEmail, writeDraftEmailState } from '@/components/memorial/DraftEmailCard';
+import ObituaryMemorialPreview from '@/components/memorial/ObituaryMemorialPreview';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -458,6 +459,9 @@ const KreirajMemorijal = () => {
 
   const [relationship, setRelationship] = useState('');
   const [customRelationship, setCustomRelationship] = useState('');
+  // Obituary path: the e-mail is asked on the first screen, next to the pre-filled preview.
+  const [startEmail, setStartEmail] = useState('');
+  const [startEmailError, setStartEmailError] = useState('');
 
   const [quote, setQuote] = useState('');
   const [lifeStory, setLifeStory] = useState('');
@@ -686,6 +690,14 @@ const KreirajMemorijal = () => {
     })();
   }, [deceasedIdParam, resumeParam, authLoading, user, resumeDraft]);
 
+  // A person taken from a published obituary: the memorial is shown pre-filled (photo, name, dates) right away.
+  const fromObituary = Boolean(deceased && personSource === 'existing' && deceased.active === true);
+  // Guests (or visitors without any session yet) are asked for an e-mail; account holders already have one.
+  const askStartEmail = fromObituary && !accountUser && !(memorial && readDraftEmailAddress(memorial.id));
+  useEffect(() => {
+    if (deceasedIdParam && fromObituary && step === 0 && !memorial) void trackFunnel('obit_preview');
+  }, [deceasedIdParam, fromObituary, step, memorial]);
+
   const ensureDraft = useCallback(async (rel: string | null) => {
     const owner = await ensureUser();
     if (!deceased || !owner) return null;
@@ -710,7 +722,23 @@ const KreirajMemorijal = () => {
     setBusy(true);
     try {
       const rel = relationship === 'drugo' ? customRelationship.trim() : relationship;
+      const email = askStartEmail ? startEmail.trim() : '';
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setStartEmailError('Upišite ispravnu e-mail adresu ili ostavite polje prazno.');
+        return;
+      }
+      setStartEmailError('');
       const draft = await ensureDraft(rel || null);
+      if (draft && askStartEmail) {
+        if (email) {
+          // Sends the link to the draft; the story step then shows "poveznica poslana" instead of asking again.
+          const problem = await submitDraftEmail(draft.id, draft.owner_id, email);
+          void trackFunnel('obit_email', { userId: draft.owner_id, memorialId: draft.id });
+          if (problem) toast({ title: 'Poveznica nije poslana', description: problem, variant: 'destructive' });
+        } else {
+          void trackFunnel('obit_email_skipped', { userId: draft.owner_id, memorialId: draft.id });
+        }
+      }
       // Straight to the story: a separate e-mail screen here lost 6 of 8 guests (23.-26.10.2026).
       // Guests are offered the draft link as a card on the story step instead.
       if (draft) setStep(2);
@@ -917,7 +945,61 @@ const KreirajMemorijal = () => {
         ))}
       </ol>
 
-      {step === 0 && (
+      {step === 0 && fromObituary && (
+        <div className="space-y-6">
+          <div>
+            <h1 className="font-serif text-2xl md:text-3xl mb-2">Spomen-stranica za {fullName(deceased)}</h1>
+            <p className="text-muted-foreground">Već smo je pripremili s podacima s osmrtnice. Ovako će izgledati:</p>
+          </div>
+          <ObituaryMemorialPreview deceased={deceased} />
+          {deceased.slug && (
+            <a href={`/${deceased.slug}`} className="inline-block text-xs text-muted-foreground underline underline-offset-4">Prijavi netočan podatak</a>
+          )}
+
+          {askStartEmail && (
+            <div className="space-y-2">
+              <Label htmlFor="start-email" className="font-serif text-xl font-normal">Kamo da vam pošaljemo poveznicu?</Label>
+              <p className="text-sm text-muted-foreground">
+                Poslat ćemo vam poveznicu na ovaj memorijal da ga možete nastaviti kad stignete, i na drugom uređaju. Šaljemo samo poruke o ovom memorijalu.
+              </p>
+              <Input id="start-email" type="email" inputMode="email" autoComplete="email" maxLength={255} placeholder="vas@email.hr"
+                value={startEmail} onChange={(e) => { setStartEmail(e.target.value); setStartEmailError(''); }} />
+              {startEmailError && <p className="text-sm text-destructive">{startEmailError}</p>}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <h2 className="font-serif text-xl">Vi ste pokojniku… <span className="text-sm font-sans text-muted-foreground">(neobavezno)</span></h2>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Odnos s pokojnikom">
+              {RELATIONSHIPS.map((option) => (
+                <button key={option} type="button" role="radio" aria-checked={relationship === option}
+                  onClick={() => setRelationship(relationship === option ? '' : option)}
+                  className={`rounded-full border px-4 py-2 text-sm ${relationship === option ? 'border-primary bg-primary text-primary-foreground' : 'border-border hover:bg-secondary'}`}>
+                  {option}
+                </button>
+              ))}
+            </div>
+            {relationship === 'drugo' && (
+              <Input aria-label="Upišite svoj odnos s pokojnikom" maxLength={60} placeholder="npr. kum, susjed, kolega s posla…"
+                value={customRelationship} onChange={(e) => setCustomRelationship(e.target.value)} />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Button size="lg" className="w-full sm:w-auto" onClick={goNextFromRelationship} disabled={busy}>
+              {busy && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Nastavi na priču i fotografije
+            </Button>
+            {askStartEmail && (
+              <p className="text-xs text-muted-foreground">E-mail nije obavezan, ali bez njega nacrt ostaje samo u ovom pregledniku.</p>
+            )}
+          </div>
+          <div className="rounded-md bg-secondary/60 px-4 py-3 flex items-center justify-between gap-3 text-sm">
+            <span>Plaćate tek kad vidite gotov memorijal</span>
+            <span className="font-semibold text-base whitespace-nowrap">{introPriceShort()}</span>
+          </div>
+        </div>
+      )}
+
+      {step === 0 && !fromObituary && (
         <div className="space-y-6">
           <h1 className="font-serif text-2xl md:text-3xl">Kreirajte digitalni memorijal za {fullName(deceased)}</h1>
           <Card className="border-border">
