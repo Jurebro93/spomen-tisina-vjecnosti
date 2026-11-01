@@ -34,6 +34,10 @@ const VodicSmrtUInozemstvu = lazyPage(() => import("./pages/VodicSmrtUInozemstvu
 const VodicDigitalnaOstavstina = lazyPage(() => import("./pages/VodicDigitalnaOstavstina"));
 const Blog = lazyPage(() => import("./pages/Blog"));
 const BlogPost = lazyPage(() => import("./pages/BlogPost"));
+const ZnacenjeImenaHub = lazyPage(() => import("./pages/ZnacenjeImenaHub"));
+const ZnacenjeImena = lazyPage(() => import("./pages/ZnacenjeImena"));
+const SanjaricaHub = lazyPage(() => import("./pages/SanjaricaHub"));
+const SanjaricaSan = lazyPage(() => import("./pages/SanjaricaSan"));
 const ObituaryPage = lazyPage(() => import("./pages/ObituaryPage"));
 const LegacySlugRoute = lazyPage(() => import("./components/LegacySlugRoute"));
 const VirtualneSvijece = lazyPage(() => import("./pages/VirtualneSvijece"));
@@ -127,6 +131,10 @@ export const routes = [
   { path: "/besplatni-vodic/smrt-u-inozemstvu", element: <VodicSmrtUInozemstvu />, preload: VodicSmrtUInozemstvu.preload },
   { path: "/besplatni-vodic/digitalna-ostavstina", element: <VodicDigitalnaOstavstina />, preload: VodicDigitalnaOstavstina.preload },
   { path: "/blog", element: <Blog />, preload: Blog.preload },
+  { path: "/blog/znacenje-imena", element: <ZnacenjeImenaHub />, preload: ZnacenjeImenaHub.preload },
+  { path: "/blog/znacenje-imena/:slug", element: <ZnacenjeImena />, preload: ZnacenjeImena.preload },
+  { path: "/blog/sanjarica", element: <SanjaricaHub />, preload: SanjaricaHub.preload },
+  { path: "/blog/sanjarica/:slug", element: <SanjaricaSan />, preload: SanjaricaSan.preload },
   { path: "/blog/:slug", element: <BlogPost />, preload: BlogPost.preload },
   { path: "/virtualne-svijece", element: <VirtualneSvijece />, preload: VirtualneSvijece.preload },
   { path: "/zapali-svijecu", element: <ZapaliSvijecu />, preload: ZapaliSvijecu.preload },

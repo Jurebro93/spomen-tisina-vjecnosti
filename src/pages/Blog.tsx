@@ -106,6 +106,22 @@ const Blog = () => {
           </p>
         </div>
 
+        {/* Topic libraries (blog-only clusters) */}
+        <div className="mx-auto mb-8 grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            { to: '/blog/sanjarica', title: 'Sanjarica', text: 'Tumačenje snova od A do Ž' },
+            { to: '/blog/znacenje-imena', title: 'Značenje imena', text: 'Podrijetlo imena, imendani i čestitke' },
+          ].map((t) => (
+            <Link key={t.to} to={t.to} className="group flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-memorial-gold">
+              <span>
+                <span className="block font-semibold group-hover:text-accent">{t.title}</span>
+                <span className="block text-sm text-muted-foreground">{t.text}</span>
+              </span>
+              <ArrowRight className="h-4 w-4 text-accent" />
+            </Link>
+          ))}
+        </div>
+
         {/* Categories */}
         <div className="flex flex-wrap gap-2 justify-center mb-8">
           <Badge 

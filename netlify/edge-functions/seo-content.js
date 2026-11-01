@@ -1020,12 +1020,147 @@ ${richTextBlocks(m.life_story).map((p) => `<p>${esc(p)}</p>`).join('')}
   };
 }
 
+// ---------- blog clusters: /blog/znacenje-imena and /blog/sanjarica (src/pages/ZnacenjeImena*.tsx, Sanjarica*.tsx) ----------
+const NAMES_HUB = '/blog/znacenje-imena';
+const DREAMS_HUB = '/blog/sanjarica';
+// Content is static JSON in public/data, fetched from the same site.
+let dataOrigin = SITE;
+async function dataJson(path) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${dataOrigin}/data/${path}`, { signal: ctrl.signal });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`data ${res.status}`);
+    // A missing file can come back as the SPA shell (200, text/html).
+    if (!(res.headers.get('content-type') || '').includes('json')) return null;
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+const safeSlug = (slug) => /^[a-z0-9-]+$/.test(slug);
+const imendanText = (md) => {
+  const [m, d] = String(md).split('-').map(Number);
+  return m && d ? `${d}. ${MONTHS[m - 1]}` : md;
+};
+const paras = (text) => String(text || '').split('\n').filter(Boolean).map((p) => `<p>${esc(p)}</p>`).join('');
+const faqLd = (faq) => ({
+  '@context': 'https://schema.org', '@type': 'FAQPage',
+  mainEntity: faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+});
+
+async function namesHub() {
+  const rows = (await dataJson('imena/index.json')) || [];
+  const title = 'Značenje imena i imendani – podrijetlo imena od A do Ž';
+  const description = 'Značenje, podrijetlo i imendan za stotine hrvatskih imena, uz čestitke za imendan i zanimljive brojke iz osmrtnica.';
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/blog">Blog</a> / Značenje imena</nav>
+<h1>Značenje imena i imendani</h1><p>${esc(description)}</p>
+<ul>${rows.map((n) => `<li><a href="${NAMES_HUB}/${esc(n.slug)}">${esc(n.name)}</a>${n.imendani?.[0] ? ` – imendan ${imendanText(n.imendani[0].d)}` : ''}</li>`).join('')}</ul>`);
+  return {
+    title, description, canonical: SITE + NAMES_HUB, body, noindex: false, forceHead: true,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Značenje imena', NAMES_HUB]])],
+  };
+}
+
+async function nameSlug(slug) {
+  const n = safeSlug(slug) ? await dataJson(`imena/${slug}.json`) : null;
+  if (!n) return null;
+  const path = `${NAMES_HUB}/${n.slug}`;
+  const days = (n.imendani || []).map((i) => `${imendanText(i.d)}${i.s ? ` (${i.s})` : ''}`);
+  const title = `${n.name} – značenje imena, imendan i čestitke`;
+  const description = `Što znači ime ${n.name}? ${n.meaning ? `${n.meaning}. ` : ''}${days[0] ? `Imendan: ${imendanText(n.imendani[0].d)}. ` : ''}Podrijetlo, izvedenice i čestitke za imendan.`.slice(0, 158);
+  const faq = [
+    n.meaning && { q: `Što znači ime ${n.name}?`, a: `${n.origin ? `Ime je ${n.origin} podrijetla i znači: ` : 'Ime znači: '}${n.meaning}.` },
+    days.length && { q: `Kada je imendan ${n.name}?`, a: `${days.join(', ')}.` },
+    ...(n.faq || []),
+  ].filter(Boolean);
+  const st = n.stats;
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/blog">Blog</a> / <a href="${NAMES_HUB}">Značenje imena</a> / ${esc(n.name)}</nav>
+<article>
+<h1>${esc(title)}</h1>
+<h2>Što znači ime ${esc(n.name)}?</h2>
+${n.intro ? `<p>${esc(n.intro)}</p>` : ''}
+<ul>
+${n.origin ? `<li>Podrijetlo: ${esc(n.origin)}</li>` : ''}
+${n.meaning ? `<li>Značenje: ${esc(n.meaning)}</li>` : ''}
+<li>Imendan: ${days.length ? esc(days.join(', ')) : 'nema katoličkog imendana'}</li>
+${n.variants?.length ? `<li>Izvedenice i slična imena: ${esc(n.variants.join(', '))}</li>` : ''}
+${n.opposite_form ? `<li>${n.gender === 'žensko' ? 'Muški' : 'Ženski'} oblik: ${esc(n.opposite_form)}</li>` : ''}
+${n.foreign_forms ? `<li>Na drugim jezicima: ${esc(n.foreign_forms)}</li>` : ''}
+</ul>
+${n.history ? `<h2>Podrijetlo i povijest imena</h2>${paras(n.history)}` : ''}
+${n.character ? `<h2>Osobine koje se pripisuju imenu</h2>${paras(n.character)}` : ''}
+${st ? `<h2>Ime ${esc(n.name)} u brojkama</h2><p>Na osmrtnica.com.hr objavljeno je ${st.count} osmrtnica osoba imena ${esc(n.name)}${st.avg_age ? `, prosječne životne dobi ${st.avg_age} godina` : ''}.${st.cities?.length ? ` Najviše iz mjesta: ${esc(st.cities.join(', '))}.` : ''}</p>` : ''}
+${n.famous?.length ? `<h2>Poznate osobe imena ${esc(n.name)}</h2><ul>${n.famous.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+<h2>Česta pitanja</h2>
+${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}
+</article>
+<p><a href="/zapali-svijecu">Zapali virtualnu svijeću</a> · <a href="/digitalni-memorijal">Digitalni memorijal</a> · <a href="${NAMES_HUB}">Sva imena</a></p>`);
+  return {
+    title, description, canonical: SITE + path, body, noindex: false, forceHead: true,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Značenje imena', NAMES_HUB], [n.name, path]]), faqLd(faq)],
+  };
+}
+
+async function dreamsHub() {
+  const rows = (await dataJson('sanjarica/index.json')) || [];
+  const title = 'Sanjarica – tumačenje snova od A do Ž';
+  const description = 'Sanjarica s psihološkim i narodnim tumačenjem snova: od zmija i zuba do snova o pokojnicima. Upiši što si sanjao.';
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/blog">Blog</a> / Sanjarica</nav>
+<h1>Sanjarica: tumačenje snova od A do Ž</h1><p>${esc(description)}</p>
+<ul>${rows.map((d) => `<li><a href="${DREAMS_HUB}/${esc(d.slug)}">Sanjati ${esc(d.topic)}</a> (${esc(d.category)})</li>`).join('')}</ul>`);
+  return {
+    title, description, canonical: SITE + DREAMS_HUB, body, noindex: false, forceHead: true,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Sanjarica', DREAMS_HUB]])],
+  };
+}
+
+async function dreamSlug(slug) {
+  const d = safeSlug(slug) ? await dataJson(`sanjarica/${slug}.json`) : null;
+  if (!d) return null;
+  const path = `${DREAMS_HUB}/${d.slug}`;
+  const title = `${d.title} – značenje sna | Sanjarica`;
+  const description = (d.intro || `Što znači ${d.title.toLowerCase()}? Psihološko i narodno tumačenje sna.`).slice(0, 158);
+  const index = d.related?.length ? (await dataJson('sanjarica/index.json').catch(() => null)) || [] : [];
+  const related = (d.related || []).map((r) => index.find((x) => x.slug === r)).filter(Boolean);
+  const body = page(`
+<nav aria-label="breadcrumb"><a href="/">Početna</a> / <a href="/blog">Blog</a> / <a href="${DREAMS_HUB}">Sanjarica</a> / ${esc(d.topic)}</nav>
+<article>
+<h1>${esc(d.title)} – značenje sna</h1>
+${d.intro ? `<p>${esc(d.intro)}</p>` : ''}
+${d.psych ? `<p><strong>Psihološko tumačenje:</strong> ${esc(d.psych)}</p>` : ''}
+${d.folk ? `<p><strong>Narodna sanjarica:</strong> ${esc(d.folk)}</p>` : ''}
+${d.feeling ? `<p><strong>Što poručuje osjećaj:</strong> ${esc(d.feeling)}</p>` : ''}
+${(d.sections || []).map((x) => `<h2>${esc(x.h)}</h2>${paras(x.p)}`).join('')}
+${d.tool?.length ? `<h2>Što se događalo u snu?</h2>${d.tool.map((o) => `<h3>${esc(o.label)}</h3><p>${esc(o.text)}</p>`).join('')}` : ''}
+${d.faq?.length ? `<h2>Česta pitanja</h2>${d.faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}` : ''}
+</article>
+${related.length ? `<h2>Slični snovi</h2><ul>${related.map((r) => `<li><a href="${DREAMS_HUB}/${esc(r.slug)}">Sanjati ${esc(r.topic)}</a></li>`).join('')}</ul>` : ''}
+<p><a href="${DREAMS_HUB}">Sanjarica od A do Ž</a>${d.memorial_cta ? ' · <a href="/zapali-svijecu">Zapali svijeću</a> · <a href="/digitalni-memorijal">Digitalni memorijal</a>' : ''}</p>`);
+  return {
+    title, description, canonical: SITE + path, body, noindex: false, forceHead: true,
+    jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Sanjarica', DREAMS_HUB], [d.title, path]]), ...(d.faq?.length ? [faqLd(d.faq)] : [])],
+  };
+}
+
 function route(pathname) {
   const parts = pathname.split('/').filter(Boolean);
   if (parts.length === 0) return homePage;
   if (parts.length === 1) {
     const hub = { umrli: umrliHub, sprovodi: sprovodiHub, groblja: grobljaHub, gradovi: gradoviHub, blog: blogHub }[parts[0]];
     if (hub) return hub;
+  }
+  if (parts[0] === 'blog' && parts[1] === 'znacenje-imena') {
+    if (parts.length === 2) return namesHub;
+    if (parts.length === 3) return () => nameSlug(decodeURIComponent(parts[2]));
+  }
+  if (parts[0] === 'blog' && parts[1] === 'sanjarica') {
+    if (parts.length === 2) return dreamsHub;
+    if (parts.length === 3) return () => dreamSlug(decodeURIComponent(parts[2]));
   }
   if (parts.length === 2) {
     const [section, param] = parts;
@@ -1095,6 +1230,7 @@ export default async (request, context) => {
   if (legacy) return Response.redirect(new URL(legacy + url.search, url), 301);
   const build = route(url.pathname);
   if (!build) return context.next();
+  dataOrigin = url.origin;
 
   const res = await context.next();
   const type = res.headers.get('content-type') || '';
