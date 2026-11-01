@@ -146,6 +146,12 @@ const Footer = () => {
                   {quickLinks.map(link => <Link key={link.name} to={link.href} className="block text-sm text-primary-foreground/80 hover:text-primary-foreground transition-colors">
                       {link.name}
                     </Link>)}
+                  <div className="pt-3 text-xs text-primary-foreground/60">
+                    Korisno:{' '}
+                    <Link to="/blog/sanjarica" className="hover:text-primary-foreground hover:underline">Sanjarica</Link>
+                    {' · '}
+                    <Link to="/blog/znacenje-imena" className="hover:text-primary-foreground hover:underline">Značenje imena i imendani</Link>
+                  </div>
                 </div>
               </div>
 

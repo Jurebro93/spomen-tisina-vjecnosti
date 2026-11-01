@@ -162,6 +162,20 @@ async function build() {
     }
   });
 
+  // Blog clusters: name meanings and dream meanings, static JSON in public/data.
+  const readIndex = (dir) => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', 'data', dir, 'index.json'), 'utf8'));
+    } catch {
+      return [];
+    }
+  };
+  for (const [dir, hub] of [['imena', '/blog/znacenje-imena'], ['sanjarica', '/blog/sanjarica']]) {
+    const rows = readIndex(dir);
+    if (rows.length) add(hub, { changefreq: 'weekly', priority: '0.6' });
+    rows.forEach((r) => add(`${hub}/${r.slug}`, { lastmod: r.updated, changefreq: 'monthly', priority: '0.5' }));
+  }
+
   // Cemeteries — only those with a description (the app only generates a page
   // for those). Slug logic mirrors slugifyCemeteryName in src/lib/cemeteries.ts.
   const cemeterySlug = (name) => {
