@@ -68,16 +68,27 @@ export const trackGa4FreeActivation = (memorialId: string, promoCode?: string | 
     push({ event: 'memorial_free_activation', memorial_id: memorialId, promo_code: promoCode ?? undefined }),
   );
 
-/** Paid candle confirmed by the backend. Same GA4 purchase event as memorials, told apart by the item. */
+const candleItem = (days: number, price: number) => ({
+  item_id: `svijeca-${days}`, item_name: 'Virtualna svijeća', item_category: 'candle', item_variant: `${days} dana`, price, quantity: 1,
+});
+
+/**
+ * The visitor is sent to Stripe Checkout for a candle. product_type lets GTM keep candles
+ * out of the Google Ads "Kupnja memorijala" conversion.
+ */
+export const trackGa4CandleBeginCheckout = (days: number, value: number) =>
+  push({
+    event: 'begin_checkout',
+    product_type: 'candle',
+    ecommerce: { currency: 'EUR', value, items: [candleItem(days, value)] },
+  });
+
+/** Paid candle confirmed by the backend. value is the amount Stripe charged (after any promo code). */
 export const trackGa4CandlePurchase = (sessionId: string, value: number, days: number) =>
   once(`ga4_purchase_${sessionId}`, () =>
     push({
       event: 'purchase',
-      ecommerce: {
-        transaction_id: sessionId,
-        currency: 'EUR',
-        value,
-        items: [{ item_id: `svijeca-${days}`, item_name: 'Virtualna svijeća', item_category: 'candle', item_variant: `${days} dana`, price: value, quantity: 1 }],
-      },
+      product_type: 'candle',
+      ecommerce: { transaction_id: sessionId, currency: 'EUR', value, items: [candleItem(days, value)] },
     }),
   );

@@ -127,6 +127,21 @@ export const trackEvent = (
 /** Stable Purchase event id for a Stripe checkout session (must match the backend). */
 export const purchaseEventId = (sessionId: string) => `purchase_${sessionId}`;
 
+/**
+ * Paid candle, browser pixel only. A custom event (not Purchase) so the memorial sales
+ * campaigns that optimise on Purchase are not trained on 3,99 € candles.
+ */
+export const trackCandlePurchaseMeta = (sessionId: string, value: number, days: number) => {
+  if (typeof window === 'undefined' || !hasAdvertisingConsent()) return;
+  trackEvent('CandlePurchase', {
+    content_name: 'Virtualna svijeća',
+    content_type: 'product',
+    content_ids: [`svijeca-${days}`],
+    currency: 'EUR',
+    value,
+  }, `candle_${sessionId}`);
+};
+
 function readCookie(name: string) {
   const hit = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`));
   return hit ? decodeURIComponent(hit.slice(name.length + 1)) : null;
