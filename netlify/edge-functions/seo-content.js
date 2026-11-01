@@ -1100,6 +1100,7 @@ ${faq.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join('')}
 </article>
 <p><a href="/zapali-svijecu">Zapali virtualnu svijeću</a> · <a href="/digitalni-memorijal">Digitalni memorijal</a> · <a href="${NAMES_HUB}">Sva imena</a></p>`);
   return {
+    preload: { [`/data/imena/${n.slug}.json`]: n },
     title, description, canonical: SITE + path, body, noindex: false, forceHead: true,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Značenje imena', NAMES_HUB], [n.name, path]]), faqLd(faq)],
   };
@@ -1142,10 +1143,14 @@ ${d.faq?.length ? `<h2>Česta pitanja</h2>${d.faq.map((f) => `<h3>${esc(f.q)}</h
 ${related.length ? `<h2>Slični snovi</h2><ul>${related.map((r) => `<li><a href="${DREAMS_HUB}/${esc(r.slug)}">Sanjati ${esc(r.topic)}</a></li>`).join('')}</ul>` : ''}
 <p><a href="${DREAMS_HUB}">Sanjarica od A do Ž</a>${d.memorial_cta ? ' · <a href="/zapali-svijecu">Zapali svijeću</a> · <a href="/digitalni-memorijal">Digitalni memorijal</a>' : ''}</p>`);
   return {
+    preload: { [`/data/sanjarica/${d.slug}.json`]: d },
     title, description, canonical: SITE + path, body, noindex: false, forceHead: true,
     jsonld: [breadcrumbLd([['Početna', '/'], ['Blog', '/blog'], ['Sanjarica', DREAMS_HUB], [d.title, path]]), ...(d.faq?.length ? [faqLd(d.faq)] : [])],
   };
 }
+
+// Unknown slugs of these builders answer 404 (instead of a 200 SPA shell).
+const notFound404 = (build) => Object.assign(build, { obituary: true });
 
 function route(pathname) {
   const parts = pathname.split('/').filter(Boolean);
@@ -1156,11 +1161,11 @@ function route(pathname) {
   }
   if (parts[0] === 'blog' && parts[1] === 'znacenje-imena') {
     if (parts.length === 2) return namesHub;
-    if (parts.length === 3) return () => nameSlug(decodeURIComponent(parts[2]));
+    if (parts.length === 3) return notFound404(() => nameSlug(decodeURIComponent(parts[2])));
   }
   if (parts[0] === 'blog' && parts[1] === 'sanjarica') {
     if (parts.length === 2) return dreamsHub;
-    if (parts.length === 3) return () => dreamSlug(decodeURIComponent(parts[2]));
+    if (parts.length === 3) return notFound404(() => dreamSlug(decodeURIComponent(parts[2])));
   }
   if (parts.length === 2) {
     const [section, param] = parts;
@@ -1209,6 +1214,11 @@ function inject(html, d) {
     .map((j) => `<script type="application/ld+json" data-ssr="1">${JSON.stringify(j).replace(/</g, '\\u003c')}</script>`)
     .join('');
   html = html.replace('</head>', `    ${ld}\n  </head>`);
+  // Page data the client would otherwise fetch (src/lib/clusters.ts reads it),
+  // so rendering never depends on a second request that a crawler may skip.
+  if (d.preload) {
+    html = html.replace('</head>', `    <script type="application/json" id="ssr-data">${JSON.stringify(d.preload).replace(/</g, '\\u003c')}</script>\n  </head>`);
+  }
   return html.replace(/<div id="root">\s*<\/div>/, `<div id="root">${d.body}</div>`);
 }
 

@@ -21,6 +21,7 @@ const SanjaricaSan = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState<DreamPage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [related, setRelated] = useState<DreamListItem[]>([]);
   const [picked, setPicked] = useState<number | null>(null);
   const [q, setQ] = useState('');
@@ -28,6 +29,7 @@ const SanjaricaSan = () => {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFailed(false);
     setPicked(null);
     fetchDreamPage(slug)
       .then(async (p) => {
@@ -41,7 +43,11 @@ const SanjaricaSan = () => {
         const all = [...direct, ...more].filter((d) => d.slug !== p.slug && !seen.has(d.slug) && seen.add(d.slug));
         if (alive) setRelated(all.slice(0, 9));
       })
-      .catch(() => alive && setLoading(false));
+      .catch(() => {
+        if (!alive) return;
+        setFailed(true);
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -52,6 +58,20 @@ const SanjaricaSan = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8 text-center text-muted-foreground">Učitavanje...</main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (failed) {
+    // A network error is not a missing page: no noindex here.
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-12 text-center">
+          <p className="mb-4">Stranica se nije učitala.</p>
+          <button type="button" onClick={() => window.location.reload()} className="text-memorial-gold underline">Pokušaj ponovno</button>
+        </main>
         <Footer />
       </div>
     );

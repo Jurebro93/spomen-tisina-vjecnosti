@@ -87,12 +87,36 @@ export interface DreamListItem {
 // Content is static JSON in public/data (one file per page plus an index per
 // cluster), so a new batch goes live with the deploy that adds its files.
 const cache = new Map<string, Promise<unknown>>();
+
+// The edge function (netlify/edge-functions/seo-content.js) embeds the page's
+// own JSON in <script id="ssr-data">, keyed by URL, so the first render needs
+// no extra request (crawlers may skip it and then see an empty page).
+let ssr: Record<string, unknown> | null | undefined;
+function ssrData(url: string): unknown {
+  if (ssr === undefined) {
+    try {
+      ssr = JSON.parse(document.getElementById('ssr-data')?.textContent || 'null');
+    } catch {
+      ssr = null;
+    }
+  }
+  return ssr?.[url];
+}
+
+/** Resolves null only when the file does not exist; rejects on network errors. */
 function getJson<T>(url: string): Promise<T | null> {
+  const embedded = ssrData(url);
+  if (embedded) return Promise.resolve(embedded as T);
   if (!cache.has(url)) {
-    cache.set(
-      url,
-      fetch(url).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    );
+    const p = fetch(url).then((r) => {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error(`${url}: ${r.status}`);
+      // A missing file can come back as the SPA shell (200, text/html).
+      if (!(r.headers.get('content-type') || '').includes('json')) return null;
+      return r.json();
+    });
+    p.catch(() => cache.delete(url));
+    cache.set(url, p);
   }
   return cache.get(url) as Promise<T | null>;
 }
@@ -101,8 +125,8 @@ const NAMES_DATA = '/data/imena';
 const DREAMS_DATA = '/data/sanjarica';
 const safeSlug = (slug: string) => /^[a-z0-9-]+$/.test(slug);
 
-export const fetchNameList = async () => (await getJson<NameListItem[]>(`${NAMES_DATA}/index.json`)) ?? [];
-export const fetchDreamList = async () => (await getJson<DreamListItem[]>(`${DREAMS_DATA}/index.json`)) ?? [];
+export const fetchNameList = async () => (await getJson<NameListItem[]>(`${NAMES_DATA}/index.json`).catch(() => null)) ?? [];
+export const fetchDreamList = async () => (await getJson<DreamListItem[]>(`${DREAMS_DATA}/index.json`).catch(() => null)) ?? [];
 
 export const fetchNamePage = (slug: string) => (safeSlug(slug) ? getJson<NamePage>(`${NAMES_DATA}/${slug}.json`) : Promise.resolve(null));
 export const fetchDreamPage = (slug: string) => (safeSlug(slug) ? getJson<DreamPage>(`${DREAMS_DATA}/${slug}.json`) : Promise.resolve(null));

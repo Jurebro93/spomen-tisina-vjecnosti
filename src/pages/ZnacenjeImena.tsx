@@ -75,6 +75,7 @@ const ZnacenjeImena = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState<NamePage | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [related, setRelated] = useState<NameListItem[]>([]);
   const [sameDay, setSameDay] = useState<NameListItem[]>([]);
   const [showAll, setShowAll] = useState(false);
@@ -83,6 +84,7 @@ const ZnacenjeImena = () => {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setFailed(false);
     fetchNamePage(slug)
       .then(async (p) => {
         if (!alive) return;
@@ -93,7 +95,11 @@ const ZnacenjeImena = () => {
         fetchNamesBySlugs(variantSlugs).then((r) => alive && setRelated(r));
         if (p.imendani[0]) fetchNamesOnDay(p.imendani[0].d, p.slug).then((r) => alive && setSameDay(r));
       })
-      .catch(() => alive && setLoading(false));
+      .catch(() => {
+        if (!alive) return;
+        setFailed(true);
+        setLoading(false);
+      });
     return () => {
       alive = false;
     };
@@ -106,6 +112,20 @@ const ZnacenjeImena = () => {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container mx-auto px-4 py-8 text-center text-muted-foreground">Učitavanje...</main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (failed) {
+    // A network error is not a missing page: no noindex here.
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-12 text-center">
+          <p className="mb-4">Stranica se nije učitala.</p>
+          <button type="button" onClick={() => window.location.reload()} className="text-memorial-gold underline">Pokušaj ponovno</button>
+        </main>
         <Footer />
       </div>
     );
