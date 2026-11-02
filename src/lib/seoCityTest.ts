@@ -1,8 +1,8 @@
-// Title/H1/H2 test on /umrli/{grad} pages (started 2026-10).
-// Cities in TEST_CITIES get the new title, description, H1 and H2 wording;
-// every other city keeps the old wording as the control group, so the effect
-// can be measured against it in Search Console. Groups are matched pairs by
-// impressions (plan: naslovi-h1/plan-naslovi-h1-h2-2026-10-19.md).
+// Title/H1/H2 wording for /umrli/{grad} pages. It was tested 2026-10-19..31 on
+// the cities in TEST_CITIES against the rest as control (CTR +42 % small
+// cities, +21 % large ones vs control; naslovi-h1/rezultat-testa-2026-11-02.md)
+// and since 2026-11 applies to every city. TEST_CITIES stays as the record of
+// the test group.
 // netlify/edge-functions/seo-content.js has a copy of this; keep them in sync.
 
 export const TEST_CITIES = new Set([
@@ -29,7 +29,8 @@ const TITLE_OVERRIDES: Record<string, string> = {
   zadar: 'Umrli Zadar danas – osmrtnice i sprovodi u Zadru i okolici',
 };
 
-export const isTestCity = (slug?: string): boolean => !!slug && TEST_CITIES.has(slug);
+// Every city page uses the tested wording since the rollout.
+export const isTestCity = (slug?: string): boolean => !!slug;
 
 export const testCityTitle = (slug: string, city: string): string =>
   TITLE_OVERRIDES[slug] ?? `Umrli ${city} danas – osmrtnice i raspored sprovoda`;
