@@ -463,7 +463,8 @@ const TITLE_OVERRIDES = {
   zadar: 'Umrli Zadar danas – osmrtnice i sprovodi u Zadru i okolici',
 };
 
-const isTestCity = (slug) => !!slug && TEST_CITIES.has(slug);
+// Every city page uses the tested wording since the rollout (TEST_CITIES is the test record).
+const isTestCity = (slug) => !!slug;
 
 const testCityTitle = (slug, city) =>
   TITLE_OVERRIDES[slug] ?? `Umrli ${city} danas – osmrtnice i raspored sprovoda`;
