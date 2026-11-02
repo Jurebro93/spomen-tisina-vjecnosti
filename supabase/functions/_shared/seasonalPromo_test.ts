@@ -36,10 +36,11 @@ const fakeAdmin = () => {
   return { from } as unknown as SupabaseClient;
 };
 
-Deno.test("dates: from 27.10. 00:00 to 2.11. 23:59:59 Zagreb", () => {
+Deno.test("dates: from 27.10. 00:00 to 2.11. 16:59:59 Zagreb (ended early)", () => {
   assertEquals(isSeasonalPromoRunning(zagreb("2026-10-26T23:59:59")), false);
   assertEquals(isSeasonalPromoRunning(zagreb("2026-10-27T00:00:00")), true);
-  assertEquals(isSeasonalPromoRunning(zagreb("2026-11-02T23:59:59")), true);
+  assertEquals(isSeasonalPromoRunning(zagreb("2026-11-02T16:59:59")), true);
+  assertEquals(isSeasonalPromoRunning(zagreb("2026-11-02T17:00:00")), false);
   assertEquals(isSeasonalPromoRunning(AFTER), false);
   assertEquals(SEASONAL_PROMO.percent, 50);
   assertEquals(seasonalPriceFor(39), 19.5);

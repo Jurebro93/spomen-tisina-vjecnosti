@@ -1,6 +1,7 @@
 // "Pošaljite si poveznicu" on the first screen of /kreiraj-memorijal: a visitor without time right now
 // leaves an e-mail and gets one link back to the form. No account, no draft yet, so the address is kept
 // in memorial_start_links (service role only). At most one mail per address per day and 300 per day overall.
+import { isSeasonalPromoRunning } from "../_shared/seasonalPromo.ts";
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
@@ -8,7 +9,7 @@ import { emailButton, emailLayout, emailNote, emailParagraph, SITE } from "../_s
 
 const DAY_MS = 24 * 60 * 60_000;
 const DAILY_CAP = 300;
-const SEASONAL_UNTIL = Date.parse("2026-11-02T22:59:59Z");
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,7 +27,7 @@ const linkHtml = () => emailLayout({
   body: [
     emailParagraph("Poštovani,<br>ovo je poveznica koju ste zatražili za izradu digitalnog memorijala. Za početak su dovoljni ime i prezime osobe, a priču i fotografije možete dodati kasnije."),
     emailButton(startLink, "Započnite memorijal"),
-    Date.now() < SEASONAL_UNTIL
+    isSeasonalPromoRunning()
       ? emailNote("Do 2. studenoga (Svi sveti) memorijal stoji 19,50 € umjesto 39 €, a popust se na stranici sam primjenjuje. Plaćate tek kad vidite gotov memorijal.")
       : emailNote("Plaćate tek kad vidite gotov memorijal."),
   ].join(""),

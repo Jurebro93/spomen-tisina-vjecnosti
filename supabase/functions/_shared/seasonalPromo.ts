@@ -21,7 +21,7 @@ export const SEASONAL_PROMO: SeasonalPromoConfig = {
   occasion: "Svi sveti",
   untilLabel: "2. studenoga",
   startsAt: Date.parse("2026-10-27T00:00:00+01:00"), // 27. 10. 2026. 00:00 Zagreb
-  endsAt: Date.parse("2026-11-03T00:00:00+01:00"), // 3. 11. 2026. 00:00 Zagreb, regular price again
+  endsAt: Date.parse("2026-11-02T17:00:00+01:00"), // ended early on 2. 11. 2026. 17:00 Zagreb (owner's call), regular price again
   percent: 50,
 };
 
