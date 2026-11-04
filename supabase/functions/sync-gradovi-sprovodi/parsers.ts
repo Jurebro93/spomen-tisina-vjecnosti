@@ -296,12 +296,13 @@ export function parsePozega(html: string, fromDate: string): ScheduleRow[] {
     const place = field('groblje')
     const when = field('datum-sahrane')
     const date = parseNumericDate(when)
-    const time = when.match(/u\s*(\d{1,2})[:.](\d{2})/)
+    // "u 13.30" or, for a full hour, "u 15 sati".
+    const time = when.match(/u\s*(\d{1,2})(?:[:.](\d{2}))?(?!\d)/)
     if (!name || !date || !time || date < fromDate) continue
     const age = stripTags(block).match(/u\s+(\d{1,3})\.\s*godini/i)
     const groblje = place ? `Groblje ${place}` : 'Groblje Požega'
     // "u 89. godini života" means 88 full years.
-    const r = row('komunalac-pozega', 'kpz', 'Požega', name, groblje, date, `${time[1]}:${time[2]}`, age ? Number(age[1]) - 1 : null)
+    const r = row('komunalac-pozega', 'kpz', 'Požega', name, groblje, date, `${time[1]}:${time[2] ?? '00'}`, age ? Number(age[1]) - 1 : null)
     if (r) rows.push(r)
   }
   return rows
