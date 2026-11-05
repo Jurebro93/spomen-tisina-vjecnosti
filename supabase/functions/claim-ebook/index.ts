@@ -2,6 +2,7 @@
 // e-mail (ebook_signups + newsletter_users), issues the one-time 30% memorial code the guides
 // promise (once per address, shared with the discount popup via discount_signups) and e-mails
 // the download link.
+import { isSeasonalPromoRunning } from "../_shared/seasonalPromo.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
 import { emailButton, emailLayout, emailParagraph, SITE } from "../_shared/emailLayout.ts";
@@ -61,9 +62,8 @@ const makeCode = () => {
 };
 
 // Site-wide Svi sveti discount (src/lib/seasonalPromo.ts): while it runs the guide code is not the best offer.
-const SEASONAL_END = Date.parse("2026-11-02T22:59:59Z");
 const seasonalNote = () =>
-  Date.now() <= SEASONAL_END
+  isSeasonalPromoRunning()
     ? `<p style="margin:12px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#555555">Do 2. studenoga (Svi sveti) memorijal je za sve 19,50 € umjesto 39 € i popust se na stranici sam primjenjuje. Vaš kod vrijedi i nakon toga.</p>`
     : "";
 
