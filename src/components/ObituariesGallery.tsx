@@ -10,7 +10,7 @@ const defaultObituaryPhoto = "/site/default-obituary-photo.jpg";
 
 const ObituariesGallery = () => {
   const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [visibleCount, setVisibleCount] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 3 : 6));
   const [obituaries, setObituaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

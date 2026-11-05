@@ -70,6 +70,53 @@ export const MemorialHeroSection = ({ variant = 'section' }: { variant?: 'hero' 
   );
 };
 
+const memorialSteps = [
+  { title: 'Upišite podatke i priču', description: 'Ime, datume, nekoliko rečenica o osobi i fotografije koje želite sačuvati.' },
+  { title: 'Pregledajte gotov memorijal', description: 'Prije plaćanja vidite točno kako će stranica izgledati.' },
+  { title: 'Platite i podijelite', description: 'Plaćate jednokratno, bez pretplate. Link i QR kod šaljete rodbini i prijateljima.' },
+];
+
+/** Homepage explainer: introduces the digital memorial to visitors who have never heard of it. */
+export const MemorialExplainerSection = () => (
+  <section id="digitalni-memorijal" className="scroll-mt-24 border-b border-border bg-background">
+    <div className="container mx-auto grid gap-10 px-4 py-12 md:py-16 lg:grid-cols-2 lg:gap-14">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-widest text-accent">Digitalni memorijal</p>
+        <h2 className="mt-3 text-3xl font-semibold leading-tight md:text-4xl">Što je digitalni memorijal?</h2>
+        <p className="mt-4 text-base leading-7 text-muted-foreground">Osmrtnica javlja da je netko preminuo i kada je sprovod. Digitalni memorijal ostaje i nakon toga: to je trajna stranica posvećena jednoj osobi, na kojoj obitelj čuva njezinu životnu priču, fotografije i uspomene.</p>
+        <p className="mt-3 text-base leading-7 text-muted-foreground">Link možete poslati rodbini u Hrvatskoj i u inozemstvu, a QR kod staviti na spomenik. Svatko tko ga otvori može zapaliti svijeću i ostaviti poruku.</p>
+        <p className="mt-4 max-w-xl border-l-2 border-accent pl-4 font-semibold leading-7">Za osobu koja je preminula nedavno ili prije mnogo godina.</p>
+
+        <h3 className="mt-8 font-display text-xl font-semibold">Kako to funkcionira</h3>
+        <ol className="mt-4 space-y-4">
+          {memorialSteps.map((step, index) => (
+            <li key={step.title} className="flex gap-4">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent font-semibold text-accent-foreground">{index + 1}</span>
+              <div><p className="font-semibold">{step.title}</p><p className="text-sm leading-6 text-muted-foreground">{step.description}</p></div>
+            </li>
+          ))}
+        </ol>
+
+        <p className="mt-7 font-display text-2xl font-semibold"><MemorialPrice /> <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          <CreateButton label="Izradi memorijal" position="create_explainer" />
+          <Button asChild variant="outline" size="lg" className="min-h-12 bg-background px-6 text-base"><a href="#javni-memorijali" onClick={() => trackHomepageAction('open_examples')}>Pogledaj primjere</a></Button>
+        </div>
+      </div>
+
+      <ul className="grid content-start gap-4 sm:grid-cols-2" aria-label="Što sadrži digitalni memorijal">
+        {memorialFeatures.map((feature) => (
+          <li key={feature.title} className="rounded-lg border border-border bg-card p-5">
+            <feature.icon className="h-7 w-7 text-accent" aria-hidden="true" />
+            <p className="mt-3 font-display text-lg font-semibold">{feature.title}</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+);
+
 export const MemorialArticlesSection = () => {
   const [articles, setArticles] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);

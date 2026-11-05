@@ -21,7 +21,7 @@ export const MemorialPublicListing = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [visibleCount, setVisibleCount] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 3 : 6));
 
   const PAGE_SIZE = 6;
 

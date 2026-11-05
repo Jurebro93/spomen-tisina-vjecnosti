@@ -6,7 +6,7 @@ import CitiesSection from '@/components/CitiesSection';
 import VirtualCandles from '@/components/VirtualCandles';
 import { MemorialPublicListing } from '@/components/MemorialPublicListing';
 import Footer from '@/components/Footer';
-import { MemorialArticlesSection, MemorialHeroSection } from '@/components/HomepageMemorialSections';
+import { MemorialArticlesSection, MemorialExplainerSection } from '@/components/HomepageMemorialSections';
 import { HomepageFaqSection } from '@/components/HomepageFaqSection';
 import { SEOHelmet } from '@/hooks/useSEO';
 import EbookSignup from '@/components/EbookSignup';
@@ -18,11 +18,11 @@ const Index = () => {
       <Header />
       <Hero />
       <ObituariesGallery />
-      <CitiesSection />
-      <MediaMentionsSection />
-      <MemorialHeroSection />
+      <MemorialExplainerSection />
       <MemorialPublicListing />
       <VirtualCandles />
+      <CitiesSection />
+      <MediaMentionsSection />
       <div className="container mx-auto px-4 py-10">
         <EbookSignup variant="home" placement="homepage" />
       </div>

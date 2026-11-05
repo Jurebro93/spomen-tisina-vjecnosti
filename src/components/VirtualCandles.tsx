@@ -80,6 +80,9 @@ const VirtualCandles = () => {
           <p className="memorial-subtitle max-w-2xl mx-auto">
             Zapalite virtualnu svijeću za vaše najmilije i ostavite poruku sjećanja
           </p>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
+            Svijeća s vašim imenom i porukom vidi se uz osmrtnicu. Sami birate koliko dugo gori: 7 dana za 3,99 €, 14 dana za 5,99 € ili 30 dana za 9,99 €.
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-start mb-16">
