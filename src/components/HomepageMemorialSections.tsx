@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { hasConsent } from '@/lib/consent';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen } from 'lucide-react';
+import { ArrowRight, BookOpen, Heart, ImageIcon, QrCode, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import MemorialPrice from '@/components/promo/MemorialPrice';
-const marijaPhoto = "/site/marija-kovac-portret.jpg";
+
+const memorialFeatures = [
+  { icon: ImageIcon, title: 'Fotografije i priča', description: 'Životna priča, fotografije i najvažniji trenuci na jednom mjestu.' },
+  { icon: Share2, title: 'Jednostavno dijeljenje', description: 'Pošaljite link obitelji i prijateljima, bilo gdje u svijetu.' },
+  { icon: QrCode, title: 'QR kod za spomenik', description: 'QR kod koji vodi izravno na stranicu memorijala.' },
+  { icon: Heart, title: 'Svijeće i poruke', description: 'Bližnji mogu zapaliti svijeću i ostaviti riječi sjećanja.' },
+];
 
 const CREATE_PATH = '/digitalni-memorijal/kreiraj';
-const EXAMPLE_PATH = '/memorijal-primjer/obiteljske-uspomene';
 
 type BlogPost = { id: string; title: string; excerpt: string | null; image_url: string | null; slug: string | null };
 
@@ -44,25 +49,22 @@ export const MemorialHeroSection = ({ variant = 'section' }: { variant?: 'hero' 
           <p className={`font-display font-semibold ${isHero ? 'mt-7 text-3xl' : 'mt-5 text-2xl'}`}><MemorialPrice /> <span className="font-body text-base font-normal text-muted-foreground">jednokratno · Bez pretplate</span></p>
           <div className={`flex flex-col gap-3 sm:flex-row ${isHero ? 'mt-7' : 'mt-5'}`}>
             <CreateButton label="Izradi memorijal" position="create_hero" />
-            <Button asChild variant="outline" size="lg" className="min-h-12 bg-background px-6 text-base"><Link to={EXAMPLE_PATH} onClick={() => trackHomepageAction('open_example')}>Pogledaj memorijal</Link></Button>
+            <Button asChild variant="outline" size="lg" className="min-h-12 bg-background px-6 text-base"><a href="#javni-memorijali" onClick={() => trackHomepageAction('open_example')}>Pogledaj memorijale</a></Button>
           </div>
-          {isHero ? (
+          {isHero && (
             <a href="#pretraga-osmrtnica" className="mt-5 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">Tražite osmrtnicu? Pretražite po imenu ili gradu.</a>
-          ) : (
-            <Link to="/umrli" className="mt-4 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground underline underline-offset-4 hover:text-foreground">Tražite osmrtnicu? Pretražite po imenu ili gradu.</Link>
           )}
         </div>
 
-        <div className={`mx-auto w-full ${isHero ? 'max-w-xl' : 'max-w-md'}`} aria-label="Ogledni prikaz digitalnog memorijala">
-          <div className="overflow-hidden rounded-lg border border-border bg-card shadow-memorial">
-            <div className="border-b border-border bg-primary px-5 py-3 text-xs font-semibold uppercase tracking-widest text-primary-foreground">Ogledni memorijal — izmišljeni podaci</div>
-            <div className={`grid gap-5 p-5 ${isHero ? 'grid-cols-[120px_1fr] sm:grid-cols-[180px_1fr] sm:p-7' : 'grid-cols-[100px_1fr] sm:grid-cols-[140px_1fr] sm:p-6'}`}>
-              <img src={marijaPhoto} alt="Ogledni portret Marije Kovač" className="aspect-[4/5] h-full w-full rounded-md object-cover" width={912} height={1104} />
-              <div className="self-center"><p className="text-sm uppercase tracking-widest text-accent">U spomen</p><p className={`font-semibold ${isHero ? 'mt-2 text-3xl sm:text-4xl' : 'mt-1 text-2xl sm:text-3xl'}`}>Marija Kovač</p><p className="mt-2 text-muted-foreground">1932. – 2004.</p><p className={`font-display italic leading-7 ${isHero ? 'mt-5 text-lg' : 'mt-3 text-base'}`}>„Najvažnije je da se obitelj uvijek ima gdje vratiti.”</p></div>
-            </div>
-            <div className={`border-t border-border ${isHero ? 'p-5 sm:p-7' : 'p-5 sm:p-6'}`}><p className={`font-semibold ${isHero ? 'text-xl' : 'text-lg'}`}>Priče koje ostaju</p><p className="mt-3 text-base leading-7 text-muted-foreground">Marija je voljela nedjeljna okupljanja, miris svježe pečenog kruha i duge razgovore za kuhinjskim stolom.</p><div className="mt-5 flex flex-wrap gap-2 text-sm text-muted-foreground"><span className="rounded-full bg-secondary px-3 py-2">Životna priča</span><span className="rounded-full bg-secondary px-3 py-2">Fotografije</span><span className="rounded-full bg-secondary px-3 py-2">Poruke sjećanja</span></div></div>
-          </div>
-        </div>
+        <ul className={`mx-auto grid w-full gap-4 sm:grid-cols-2 ${isHero ? 'max-w-xl' : 'max-w-lg'}`} aria-label="Što sadrži digitalni memorijal">
+          {memorialFeatures.map((feature) => (
+            <li key={feature.title} className="rounded-lg border border-border bg-card p-5">
+              <feature.icon className="h-7 w-7 text-accent" aria-hidden="true" />
+              <p className="mt-3 font-display text-lg font-semibold">{feature.title}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{feature.description}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

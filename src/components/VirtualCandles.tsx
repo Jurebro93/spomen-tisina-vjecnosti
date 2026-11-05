@@ -102,23 +102,6 @@ const VirtualCandles = () => {
               </div>
             </div>
 
-            <div className="bg-candle-warm/50 rounded-lg p-4">
-              <div className="flex items-center justify-center gap-8">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{dailyCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Danas</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{weeklyCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Zadnjih 7 dana</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{totalCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Ukupno</div>
-                </div>
-              </div>
-            </div>
-
             <div className="text-center">
               <Link to="/zapali-svijecu">
                 <Button 

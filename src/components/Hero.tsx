@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Heart, BookOpen, Flame } from 'lucide-react';
-const heroMemorialImg = '/site/hero/hero-digitalni-memorijal.jpg';
-import { useNavigate } from 'react-router-dom';
+import { Flame, MapPin, ArrowRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -54,83 +53,49 @@ const Hero = () => {
   const formatNumber = (n: number | null) =>
     n === null ? '…' : n.toLocaleString('hr-HR');
 
-  return <section className="relative bg-gradient-to-br from-background via-memorial-warm to-background py-16 md:py-24">
-      <div className="container mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Content */}
-          <div className="space-y-8 fade-in">
-            <div className="space-y-6">
-              <h1 className="memorial-title text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight">
-                Osmrtnice
-                <span className="text-accent block">Hrvatska</span>
-              </h1>
-              
-              <p className="memorial-subtitle text-lg md:text-xl text-muted-foreground leading-relaxed">
-                Pružamo podršku obiteljima u najtežim trenucima. Objavite osmrtnicu, 
-                zapalite virtualnu svijeću i sačuvajte uspomene na vaše najmilije.
-              </p>
-            </div>
+  const cities = [
+    { name: 'Zagreb', slug: 'zagreb' },
+    { name: 'Split', slug: 'split' },
+    { name: 'Rijeka', slug: 'rijeka' },
+    { name: 'Osijek', slug: 'osijek' },
+    { name: 'Zadar', slug: 'zadar' },
+    { name: 'Pula', slug: 'pula' },
+  ];
 
-            {/* Call to Action Buttons */}
-            <div className="flex flex-col gap-4">
-              <Button size="lg" onClick={() => navigate('/digitalni-memorijal')} className="elegant-button w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                <BookOpen className="mr-2" size={20} />
-                Pročitaj više o digitalnom memorijalu
-              </Button>
+  return <section className="border-b border-border bg-memorial-warm py-10 md:py-16">
+      <div className="container mx-auto max-w-4xl px-4 md:text-center">
+        <p className="text-sm font-semibold uppercase tracking-widest text-accent">Osmrtnice · Sprovodi · Groblja</p>
+        <h1 className="memorial-title mt-3 text-4xl font-semibold leading-tight md:text-5xl lg:text-6xl">
+          Osmrtnice iz cijele Hrvatske
+        </h1>
+        <p className="memorial-subtitle mx-auto mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+          Svaki dan objavljujemo nove osmrtnice i termine sprovoda. Pronađite osmrtnicu, zapalite svijeću ili objavite osmrtnicu za svoju obitelj.
+        </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Button size="lg" onClick={() => navigate('/objavi-osmrtnicu')} className="elegant-button flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Objavi osmrtnicu
-                </Button>
-
-                <Button size="lg" variant="outline" onClick={() => navigate('/zapali-svijecu')} className="elegant-button flex-1 border-2 border-memorial-gold text-memorial-gold bg-white hover:bg-memorial-gold hover:text-white">
-                  <Flame className="mr-2" size={20} />
-                  Zapali svijeću
-                </Button>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-border">
-              <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-primary font-display">{formatNumber(obituaryCount)}</div>
-                <div className="text-sm text-muted-foreground">Objavljenih osmrtnica</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl md:text-3xl font-bold text-primary font-display">{formatNumber(candleCount)}</div>
-                <div className="text-sm text-muted-foreground">Zapaljenih virtualnih svijeća</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Image */}
-          <div className="relative slide-up hidden md:block">
-            <div className="relative rounded-2xl overflow-hidden shadow-memorial">
-              <img 
-                src={heroMemorialImg} 
-                alt="Digitalni memorijal na mobitelu i računalu uz zapaljenu svijeću - Osmrtnica.com.hr" 
-                className="w-full h-[500px] object-cover"
-                width={1280}
-                height={1024}
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-            </div>
-            
-            {/* Floating Quote */}
-            <div className="absolute -bottom-6 -left-6 bg-card p-6 rounded-xl shadow-elegant border border-border max-w-xs">
-              <div className="flex items-start gap-3">
-                <Heart className="text-memorial-gold flex-shrink-0 mt-1" size={20} />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    "Smrt nije suprotnost života, već njegov dio."
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">- Haruki Murakami</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="mt-6 flex flex-wrap gap-2 md:justify-center" aria-label="Osmrtnice po gradovima">
+          {cities.map((city) => (
+            <Link key={city.slug} to={`/umrli/${city.slug}`} className="inline-flex min-h-11 items-center rounded-full border border-border bg-background px-4 text-sm font-medium text-foreground hover:border-accent hover:text-accent">
+              <MapPin className="mr-1.5 h-4 w-4 text-accent" aria-hidden="true" />{city.name}
+            </Link>
+          ))}
+          <Link to="/umrli" className="inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-accent hover:underline">
+            Svi gradovi<ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
+
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row md:justify-center">
+          <Button size="lg" onClick={() => navigate('/objavi-osmrtnicu')} className="elegant-button min-h-12 bg-primary px-8 text-primary-foreground hover:bg-primary/90">
+            Objavi osmrtnicu
+          </Button>
+          <Button size="lg" variant="outline" onClick={() => navigate('/zapali-svijecu')} className="elegant-button min-h-12 border-2 border-memorial-gold bg-white px-8 text-memorial-gold hover:bg-memorial-gold hover:text-white">
+            <Flame className="mr-2" size={20} />
+            Zapali svijeću
+          </Button>
+        </div>
+
+        <p className="mt-6 text-sm text-muted-foreground">
+          <span className="font-semibold text-foreground">{formatNumber(obituaryCount)}</span> objavljenih osmrtnica · <span className="font-semibold text-foreground">{formatNumber(candleCount)}</span> zapaljenih svijeća
+        </p>
       </div>
     </section>;
 };
