@@ -80,6 +80,9 @@ const VirtualCandles = () => {
           <p className="memorial-subtitle max-w-2xl mx-auto">
             Zapalite virtualnu svijeću za vaše najmilije i ostavite poruku sjećanja
           </p>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-muted-foreground">
+            Svijeća s vašim imenom i porukom vidi se uz osmrtnicu. Sami birate koliko dugo gori: 7 dana za 3,99 €, 14 dana za 5,99 € ili 30 dana za 9,99 €.
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-start mb-16">
@@ -99,23 +102,6 @@ const VirtualCandles = () => {
                 <p className="text-white/90 text-sm">
                   Vječno svjetlo za vječnu uspomenu
                 </p>
-              </div>
-            </div>
-
-            <div className="bg-candle-warm/50 rounded-lg p-4">
-              <div className="flex items-center justify-center gap-8">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{dailyCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Danas</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{weeklyCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Zadnjih 7 dana</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-candle-flame font-display">{totalCount.toLocaleString('hr-HR')}</div>
-                  <div className="text-sm text-muted-foreground">Ukupno</div>
-                </div>
               </div>
             </div>
 

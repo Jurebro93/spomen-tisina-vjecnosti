@@ -21,7 +21,7 @@ export const MemorialPublicListing = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(6);
+  const [visibleCount, setVisibleCount] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 3 : 6));
 
   const PAGE_SIZE = 6;
 
@@ -72,11 +72,11 @@ export const MemorialPublicListing = () => {
   const canLoadMore = visibleCount < filtered.length;
 
   return (
-    <section className="container mx-auto px-4 py-14">
+    <section id="javni-memorijali" className="container mx-auto scroll-mt-24 px-4 py-14">
       <div className="mx-auto max-w-3xl text-center">
         <h2 className="font-display text-foreground">Javni digitalni memorijali</h2>
         <p className="memorial-subtitle mt-4">
-          Pregledajte memorijale koje su obitelji stvorile za svoje voljene osobe. Ostavite uspomenu ili zapalite virtualnu svijeću.
+          Pogledajte kako izgledaju javni digitalni memorijali. Ostavite uspomenu ili zapalite virtualnu svijeću.
         </p>
       </div>
 
