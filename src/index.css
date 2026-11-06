@@ -110,8 +110,11 @@
   }
 
   /* Nothing may push the page sideways on phones. `clip` (not `hidden`) keeps
-     sticky elements working because it does not create a scroll container. */
-  html,
+     sticky elements working because it does not create a scroll container.
+     Only on body, not html: when a dropdown or dialog opens it sets
+     body { overflow: hidden }. With html left at `visible` that propagates to
+     the viewport and the sticky header stays in view; with html clipped, body
+     became its own scroll box and the header jumped out of sight. */
   body {
     overflow-x: clip;
   }

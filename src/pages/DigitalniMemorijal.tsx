@@ -157,7 +157,7 @@ const DigitalniMemorijal = () => {
   const endReviewsDrag = () => { reviewsDrag.current = null; };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-memorial-warm text-foreground">
+    <div className="min-h-screen overflow-x-clip bg-memorial-warm text-foreground">
       <Helmet>
         <title>Digitalni memorijal – uspomene na voljenu osobu | Osmrtnica</title>
         <meta name="description" content={`Sačuvajte fotografije, životnu priču i poruke obitelji. Izradite digitalni memorijal i za osobu preminulu prije mnogo godina. ${currentMemorialPriceLabel()} jednokratno.`} />
