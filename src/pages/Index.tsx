@@ -17,12 +17,12 @@ const Index = () => {
       <SEOHelmet pagePath="/" />
       <Header />
       <Hero />
+      <MediaMentionsSection />
       <ObituariesGallery />
       <MemorialExplainerSection />
       <MemorialPublicListing />
       <VirtualCandles />
       <CitiesSection />
-      <MediaMentionsSection />
       <div className="container mx-auto px-4 py-10">
         <EbookSignup variant="home" placement="homepage" />
       </div>
