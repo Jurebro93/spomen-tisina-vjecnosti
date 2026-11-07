@@ -57,9 +57,9 @@ export const sendMail = async (opts: SendMailOptions) => {
       from: opts.from ?? getMailFrom(opts.fromName),
       to,
       replyTo: opts.replyTo,
-      inReplyTo: opts.inReplyTo,
-      references: opts.references,
-      headers: opts.headers,
+      references: opts.references?.replace(/\s+/g, " "),
+      // denomailer writes its inReplyTo option as "InReplyTo:", which mail apps ignore, so it goes here instead.
+      headers: { ...(opts.inReplyTo ? { "In-Reply-To": opts.inReplyTo.replace(/\s+/g, " ") } : {}), ...opts.headers },
       subject: opts.subject,
       // denomailer does not dot-stuff quoted-printable lines, so a "." that lands at the start of a
       // wrapped line is dropped by the receiving server (seen: "osmrtnica.comhr"). As an entity it survives.

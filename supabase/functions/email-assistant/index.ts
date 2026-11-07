@@ -14,7 +14,7 @@ import { ImapClient } from "../_shared/imap.ts";
 import { isMailConfigured, sendMail } from "../_shared/mail.ts";
 import { emailButton, emailLayout, emailParagraph, escapeHtml, SITE } from "../_shared/emailLayout.ts";
 import { SITE_KNOWLEDGE } from "./knowledge.ts";
-import { parse, type Parsed, senderVerified, skipReason } from "./parse.ts";
+import { copyTokenOf, parse, type Parsed, senderVerified, skipReason, stripQuoted } from "./parse.ts";
 import { type Change, ITEM_SPECS, type ItemType, loadOwnedItems, type OwnedItem, showValue, validateChange } from "./items.ts";
 
 const OWN_ADDRESS = "info@osmrtnica.com.hr";
@@ -103,6 +103,7 @@ Deno.serve(async (req) => {
         try {
           const r = await handleMessage(db, s, uid, uidvalidity, msg.raw);
           if (r.sent_to_customer) await imap.markSeen(uid);
+          if (r.also_seen) await imap.markSeen(r.also_seen);
           results.push(r);
         } catch (e) {
           const error = e instanceof Error ? e.message : String(e);
@@ -122,6 +123,7 @@ Deno.serve(async (req) => {
         try {
           const r = await handleMessage(db, s, uid, uidvalidity, msg.raw);
           if (r.sent_to_customer) await imap.markSeen(uid);
+          if (r.also_seen) await imap.markSeen(r.also_seen);
           results.push(r);
         } catch (e) {
           const error = e instanceof Error ? e.message : String(e);
@@ -154,12 +156,13 @@ type Outcome = {
   changes: { item: string; type: ItemType; id: string; field: string; before: unknown; after: unknown; status: string }[];
 };
 
-async function handleMessage(db: SupabaseClient, s: Settings, uid: number, uidvalidity: number, raw: Uint8Array) {
+async function handleMessage(db: SupabaseClient, s: Settings, uid: number, uidvalidity: number, raw: Uint8Array): Promise<Handled> {
   const p = await parse(raw);
   if (p.messageId) {
     const { data: seen } = await db.from("email_assistant_messages").select("id").eq("message_id", p.messageId).maybeSingle();
     if (seen) return { uid, skipped: "already handled", sent_to_customer: false };
   }
+  if (s.notify_email && p.fromEmail === s.notify_email.toLowerCase()) return await relayOwnerReply(db, uid, uidvalidity, p);
 
   // The site's own notifications (e.g. "Trebate pomoć s izradom memorijala?") come from info@ with the
   // visitor in Reply-To; then the visitor is the customer, but not a verified one.
@@ -222,12 +225,15 @@ async function handleMessage(db: SupabaseClient, s: Settings, uid: number, uidva
     });
   }
 
+  // "Reply" in the owner's mail app comes back to info@ (matched by the token in Message-ID), and the assistant
+  // sends it on to the customer from info@, so the customer never sees the owner's private address.
+  const copyToken = randomHex(16);
   await sendMail({
     to: s.notify_email,
     subject: OWNER_SUBJECT,
     html: ownerCopyHtml(p, customer, verified, outcome, live),
-    // "Reply" in the owner's mail app goes straight to the customer.
-    replyTo: customer,
+    replyTo: OWN_ADDRESS,
+    headers: { "Message-ID": `<copy-${copyToken}@osmrtnica.com.hr>` },
   });
 
   await db.from("email_assistant_messages").insert({
@@ -237,8 +243,48 @@ async function handleMessage(db: SupabaseClient, s: Settings, uid: number, uidva
     forward_reason: outcome.forwardReason || null,
     actions: outcome.changes,
     sent_to_customer: outcome.decision === "reply" && live,
+    copy_token: copyToken,
   });
   return { uid, decision: outcome.decision, changes: outcome.changes.length, sent_to_customer: outcome.decision === "reply" && live };
+}
+
+const randomHex = (bytes: number) =>
+  Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, "0")).join("");
+
+type Handled = { uid: number; sent_to_customer: boolean; also_seen?: number; [k: string]: unknown };
+
+/** The owner answered one of our copies: send his text to that customer from info@, in the same conversation. */
+async function relayOwnerReply(db: SupabaseClient, uid: number, uidvalidity: number, p: Parsed): Promise<Handled> {
+  const base = { uid, uidvalidity, message_id: p.messageId || null, from_email: p.fromEmail, subject: p.subject, body_text: p.text };
+  const token = copyTokenOf(p);
+  const { data: orig } = token
+    ? await db.from("email_assistant_messages").select("uid, from_email, subject, message_id, body_text, received_at").eq("copy_token", token).maybeSingle()
+    : { data: null };
+  const text = stripQuoted(p.text);
+  if (!orig || !text) {
+    // Not an answer to one of our copies: leave it unread for a person.
+    await db.from("email_assistant_messages").insert({ ...base, decision: "skipped", error: "mail vlasnika, nije odgovor na kopiju" });
+    return { uid, skipped: "owner mail", sent_to_customer: false };
+  }
+  const quoted = `${orig.received_at ? new Date(orig.received_at).toLocaleString("hr-HR", { timeZone: "Europe/Zagreb" }) : ""} ste napisali:\n\n${String(orig.body_text ?? "").slice(0, 4000)}`;
+  await sendMail({
+    to: orig.from_email,
+    subject: /^re:/i.test(orig.subject ?? "") ? orig.subject : `Re: ${orig.subject || "Vaš upit"}`,
+    html: `<!doctype html><html lang="hr"><head><meta charset="utf-8"></head><body>${paragraphs(text)}<div style="border-left:3px solid #ccc;padding-left:12px;color:#666">${paragraphs(quoted)}</div></body></html>`,
+    inReplyTo: orig.message_id || undefined,
+    references: orig.message_id || undefined,
+  });
+  await sendMail({
+    to: p.fromEmail,
+    subject: OWNER_SUBJECT,
+    html: `<!doctype html><html lang="hr"><head><meta charset="utf-8"></head><body>${paragraphs(`POSLANO KUPCU s info@osmrtnica.com.hr\nKome: ${orig.from_email}\n\n${text}`)}</body></html>`,
+  });
+  // Stored under the customer's address, so the assistant sees this answer in that conversation's history.
+  await db.from("email_assistant_messages").insert({
+    ...base, from_email: orig.from_email, body_text: "(odgovor vlasnika na prethodni mail)", decision: "owner_reply",
+    reply_text: text, sent_to_customer: true, forward_reason: `odgovorio vlasnik s ${p.fromEmail}`,
+  });
+  return { uid, decision: "owner_reply", sent_to_customer: true, also_seen: orig.uid ?? undefined };
 }
 
 async function loadHistory(db: SupabaseClient, email: string) {
@@ -466,7 +512,7 @@ function ownerCopyHtml(p: Parsed, customer: string, verified: boolean, o: Outcom
   const parts: string[] = [];
   if (o.decision === "forward") {
     parts.push(box("ODGOVORI TI NA OVAJ MAIL",
-      paragraphs(`Kupcu nije poslano ništa.\nRazlog: ${o.forwardReason || "-"}\n\nOdgovori klikom na "Odgovori" (ide na ${customer}) ili iz webmaila info@.`), "#fff3d6"));
+      paragraphs(`Kupcu nije poslano ništa.\nRazlog: ${o.forwardReason || "-"}\n\nKlikni "Odgovori" i napiši odgovor. Kupcu (${customer}) će otići s adrese info@osmrtnica.com.hr, ne s tvoje. Stiže mu za 3 do 8 minuta.`), "#fff3d6"));
   } else if (!live) {
     parts.push(box("PROBNI NAČIN", paragraphs("Ovaj odgovor NIJE poslan kupcu. Ovako bi izgledao:"), "#e8f0ff"));
   }

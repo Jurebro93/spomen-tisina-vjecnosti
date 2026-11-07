@@ -76,3 +76,31 @@ export function senderVerified(p: Parsed): boolean {
   return spf.some((a) => a === p.fromEmail || a === domain);
 }
 
+
+/** Token of our owner copy that this mail answers (from In-Reply-To / References), or null. */
+export function copyTokenOf(p: Parsed): string | null {
+  const m = `${p.inReplyTo} ${p.references}`.match(/<copy-([0-9a-f]{32})@osmrtnica\.com\.hr>/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/**
+ * Only the new text of a reply: cuts the quoted mail below the mail app's "... wrote:" line (Gmail writes it in
+ * the phone's language, sometimes over two lines) and any "> " lines.
+ */
+export function stripQuoted(text: string): string {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const intro = /(wrote|napisao je|napisala je|je napisao|je napisala|napisao\/la je|je napisao\/la|schrieb|a écrit|ha scritto)\s*:\s*$/i;
+  let cut = lines.length;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^-{2,}\s*(original message|izvorna poruka|prosli?jeđena poruka|forwarded message)/i.test(lines[i]) || /^>/.test(lines[i])) {
+      cut = i;
+      break;
+    }
+    if (intro.test(lines[i])) {
+      // "sub, 7. stu 2026. u 10:45 Osmrtnica.com.hr <" + "info@osmrtnica.com.hr> napisao je:"
+      cut = i > 0 && lines[i - 1].trim() && !/[.!?]$/.test(lines[i - 1].trim()) && /\d/.test(lines[i - 1]) ? i - 1 : i;
+      break;
+    }
+  }
+  return lines.slice(0, cut).join("\n").trim();
+}

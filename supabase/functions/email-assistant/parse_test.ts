@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { parse, senderVerified, skipReason } from "./parse.ts";
+import { copyTokenOf, parse, type Parsed, senderVerified, skipReason, stripQuoted } from "./parse.ts";
 import { validateChange } from "./items.ts";
 
 const mail = (headers: string, body = "Poštovani, zanima me izrada sjećanja.") =>
@@ -56,4 +56,17 @@ Deno.test("only allowed fields with valid values pass", () => {
   assertEquals(validateChange("obituary", { field: "ozalosceni", value: "Ana; Marko" }), { ok: true, value: ["Ana", "Marko"] });
   assert(!validateChange("memorial", { field: "status", value: "archived" }).ok);
   assert(!validateChange("memorial", { field: "visibility", value: "secret" }).ok);
+});
+
+Deno.test("owner reply: only the new text, without Gmail's quoted copy", () => {
+  const t = "Poštovani, šaljem Vam račun danas.\n\nLp\n\nsub, 7. stu 2026. u 10:45 Osmrtnica.com.hr <\ninfo@osmrtnica.com.hr> napisao je:\n\n> ODGOVORI TI NA OVAJ MAIL\n> tekst";
+  assertEquals(stripQuoted(t), "Poštovani, šaljem Vam račun danas.\n\nLp");
+  assertEquals(stripQuoted("Hvala!\n\nOn Sat, Nov 7, 2026 at 10:45 AM Osmrtnica.com.hr <info@osmrtnica.com.hr> wrote:\n> x"), "Hvala!");
+  assertEquals(stripQuoted("Samo tekst"), "Samo tekst");
+});
+
+Deno.test("owner reply is matched only by our copy token", () => {
+  const tok = "0123456789abcdef0123456789abcdef";
+  assertEquals(copyTokenOf({ inReplyTo: `<copy-${tok}@osmrtnica.com.hr>`, references: "" } as Parsed), tok);
+  assertEquals(copyTokenOf({ inReplyTo: "<abc@mail.gmail.com>", references: "" } as Parsed), null);
 });
