@@ -20,6 +20,9 @@ import { type Change, ITEM_SPECS, type ItemType, loadOwnedItems, type OwnedItem,
 const OWN_ADDRESS = "info@osmrtnica.com.hr";
 const OWNER_SUBJECT = "OSMRTNICA.COM.HR";
 const MAX_PER_RUN = 5;
+// The owner wants replies to go out a few minutes after a mail arrives, not instantly. With the cron every
+// 5 minutes a mail is answered 3 to 8 minutes after it was sent.
+const WAIT_MINUTES = 3;
 const MAX_REPLIES_PER_SENDER_PER_DAY = 5;
 
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { "Content-Type": "application/json" } });
@@ -114,6 +117,7 @@ Deno.serve(async (req) => {
     const uids = (await imap.uidsAfter(s.last_uid)).slice(0, MAX_PER_RUN);
     for (const uid of uids) {
       const msg = await imap.fetch(uid);
+      if (msg && tooFresh((await parse(msg.raw)).date)) break; // Next run; last_uid stays, so it is not lost.
       if (msg) {
         try {
           const r = await handleMessage(db, s, uid, uidvalidity, msg.raw);
@@ -134,6 +138,14 @@ Deno.serve(async (req) => {
   }
   return json({ ok: true, processed: results });
 });
+
+/** True while the mail is younger than WAIT_MINUTES. A sender clock far in the future does not hold a mail back. */
+function tooFresh(date: string) {
+  const t = Date.parse(date);
+  if (Number.isNaN(t)) return false;
+  const age = Date.now() - t;
+  return age > -10 * 60_000 && age < WAIT_MINUTES * 60_000;
+}
 
 type Outcome = {
   decision: "reply" | "forward" | "ignore";
