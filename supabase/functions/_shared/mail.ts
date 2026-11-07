@@ -16,6 +16,10 @@ export type SendMailOptions = {
   /** Where "Reply" goes, e.g. the visitor who asked for help. */
   replyTo?: string;
   attachments?: MailAttachment[];
+  /** Message-ID of the mail this one answers, so mail apps show both in one conversation. */
+  inReplyTo?: string;
+  references?: string;
+  headers?: Record<string, string>;
 };
 
 export const getMailFrom = (name?: string) => {
@@ -53,6 +57,9 @@ export const sendMail = async (opts: SendMailOptions) => {
       from: opts.from ?? getMailFrom(opts.fromName),
       to,
       replyTo: opts.replyTo,
+      references: opts.references?.replace(/\s+/g, " "),
+      // denomailer writes its inReplyTo option as "InReplyTo:", which mail apps ignore, so it goes here instead.
+      headers: { ...(opts.inReplyTo ? { "In-Reply-To": opts.inReplyTo.replace(/\s+/g, " ") } : {}), ...opts.headers },
       subject: opts.subject,
       // denomailer does not dot-stuff quoted-printable lines, so a "." that lands at the start of a
       // wrapped line is dropped by the receiving server (seen: "osmrtnica.comhr"). As an entity it survives.
