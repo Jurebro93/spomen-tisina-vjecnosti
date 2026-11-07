@@ -138,7 +138,14 @@ async function handleMessage(db: SupabaseClient, s: Settings, uid: number, uidva
     outcome = { decision: "forward", replyText: "", forwardReason: "Ova osoba je danas već dobila nekoliko automatskih odgovora.", changes: [] };
   } else {
     const history = await loadHistory(db, customer);
-    outcome = await askClaude(db, s, p, customer, verified, owned, history);
+    try {
+      outcome = await askClaude(db, s, p, customer, verified, owned, history);
+    } catch (e) {
+      // AI down or out of credit: the mail must still reach the owner, never get lost.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("email-assistant AI failed", msg);
+      outcome = { decision: "forward", replyText: "", forwardReason: `AI trenutno ne radi (možda je potrošen kredit na console.anthropic.com). Greška: ${msg.slice(0, 300)}`, changes: [] };
+    }
   }
 
   const live = s.send_to_customers;
