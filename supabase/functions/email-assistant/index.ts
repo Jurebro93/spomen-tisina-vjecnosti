@@ -1,5 +1,5 @@
 // E-mail assistant for info@osmrtnica.com.hr. Runs every 5 minutes (pg_cron, protected by a Vault secret).
-// Reads new mail in the info@ inbox over IMAP (read-only, mail stays unread), lets Claude answer customers and
+// Reads new mail in the info@ inbox over IMAP (answered mails are marked read), lets Claude answer customers and
 // help them with memorials. Changes customers ask for are only prepared: the address that created the item gets a
 // mail with a "Potvrdi izmjenu" button, and the change is made when they click it (email-assistant-confirm).
 // Payment, refunds, deletion and anything unclear are forwarded to the site owner instead.
