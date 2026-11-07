@@ -25,12 +25,19 @@ Deno.test("no Authentication-Results means not verified", async () => {
 });
 
 Deno.test("DKIM pass for another domain does not verify", async () => {
-  const p = await parse(mail("Authentication-Results: x; dkim=pass header.d=evil.example; spf=fail smtp.mailfrom=x@evil.example"));
+  const p = await parse(mail("Authentication-Results: dubrovnik10.totohost.hr; dkim=pass header.d=evil.example; spf=fail smtp.mailfrom=x@evil.example"));
   assert(!senderVerified(p));
 });
 
+Deno.test("a forged Authentication-Results from the sender does not count", async () => {
+  // Our server adds its header on top; the sender's fake one sits below it.
+  const p = await parse(mail("Authentication-Results: dubrovnik10.totohost.hr; dkim=none; spf=softfail smtp.mailfrom=ana.anic@gmail.com\r\nAuthentication-Results: mx.google.com; dkim=pass header.d=gmail.com; spf=pass smtp.mailfrom=ana.anic@gmail.com"));
+  assert(!senderVerified(p));
+  assert(!senderVerified(await parse(mail("Authentication-Results: mx.google.com; dkim=pass header.d=gmail.com"))));
+});
+
 Deno.test("DMARC fail cancels DKIM pass", async () => {
-  const p = await parse(mail("Authentication-Results: x; dkim=pass header.d=gmail.com; dmarc=fail"));
+  const p = await parse(mail("Authentication-Results: dubrovnik10.totohost.hr; dkim=pass header.d=gmail.com; dmarc=fail"));
   assert(!senderVerified(p));
 });
 

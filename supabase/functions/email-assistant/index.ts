@@ -58,7 +58,15 @@ Deno.serve(async (req) => {
     const uidvalidity = await imap.selectInbox();
     if (body.check) {
       const all = await imap.uidsAfter(0);
-      return json({ ok: true, check: "login_ok", messages: all.length, ai_key: Boolean(Deno.env.get("ANTHROPIC_API_KEY")) });
+      // Only the authentication headers of the newest few mails: shows whether our server adds them on top.
+      const auth: unknown[] = [];
+      for (const uid of all.slice(-5)) {
+        const m = await imap.fetch(uid);
+        if (!m) continue;
+        const p = await parse(m.raw);
+        auth.push({ uid, from_domain: p.fromEmail.split("@")[1], auth_results: p.headers.get("authentication-results") ?? [], verified: senderVerified(p) });
+      }
+      return json({ ok: true, check: "login_ok", messages: all.length, ai_key: Boolean(Deno.env.get("ANTHROPIC_API_KEY")), auth });
     }
     if (!Deno.env.get("ANTHROPIC_API_KEY")) return json({ ok: false, code: "no_ai_key" }, 500);
 

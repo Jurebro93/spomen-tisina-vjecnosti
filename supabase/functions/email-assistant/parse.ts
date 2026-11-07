@@ -60,7 +60,13 @@ export function skipReason(p: Parsed): string | null {
 export function senderVerified(p: Parsed): boolean {
   const domain = p.fromEmail.split("@")[1] ?? "";
   if (!domain) return false;
-  const ar = (p.headers.get("authentication-results") ?? []).join(";").toLowerCase();
+  // Anyone can write an Authentication-Results header into their own mail. Only the topmost one, added by our
+  // receiving server (authserv-id on totohost.hr, or AUTHSERV_ID), counts.
+  const top = (p.headers.get("authentication-results") ?? [])[0]?.toLowerCase() ?? "";
+  const authserv = top.split(";")[0].trim().split(/\s+/)[0] ?? "";
+  const trusted = (Deno.env.get("AUTHSERV_ID") ?? "").toLowerCase();
+  if (!(authserv.endsWith(".totohost.hr") || (trusted && authserv === trusted))) return false;
+  const ar = top;
   const dkim = [...ar.matchAll(/dkim=pass[^;]*?header\.(?:d|i)=@?([a-z0-9.-]+)/g)].map((m) => m[1]);
   if (dkim.some((d) => d === domain || domain.endsWith(`.${d}`))) {
     const dmarcFail = /dmarc=fail/.test(ar);
