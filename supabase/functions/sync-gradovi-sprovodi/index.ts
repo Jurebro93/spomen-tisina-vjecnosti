@@ -7,7 +7,7 @@ import {
   parseKarlovac,
   parseKoprivnica,
   parsePozega,
-  parseRijeka,
+  parseRijekaCeminfo,
   parseVarazdin,
   parseVelikaGorica,
   type ScheduleRow,
@@ -60,8 +60,9 @@ const SOURCES: Source[] = [
         await getText('https://boninovo.hr/index.php/boninovo-d-o-o-lista-sprovoda?format=feed&type=rss'),
         fromDate,
       )
-      // The cemetery is only written in the event text; a failed page keeps "Boninovo".
+      // The old feed had the cemetery only in the event page text; a failed page keeps "Boninovo".
       for (const item of items) {
+        if (item.row.groblje !== 'Boninovo') continue
         try {
           await sleep(300)
           const groblje = boninovoGroblje(await getText(item.link))
@@ -109,8 +110,8 @@ const SOURCES: Source[] = [
   {
     izvor: 'kd-kozala-rijeka',
     grad: 'Rijeka',
-    load: async (fromDate) =>
-      parseRijeka(await getJson('https://rijeka-kozala.azurewebsites.net/api/services/app/Funeral/GetFunerals?MaxResultCount=80'), fromDate),
+    // The old JSON API (rijeka-kozala.azurewebsites.net) went offline with the new site in 11/2026.
+    load: async (fromDate) => parseRijekaCeminfo(await getJson('https://kd-kozala.hr/wp-json/kainoto-ceminfo/v1/funerals?kc_day=upcoming'), fromDate),
   },
 ]
 

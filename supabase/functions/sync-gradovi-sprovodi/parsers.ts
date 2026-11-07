@@ -155,21 +155,27 @@ export function parseDubrovnikRss(xml: string, fromDate: string) {
     const item = m[1]
     const title = stripTags(item.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? '')
     const link = stripTags(item.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? '')
-    const dateText = item.match(/jem_date-1">([^<]+)</i)?.[1] ?? ''
-    const time = item.match(/jem_time-1">,?\s*(\d{1,2}:\d{2})/i)?.[1] ?? ''
-    const d = dateText.match(/(\d{1,2})\.\s*([A-Za-zČĆŽŠĐčćžšđ]+)\s+(\d{4})/)
-    if (!d) continue
-    const month = HR_MONTHS[slug(d[2]).replace(/-/g, '')]
-    if (!month) continue
-    const date = `${d[3]}-${month}-${d[1].padStart(2, '0')}`
+    // Since 28.10.2026 the feed (boninovo.hr/sprovodi.rss) has <bn:datum>, <bn:vrijeme> and a plain-text description.
+    let date = item.match(/<bn:datum>(\d{4}-\d{2}-\d{2})<\/bn:datum>/)?.[1] ?? ''
+    let time = item.match(/<bn:vrijeme>(\d{1,2}:\d{2})<\/bn:vrijeme>/)?.[1] ?? ''
+    if (!date) {
+      const dateText = item.match(/jem_date-1">([^<]+)</i)?.[1] ?? ''
+      time = item.match(/jem_time-1">,?\s*(\d{1,2}:\d{2})/i)?.[1] ?? ''
+      const d = dateText.match(/(\d{1,2})\.\s*([A-Za-zČĆŽŠĐčćžšđ]+)\s+(\d{4})/)
+      const month = d && HR_MONTHS[slug(d[2]).replace(/-/g, '')]
+      if (!d || !month) continue
+      date = `${d[3]}-${month}-${d[1].padStart(2, '0')}`
+    }
     if (date < fromDate) continue
     const name = title
       .replace(/\(\D[^)]*\)/g, ' ')
       .replace(/\(\s*\d{4}\.?\s*\)/g, ' ')
-      .replace(/\s(rođ|pok)\.\s.*$/i, '')
+      .replace(/\s\d{4}\.?$/, '')
+      .replace(/\s(rođ|pok|ud)\.\s.*$/i, '')
       .replace(/\s+/g, ' ')
       .trim()
-    const r = row('boninovo-dubrovnik', 'bdu', 'Dubrovnik', name, 'Boninovo', date, time, null)
+    const description = stripTags(item.match(/<description>([\s\S]*?)<\/description>/i)?.[1] ?? '')
+    const r = row('boninovo-dubrovnik', 'bdu', 'Dubrovnik', name, grobljeFromText(description) ?? 'Boninovo', date, time, null)
     if (r) items.push({ row: r, link })
   }
   return items
@@ -177,9 +183,12 @@ export function parseDubrovnikRss(xml: string, fromDate: string) {
 
 /** "… u 14 sati na groblju u Rumbocima u Rami – B i H" -> "groblje u Rumbocima u Rami – B i H" */
 export function boninovoGroblje(html: string) {
-  const description = html.match(/itemprop="description"([\s\S]*?)<\/div>/i)?.[1] ?? ''
-  const text = stripTags(description).replace(/\s+/g, ' ')
-  const m = text.match(/na\s+(groblju|grobl\w*)\s+(.+?)(?:\.|$)/i)
+  return grobljeFromText(stripTags(html.match(/itemprop="description"([\s\S]*?)<\/div>/i)?.[1] ?? ''))
+}
+
+function grobljeFromText(value: string) {
+  // Up to the first full stop, but "sv." (sveti) does not end the name.
+  const m = value.replace(/\s+/g, ' ').match(/na\s+(groblju|grobl\w*)\s+((?:\b[Ss]v\.\s*|[^.])+)/i)
   if (!m) return null
   return cleanGroblje(`Groblje ${m[2]}`).slice(0, 120)
 }
@@ -198,6 +207,36 @@ export function parseRijeka(json: unknown, fromDate: string): ScheduleRow[] {
     const groblje = cleanGroblje(String(item.graveyard ?? '')) || 'Kozala'
     const r = row('kd-kozala-rijeka', 'kzr', 'Rijeka', `${item.firstName ?? ''} ${item.lastName ?? ''}`, groblje, m[1], m[2], null)
     if (r) rows.push(r)
+  }
+  return rows
+}
+
+/**
+ * Rijeka, KD Kozala: since 11/2026 the new site (kd-kozala.hr/sahrane-i-pokojni/raspored-sahrana/)
+ * serves the schedule from wp-json/kainoto-ceminfo/v1/funerals?kc_day=upcoming as rendered HTML:
+ *   <section class="kc-day-group"><h3 class="kc-day">ponedjeljak, 9. studenoga 2026.</h3>
+ *   <li class="kc-card kc-fun"><time …>11:30</time> <h4 class="kc-name">ILEANA COVACICH</h4>
+ *   <dt>Groblje</dt><dd>Kozala</dd>
+ */
+export function parseRijekaCeminfo(json: unknown, fromDate: string): ScheduleRow[] {
+  // deno-lint-ignore no-explicit-any
+  const html = String((json as any)?.html ?? '')
+  const rows: ScheduleRow[] = []
+  for (const group of html.split(/<section class="kc-day-group">/).slice(1)) {
+    const day = stripTags(group.match(/class="kc-day">([\s\S]*?)<\/h3>/)?.[1] ?? '')
+    const d = day.match(/(\d{1,2})\.\s*([A-Za-zČĆŽŠĐčćžšđ]+)\s+(\d{4})/)
+    const month = d && HR_MONTHS[slug(d[2]).replace(/-/g, '')]
+    if (!d || !month) continue
+    const date = `${d[3]}-${month}-${d[1].padStart(2, '0')}`
+    if (date < fromDate) continue
+    for (const li of group.split(/<li class="kc-card kc-fun">/).slice(1)) {
+      // The <time> text is local time; its datetime attribute is not.
+      const time = stripTags(li.match(/<time[^>]*>([\s\S]*?)<\/time>/)?.[1] ?? '')
+      const name = stripTags(li.match(/class="kc-name">([\s\S]*?)<\/h4>/)?.[1] ?? '')
+      const place = stripTags(li.match(/<dt>Groblje<\/dt>\s*<dd>([\s\S]*?)<\/dd>/)?.[1] ?? '')
+      const r = row('kd-kozala-rijeka', 'kzr', 'Rijeka', name, cleanGroblje(place) || 'Kozala', date, time, null)
+      if (r) rows.push(r)
+    }
   }
   return rows
 }
@@ -287,12 +326,13 @@ export function parsePozega(html: string, fromDate: string): ScheduleRow[] {
     const place = field('groblje')
     const when = field('datum-sahrane')
     const date = parseNumericDate(when)
-    const time = when.match(/u\s*(\d{1,2})[:.](\d{2})/)
+    // "u 13.30" or, for a full hour, "u 15 sati".
+    const time = when.match(/u\s*(\d{1,2})(?:[:.](\d{2}))?(?!\d)/)
     if (!name || !date || !time || date < fromDate) continue
     const age = stripTags(block).match(/u\s+(\d{1,3})\.\s*godini/i)
     const groblje = place ? `Groblje ${place}` : 'Groblje Požega'
     // "u 89. godini života" means 88 full years.
-    const r = row('komunalac-pozega', 'kpz', 'Požega', name, groblje, date, `${time[1]}:${time[2]}`, age ? Number(age[1]) - 1 : null)
+    const r = row('komunalac-pozega', 'kpz', 'Požega', name, groblje, date, `${time[1]}:${time[2] ?? '00'}`, age ? Number(age[1]) - 1 : null)
     if (r) rows.push(r)
   }
   return rows
