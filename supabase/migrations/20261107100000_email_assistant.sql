@@ -86,6 +86,6 @@ SELECT cron.schedule('email-assistant', '*/5 * * * *', $cron$
       'x-assistant-secret', (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'EMAIL_ASSISTANT_SECRET')
     ),
     body := '{}'::jsonb,
-    timeout_milliseconds := 5000
+    timeout_milliseconds := 140000
   );
 $cron$);
