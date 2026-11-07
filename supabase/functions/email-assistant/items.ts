@@ -147,6 +147,8 @@ export async function loadOwnedItems(db: SupabaseClient, email: string): Promise
 
 export type Change = { field: string; value: string | null };
 
+export const showValue = (v: unknown) => (v == null || v === "" ? "(prazno)" : Array.isArray(v) ? v.join("; ") : String(v));
+
 /** Checks one requested change against the allowed fields; returns the value to store or an error. */
 export function validateChange(type: ItemType, c: Change): { ok: true; value: unknown } | { ok: false; error: string } {
   const kind = ITEM_SPECS[type].fields[c.field];

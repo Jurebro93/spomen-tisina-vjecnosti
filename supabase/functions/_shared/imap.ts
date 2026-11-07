@@ -1,7 +1,7 @@
-// Minimal read-only IMAP client over TLS, just enough for the e-mail assistant: log in, open INBOX, list UIDs
-// and fetch whole messages with BODY.PEEK[] (which leaves the "unread" flag alone, so the inbox looks the same
-// in webmail afterwards). No library: the npm IMAP clients depend on Node sockets that the edge runtime only
-// partly emulates.
+// Minimal IMAP client over TLS, just enough for the e-mail assistant: log in, open INBOX, list UIDs, fetch
+// whole messages with BODY.PEEK[] (which leaves the "unread" flag alone) and mark a mail as read once it has
+// been answered, so in webmail the unread mails are the ones still waiting for a person. No library: the npm
+// IMAP clients depend on Node sockets that the edge runtime only partly emulates.
 
 const enc = new TextEncoder();
 const dec = new TextDecoder("latin1");
@@ -21,9 +21,9 @@ export class ImapClient {
     await this.command(`LOGIN ${quote(user)} ${quote(pass)}`);
   }
 
-  /** Opens INBOX read-only and returns its UIDVALIDITY. */
-  async selectInbox(): Promise<number> {
-    const { lines } = await this.command("EXAMINE INBOX");
+  /** Opens INBOX (read-only unless `write`) and returns its UIDVALIDITY. */
+  async selectInbox(write = false): Promise<number> {
+    const { lines } = await this.command(write ? "SELECT INBOX" : "EXAMINE INBOX");
     for (const l of lines) {
       const m = l.match(/UIDVALIDITY (\d+)/i);
       if (m) return Number(m[1]);
@@ -42,6 +42,22 @@ export class ImapClient {
     }
     // "N:*" always matches the newest message, even when its UID is below N.
     return out.filter((u) => u > afterUid).sort((a, b) => a - b);
+  }
+
+  /** UIDs of mails nobody has opened yet, ascending. */
+  async unseenUids(): Promise<number[]> {
+    const { lines } = await this.command("UID SEARCH UNSEEN");
+    const out: number[] = [];
+    for (const l of lines) {
+      if (/^\* SEARCH/i.test(l)) {
+        for (const n of l.replace(/^\* SEARCH/i, "").trim().split(/\s+/)) if (n) out.push(Number(n));
+      }
+    }
+    return out.sort((a, b) => a - b);
+  }
+
+  async markSeen(uid: number) {
+    await this.command(`UID STORE ${uid} +FLAGS (\\Seen)`);
   }
 
   async fetch(uid: number): Promise<ImapMessage | null> {
