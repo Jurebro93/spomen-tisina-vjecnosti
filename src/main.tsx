@@ -4,7 +4,9 @@ import { matchRoutes } from 'react-router-dom'
 import App, { routes } from './App.tsx'
 import './index.css'
 import { captureAttribution } from './lib/funnel'
+import { installPhotoFallback } from './lib/photoFallback'
 
+installPhotoFallback();
 captureAttribution();
 window.addEventListener('cookie-consent-changed', () => captureAttribution());
 
