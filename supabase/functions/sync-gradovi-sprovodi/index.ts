@@ -7,7 +7,7 @@ import {
   parseKarlovac,
   parseKoprivnica,
   parsePozega,
-  parseRijeka,
+  parseRijekaCeminfo,
   parseVarazdin,
   parseVelikaGorica,
   type ScheduleRow,
@@ -110,8 +110,8 @@ const SOURCES: Source[] = [
   {
     izvor: 'kd-kozala-rijeka',
     grad: 'Rijeka',
-    load: async (fromDate) =>
-      parseRijeka(await getJson('https://rijeka-kozala.azurewebsites.net/api/services/app/Funeral/GetFunerals?MaxResultCount=80'), fromDate),
+    // The old JSON API (rijeka-kozala.azurewebsites.net) went offline with the new site in 11/2026.
+    load: async (fromDate) => parseRijekaCeminfo(await getJson('https://kd-kozala.hr/wp-json/kainoto-ceminfo/v1/funerals?kc_day=upcoming'), fromDate),
   },
 ]
 

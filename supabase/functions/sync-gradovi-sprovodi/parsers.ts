@@ -212,6 +212,36 @@ export function parseRijeka(json: unknown, fromDate: string): ScheduleRow[] {
 }
 
 /**
+ * Rijeka, KD Kozala: since 11/2026 the new site (kd-kozala.hr/sahrane-i-pokojni/raspored-sahrana/)
+ * serves the schedule from wp-json/kainoto-ceminfo/v1/funerals?kc_day=upcoming as rendered HTML:
+ *   <section class="kc-day-group"><h3 class="kc-day">ponedjeljak, 9. studenoga 2026.</h3>
+ *   <li class="kc-card kc-fun"><time …>11:30</time> <h4 class="kc-name">ILEANA COVACICH</h4>
+ *   <dt>Groblje</dt><dd>Kozala</dd>
+ */
+export function parseRijekaCeminfo(json: unknown, fromDate: string): ScheduleRow[] {
+  // deno-lint-ignore no-explicit-any
+  const html = String((json as any)?.html ?? '')
+  const rows: ScheduleRow[] = []
+  for (const group of html.split(/<section class="kc-day-group">/).slice(1)) {
+    const day = stripTags(group.match(/class="kc-day">([\s\S]*?)<\/h3>/)?.[1] ?? '')
+    const d = day.match(/(\d{1,2})\.\s*([A-Za-zČĆŽŠĐčćžšđ]+)\s+(\d{4})/)
+    const month = d && HR_MONTHS[slug(d[2]).replace(/-/g, '')]
+    if (!d || !month) continue
+    const date = `${d[3]}-${month}-${d[1].padStart(2, '0')}`
+    if (date < fromDate) continue
+    for (const li of group.split(/<li class="kc-card kc-fun">/).slice(1)) {
+      // The <time> text is local time; its datetime attribute is not.
+      const time = stripTags(li.match(/<time[^>]*>([\s\S]*?)<\/time>/)?.[1] ?? '')
+      const name = stripTags(li.match(/class="kc-name">([\s\S]*?)<\/h4>/)?.[1] ?? '')
+      const place = stripTags(li.match(/<dt>Groblje<\/dt>\s*<dd>([\s\S]*?)<\/dd>/)?.[1] ?? '')
+      const r = row('kd-kozala-rijeka', 'kzr', 'Rijeka', name, cleanGroblje(place) || 'Kozala', date, time, null)
+      if (r) rows.push(r)
+    }
+  }
+  return rows
+}
+
+/**
  * Varaždin, Parkovi d.o.o.: Elementor/JetEngine listing, surname first.
  *   <div class="jet-listing-dynamic-field__content">21. listopada 2026. u 11:45 h</div>
  *   <h2 class="elementor-heading-title …">Kolak Tomislav</h2>
