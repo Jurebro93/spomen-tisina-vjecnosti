@@ -400,6 +400,10 @@ async function prepareUpdate(
 
   const { data: beforeRow } = await db.from(spec.table).select(Object.keys(update).join(", ")).eq("id", item.id).maybeSingle();
   const before = Object.fromEntries(Object.keys(update).map((f) => [f, (beforeRow as Record<string, unknown> | null)?.[f] ?? null]));
+  // Confirmation mails need the /potvrda-izmjene page and apply_changes on; until then the owner does it by hand.
+  if (s.send_to_customers && !s.apply_changes) {
+    return "Izmjene mailom trenutno radi vlasnik ručno. Ništa nije pripremljeno. Pozovi forward_to_owner i u razlogu napiši točno koju izmjenu osoba traži.";
+  }
   const live = s.send_to_customers;
   let status = "probni način: kupcu nije poslan mail za potvrdu";
   if (live) {
